@@ -16,8 +16,12 @@ from config import (
 
 from database import init_database
 
-from handlers.start import (
-    register_start_handlers
+from handlers.admin import (
+    register_admin_handlers
+)
+
+from handlers.user import (
+    register_user_handlers
 )
 
 from handlers.search import (
@@ -109,6 +113,9 @@ register_admin_handlers(
     app
 )
 
+register_user_handlers(
+    app
+)
 
 # ============================================================
 # FLASK WEB SERVER
