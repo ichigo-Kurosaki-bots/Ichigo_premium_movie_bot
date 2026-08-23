@@ -1,157 +1,105 @@
-from database import media_collection
+import re
 
-from utils.helpers import (
-    clean_title
+from database import (
+    media_collection
+)
+
+from config import (
+    MAX_RESULTS,
+    RESULTS_PER_PAGE
 )
 
 
+# ============================================================
+# CLEAN SEARCH QUERY
+# ============================================================
+
+def normalize_query(text):
+
+    text = text.lower()
+
+    # Remove common punctuation.
+    text = re.sub(
+        r"[^a-z0-9\s]",
+        " ",
+        text
+    )
+
+    # Remove extra spaces.
+    text = re.sub(
+        r"\s+",
+        " ",
+        text
+    )
+
+    return text.strip()
+
+
+# ============================================================
+# SEARCH MOVIES
+# ============================================================
+
 async def search_movies(
     query,
-    limit=10,
-    skip=0
+    page=0
 ):
 
-    query = query.strip()
+    query = normalize_query(
+        query
+    )
 
     if not query:
         return []
 
-    # --------------------------------------------------------
-    # First use MongoDB text search.
-    # --------------------------------------------------------
-
-    try:
-
-        cursor = media_collection.find(
-            {
-                "$text": {
-                    "$search": query
-                }
-            },
-            {
-                "score": {
-                    "$meta": "textScore"
-                }
-            }
-        ).sort(
-            [
-                (
-                    "score",
-                    {
-                        "$meta": "textScore"
-                    }
-                )
-            ]
-        ).skip(
-            skip
-        ).limit(
-            limit
-        )
-
-        results = await cursor.to_list(
-            length=limit
-        )
-
-        if results:
-            return results
-
-    except Exception as e:
-
-        print(
-            f"Text search error: {e}"
-        )
-
 
     # --------------------------------------------------------
-    # Fallback search.
+    # MongoDB text-style regex search
     # --------------------------------------------------------
 
-    title_key = clean_title(
+    pattern = re.escape(
         query
     )
-
-    regex = {
-        "$regex": title_key,
-        "$options": "i"
-    }
 
     cursor = media_collection.find(
         {
             "$or": [
                 {
-                    "title": regex
+                    "title": {
+                        "$regex": pattern,
+                        "$options": "i"
+                    }
                 },
                 {
-                    "title_key": regex
-                },
-                {
-                    "file_name": regex
-                },
-                {
-                    "caption": regex
+                    "file_name": {
+                        "$regex": pattern,
+                        "$options": "i"
+                    }
                 }
             ]
         }
-    ).skip(
-        skip
-    ).limit(
-        limit
-    )
-
-    return await cursor.to_list(
-        length=limit
+    ).sort(
+        "message_id",
+        -1
     )
 
 
-async def count_search_results(
-    query
-):
+    # Maximum number of results.
+    skip = page * RESULTS_PER_PAGE
 
-    query = query.strip()
+    results = []
 
-    if not query:
-        return 0
+    async for item in cursor:
 
-    try:
+        if len(results) >= RESULTS_PER_PAGE:
 
-        count = await media_collection.count_documents(
-            {
-                "$text": {
-                    "$search": query
-                }
-            }
+            break
+
+        if len(results) >= MAX_RESULTS:
+
+            break
+
+        results.append(
+            item
         )
 
-        if count:
-            return count
-
-    except Exception:
-        pass
-
-    title_key = clean_title(
-        query
-    )
-
-    regex = {
-        "$regex": title_key,
-        "$options": "i"
-    }
-
-    return await media_collection.count_documents(
-        {
-            "$or": [
-                {
-                    "title": regex
-                },
-                {
-                    "title_key": regex
-                },
-                {
-                    "file_name": regex
-                },
-                {
-                    "caption": regex
-                }
-            ]
-        }
-    )
+    return results
