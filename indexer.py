@@ -1,62 +1,56 @@
 import asyncio
-from datetime import datetime
+import logging
 
-from pyrogram.errors import FloodWait
-
-from database import (
-    add_media,
-    settings_collection
-)
-
-from utils.helpers import (
-    clean_title,
-    get_message_title,
-    get_search_key,
-    get_original_filename,
-    is_media_message
-)
+from pyrogram import Client
 
 from config import (
     DATABASE_CHANNEL_ID,
     INDEX_BATCH_SIZE
 )
 
+from database import (
+    add_media,
+    get_indexer_state,
+    save_indexer_state
+)
+
+from utils.helpers import (
+    get_message_title,
+    get_original_filename,
+    get_search_key,
+    human_size,
+    is_media_message
+)
+
+
+logger = logging.getLogger(__name__)
+
 
 # ============================================================
 # INDEXER STATE
 # ============================================================
 
-INDEX_RUNNING = False
+indexer_running = False
 
 
 # ============================================================
-# BUILD MEDIA DATA
+# GET MEDIA INFORMATION
 # ============================================================
 
-def build_media_data(message):
+def get_media_information(message):
 
-    if not is_media_message(message):
-
-        return None
-
-    title = get_message_title(
-        message
-    )
-
-    original_filename = (
-        get_original_filename(
-            message
-        )
-    )
-
-    # --------------------------------------------------------
-    # FILE INFORMATION
-    # --------------------------------------------------------
+    media_type = None
+    file_name = ""
+    file_size = 0
+    mime_type = ""
 
     if message.document:
 
-        file_id = (
-            message.document.file_id
+        media_type = "document"
+
+        file_name = (
+            message.document.file_name
+            or ""
         )
 
         file_size = (
@@ -69,12 +63,13 @@ def build_media_data(message):
             or ""
         )
 
-        media_type = "document"
-
     elif message.video:
 
-        file_id = (
-            message.video.file_id
+        media_type = "video"
+
+        file_name = (
+            message.video.file_name
+            or ""
         )
 
         file_size = (
@@ -87,12 +82,13 @@ def build_media_data(message):
             or ""
         )
 
-        media_type = "video"
-
     elif message.audio:
 
-        file_id = (
-            message.audio.file_id
+        media_type = "audio"
+
+        file_name = (
+            message.audio.file_name
+            or ""
         )
 
         file_size = (
@@ -105,54 +101,49 @@ def build_media_data(message):
             or ""
         )
 
-        media_type = "audio"
-
     else:
 
         return None
 
-
-    # --------------------------------------------------------
-    # DATABASE DOCUMENT
-    # --------------------------------------------------------
+    title = get_message_title(
+        message
+    )
 
     return {
+        "channel_id": message.chat.id,
 
-        "channel_id":
-            message.chat.id,
+        "message_id": message.id,
 
-        "message_id":
-            message.id,
+        "title": title,
 
-        "title":
-            title,
+        "title_key": get_search_key(
+            title
+        ),
 
-        "title_key":
-            clean_title(title),
+        "search_key": get_search_key(
+            title
+        ),
 
-        "search_key":
-            get_search_key(title),
+        "file_name": file_name,
 
-        "file_name":
-            original_filename,
+        "file_size": file_size,
 
-        "file_id":
-            file_id,
+        "file_size_text": human_size(
+            file_size
+        ),
 
-        "file_size":
-            file_size,
+        "mime_type": mime_type,
 
-        "mime_type":
-            mime_type,
+        "media_type": media_type,
 
-        "media_type":
-            media_type,
+        "caption": (
+            message.caption
+            or ""
+        ),
 
-        "caption":
-            message.caption or "",
+        "date": message.date,
 
-        "indexed_at":
-            datetime.utcnow()
+        "indexed_at": None
     }
 
 
@@ -162,12 +153,25 @@ def build_media_data(message):
 
 async def index_message(message):
 
-    data = build_media_data(
+    if not is_media_message(
+        message
+    ):
+
+        return False
+
+    data = get_media_information(
         message
     )
 
     if not data:
+
         return False
+
+    from datetime import datetime
+
+    data["indexed_at"] = (
+        datetime.utcnow()
+    )
 
     await add_media(
         data
@@ -177,267 +181,235 @@ async def index_message(message):
 
 
 # ============================================================
-# SAVE INDEXER STATE
+# INDEX DATABASE CHANNEL
 # ============================================================
 
-async def save_state(
-    last_message_id,
-    indexed_count
+async def index_database_channel(
+    app,
+    force=False
 ):
 
-    await settings_collection.update_one(
-        {
-            "_id": "indexer"
-        },
-        {
-            "$set": {
-                "last_message_id": last_message_id,
-                "indexed_count": indexed_count,
-                "updated_at": datetime.utcnow()
-            }
-        },
-        upsert=True
-    )
+    global indexer_running
 
+    if indexer_running:
 
-# ============================================================
-# GET INDEXER STATE
-# ============================================================
-
-async def get_state():
-
-    state = await settings_collection.find_one(
-        {
-            "_id": "indexer"
-        }
-    )
-
-    if not state:
+        logger.warning(
+            "Indexer is already running."
+        )
 
         return {
-            "last_message_id": 0,
-            "indexed_count": 0
+            "success": False,
+            "message": "Indexer is already running."
         }
-
-    return state
-
-
-# ============================================================
-# STOP INDEXING
-# ============================================================
-
-def stop_indexing():
-
-    global INDEX_RUNNING
-
-    INDEX_RUNNING = False
-
-
-# ============================================================
-# INDEX CHANNEL
-# ============================================================
-
-async def index_channel(
-    app,
-    status_message=None
-):
-
-    global INDEX_RUNNING
-
-    if INDEX_RUNNING:
-
-        return 0
 
     if not DATABASE_CHANNEL_ID:
 
-        raise RuntimeError(
-            "DATABASE_CHANNEL_ID is not configured."
-        )
+        return {
+            "success": False,
+            "message": (
+                "DATABASE_CHANNEL_ID is not configured."
+            )
+        }
 
-    INDEX_RUNNING = True
+    indexer_running = True
 
-    state = await get_state()
-
-    last_message_id = state.get(
-        "last_message_id",
-        0
-    )
-
-    indexed_count = state.get(
-        "indexed_count",
-        0
-    )
-
-    current_batch = 0
-
-    print(
-        "========================================"
-    )
-
-    print(
-        "DATABASE INDEXER STARTED"
-    )
-
-    print(
-        f"Resume message ID: {last_message_id}"
-    )
-
-    print(
-        f"Already indexed: {indexed_count}"
-    )
-
-    print(
-        "========================================"
-    )
+    indexed_count = 0
+    scanned_count = 0
 
     try:
+
+        # ----------------------------------------------------
+        # GET LAST INDEXED MESSAGE
+        # ----------------------------------------------------
+
+        state = await get_indexer_state()
+
+        last_message_id = state.get(
+            "last_message_id",
+            0
+        )
+
+        if force:
+
+            last_message_id = 0
+
+            indexed_count = 0
+
+        logger.info(
+            "Starting database channel indexer."
+        )
+
+        logger.info(
+            "Starting after message ID: %s",
+            last_message_id
+        )
+
+        # ----------------------------------------------------
+        # TELEGRAM HISTORY
+        # ----------------------------------------------------
 
         async for message in app.get_chat_history(
             DATABASE_CHANNEL_ID
         ):
 
-            if not INDEX_RUNNING:
-
-                print(
-                    "Indexer stopped by administrator."
-                )
-
-                break
-
             # ------------------------------------------------
-            # Skip messages already processed.
+            # STOP AT ALREADY INDEXED MESSAGES
             # ------------------------------------------------
 
             if (
-                last_message_id
-                and message.id >= last_message_id
+                not force
+                and message.id <= last_message_id
             ):
-                continue
+
+                break
+
+            scanned_count += 1
 
             # ------------------------------------------------
-            # Process media only.
+            # INDEX MEDIA
             # ------------------------------------------------
 
             try:
 
-                if await index_message(
+                indexed = await index_message(
                     message
-                ):
+                )
+
+                if indexed:
 
                     indexed_count += 1
 
-                    current_batch += 1
-
-            except FloodWait as e:
-
-                print(
-                    f"FloodWait: sleeping "
-                    f"{e.value} seconds."
-                )
-
-                await asyncio.sleep(
-                    e.value
-                )
-
-                continue
-
             except Exception as e:
 
-                print(
-                    f"Message {message.id} "
-                    f"index error: {e}"
+                logger.exception(
+                    "Failed to index message %s: %s",
+                    message.id,
+                    e
                 )
 
             # ------------------------------------------------
-            # Save progress after every batch.
+            # SAVE PROGRESS
             # ------------------------------------------------
 
-            if current_batch >= INDEX_BATCH_SIZE:
+            if (
+                scanned_count
+                % INDEX_BATCH_SIZE
+                == 0
+            ):
 
-                last_message_id = message.id
-
-                await save_state(
-                    last_message_id,
-                    indexed_count
-                )
-
-                current_batch = 0
-
-                print(
-                    f"Indexed: {indexed_count} | "
-                    f"Message: {message.id}"
-                )
-
-                # Update Telegram status.
-                if status_message:
-
-                    try:
-
-                        await status_message.edit_text(
-                            "🔄 <b>Indexing Database...</b>\n\n"
-                            f"🎬 Indexed: "
-                            f"<b>{indexed_count}</b>\n"
-                            f"🆔 Current message: "
-                            f"<code>{message.id}</code>\n\n"
-                            "The process can be resumed "
-                            "if the bot restarts."
+                await save_indexer_state(
+                    last_message_id=message.id,
+                    indexed_count=(
+                        state.get(
+                            "indexed_count",
+                            0
                         )
+                        + indexed_count
+                    )
+                )
 
-                    except Exception:
-                        pass
+                logger.info(
+                    "Indexer progress: "
+                    "scanned=%s indexed=%s "
+                    "last_message=%s",
+                    scanned_count,
+                    indexed_count,
+                    message.id
+                )
+
+                # Give Telegram/network a little breathing room.
+                await asyncio.sleep(
+                    0.2
+                )
 
         # ----------------------------------------------------
-        # Save final progress.
+        # FINAL STATE
         # ----------------------------------------------------
 
-        if last_message_id:
+        final_last_message_id = (
+            last_message_id
+        )
 
-            await save_state(
-                last_message_id,
-                indexed_count
+        if scanned_count > 0:
+
+            # The history iterator processes newest
+            # messages first, so get the newest scanned
+            # message through the state saved during batches.
+            current_state = (
+                await get_indexer_state()
             )
+
+            final_last_message_id = (
+                current_state.get(
+                    "last_message_id",
+                    last_message_id
+                )
+            )
+
+        await save_indexer_state(
+            last_message_id=(
+                final_last_message_id
+            ),
+            indexed_count=(
+                state.get(
+                    "indexed_count",
+                    0
+                )
+                + indexed_count
+            )
+        )
+
+        logger.info(
+            "Indexer completed. "
+            "Scanned=%s Indexed=%s",
+            scanned_count,
+            indexed_count
+        )
+
+        return {
+            "success": True,
+            "scanned": scanned_count,
+            "indexed": indexed_count
+        }
+
+    except Exception as e:
+
+        logger.exception(
+            "Database channel indexer failed: %s",
+            e
+        )
+
+        return {
+            "success": False,
+            "message": str(e),
+            "scanned": scanned_count,
+            "indexed": indexed_count
+        }
 
     finally:
 
-        INDEX_RUNNING = False
-
-    print(
-        "========================================"
-    )
-
-    print(
-        f"INDEXING FINISHED: {indexed_count}"
-    )
-
-    print(
-        "========================================"
-    )
-
-    return indexed_count
+        indexer_running = False
 
 
 # ============================================================
-# INDEXER STATUS
+# START INDEXING
 # ============================================================
 
-async def get_index_status():
+async def start_indexer(
+    app,
+    force=False
+):
 
-    state = await get_state()
+    return await index_database_channel(
+        app,
+        force=force
+    )
 
-    return {
-        "running": INDEX_RUNNING,
 
-        "last_message_id": state.get(
-            "last_message_id",
-            0
-        ),
+# ============================================================
+# CHECK INDEXER
+# ============================================================
 
-        "indexed_count": state.get(
-            "indexed_count",
-            0
-        ),
+def is_indexer_running():
 
-        "updated_at": state.get(
-            "updated_at"
-        )
-        }
+    return indexer_running
