@@ -1,6 +1,6 @@
 import logging
+import secrets
 from datetime import datetime
-
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from config import (
@@ -21,12 +21,11 @@ logger = logging.getLogger(
 
 mongo_client = None
 db = None
-
 users_collection = None
 media_collection = None
 admins_collection = None
 settings_collection = None
-
+search_sessions_collection = None
 
 # ============================================================
 # INITIALIZE DATABASE
@@ -40,6 +39,7 @@ async def init_database():
     global media_collection
     global admins_collection
     global settings_collection
+    global search_sessions_collection
 
     if not MONGO_URI:
 
@@ -75,6 +75,10 @@ async def init_database():
 
     settings_collection = db[
         "settings"
+    ]
+
+    search_sessions_collection = db[
+        "search_sessions"
     ]
 
     # --------------------------------------------------------
@@ -122,6 +126,15 @@ async def init_database():
             ("message_id", 1)
         ],
         unique=True
+    )
+
+    await search_sessions_collection.create_index(
+              "session_id",
+              unique=True
+    )
+
+    await search_sessions_collection.create_index(
+              "user_id"
     )
 
     # --------------------------------------------------------
@@ -639,3 +652,53 @@ async def delete_media_index():
     )
 
     return result.deleted_count
+
+# ============================================================
+# SEARCH SESSIONS
+# ============================================================
+
+async def create_search_session(
+    user_id,
+    query
+):
+
+    session_id = secrets.token_hex(
+        8
+    )
+
+    document = {
+        "session_id": session_id,
+        "user_id": user_id,
+        "query": query,
+        "created_at": datetime.utcnow()
+    }
+
+    await search_sessions_collection.insert_one(
+        document
+    )
+
+    return session_id
+
+
+async def get_search_session(
+    session_id,
+    user_id
+):
+
+    return await search_sessions_collection.find_one(
+        {
+            "session_id": session_id,
+            "user_id": user_id
+        }
+    )
+
+
+async def delete_search_session(
+    session_id
+):
+
+    await search_sessions_collection.delete_one(
+        {
+            "session_id": session_id
+        }
+    )
