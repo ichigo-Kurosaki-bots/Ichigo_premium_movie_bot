@@ -67,6 +67,7 @@ def register_search_handlers(app):
                 "stats",
                 "index",
                 "indexstatus",
+                "resetindex",
                 "stopindex",
                 "broadcast"
             ]
