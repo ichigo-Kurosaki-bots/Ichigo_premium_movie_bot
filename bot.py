@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import threading
 
 from flask import Flask
@@ -14,22 +15,21 @@ from config import (
     LOG_LEVEL
 )
 
-from database import init_database
-
-from handlers.admin import (
-    register_admin_handlers
+from database import (
+    init_database,
+    close_database
 )
 
-from handlers.user import (
-    register_user_handlers
-)
-
-from handlers.search import (
-    register_search_handlers
+from handlers.start import (
+    register_start_handlers
 )
 
 from handlers.premium import (
     register_premium_handlers
+)
+
+from handlers.search import (
+    register_search_handlers
 )
 
 from handlers.admin import (
@@ -61,63 +61,6 @@ logger = logging.getLogger(
 
 
 # ============================================================
-# CHECK CONFIGURATION
-# ============================================================
-
-if not BOT_TOKEN:
-    raise RuntimeError(
-        "BOT_TOKEN is missing."
-    )
-
-if not API_ID:
-    raise RuntimeError(
-        "API_ID is missing."
-    )
-
-if not API_HASH:
-    raise RuntimeError(
-        "API_HASH is missing."
-    )
-
-
-# ============================================================
-# TELEGRAM CLIENT
-# ============================================================
-
-app = Client(
-    "premium_movie_bot",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    bot_token=BOT_TOKEN,
-    workers=4
-)
-
-
-# ============================================================
-# REGISTER HANDLERS
-# ============================================================
-
-register_start_handlers(
-    app
-)
-
-register_search_handlers(
-    app
-)
-
-register_premium_handlers(
-    app
-)
-
-register_admin_handlers(
-    app
-)
-
-register_user_handlers(
-    app
-)
-
-# ============================================================
 # FLASK WEB SERVER
 # ============================================================
 
@@ -147,29 +90,152 @@ def run_web_server():
 
     web_app.run(
         host="0.0.0.0",
-        port=PORT,
-        threaded=True
+        port=PORT
     )
 
 
 # ============================================================
-# STARTUP
+# VALIDATE CONFIG
+# ============================================================
+
+def validate_config():
+
+    missing = []
+
+    if not BOT_TOKEN:
+        missing.append(
+            "BOT_TOKEN"
+        )
+
+    if not API_ID:
+        missing.append(
+            "API_ID"
+        )
+
+    if not API_HASH:
+        missing.append(
+            "API_HASH"
+        )
+
+    if missing:
+
+        raise RuntimeError(
+            "Missing environment variables: "
+            + ", ".join(missing)
+        )
+
+
+# ============================================================
+# PYROGRAM CLIENT
+# ============================================================
+
+app = Client(
+    "premium_movie_bot",
+
+    api_id=API_ID,
+
+    api_hash=API_HASH,
+
+    bot_token=BOT_TOKEN,
+
+    workers=4
+)
+
+
+# ============================================================
+# REGISTER HANDLERS
+# ============================================================
+
+register_start_handlers(
+    app
+)
+
+register_premium_handlers(
+    app
+)
+
+register_search_handlers(
+    app
+)
+
+register_admin_handlers(
+    app
+)
+
+
+# ============================================================
+# MAIN
 # ============================================================
 
 async def main():
+
+    validate_config()
 
     logger.info(
         "Starting Premium Movie Bot..."
     )
 
-    # Initialize MongoDB.
+    # --------------------------------------------------------
+    # DATABASE
+    # --------------------------------------------------------
+
     await init_database()
 
     logger.info(
         "MongoDB initialized."
     )
 
-    # Start Flask in another thread.
+    # --------------------------------------------------------
+    # START TELEGRAM CLIENT
+    # --------------------------------------------------------
+
+    await app.start()
+
+    me = await app.get_me()
+
+    logger.info(
+        "Telegram bot connected."
+    )
+
+    logger.info(
+        "Bot username: @%s",
+        me.username
+    )
+
+    logger.info(
+        "Bot ID: %s",
+        me.id
+    )
+
+    # --------------------------------------------------------
+    # KEEP PROCESS ALIVE
+    # --------------------------------------------------------
+
+    try:
+
+        await asyncio.Event().wait()
+
+    finally:
+
+        logger.info(
+            "Stopping bot..."
+        )
+
+        await app.stop()
+
+        await close_database()
+
+
+# ============================================================
+# START
+# ============================================================
+
+if __name__ == "__main__":
+
+    # --------------------------------------------------------
+    # START WEB SERVER FOR RENDER
+    # --------------------------------------------------------
+
     web_thread = threading.Thread(
         target=run_web_server,
         daemon=True
@@ -178,43 +244,13 @@ async def main():
     web_thread.start()
 
     logger.info(
-        f"Web server started on port {PORT}."
+        "Web server started on port %s.",
+        PORT
     )
 
-    # Start Telegram bot.
-    await app.start()
-
-    me = await app.get_me()
-
-    logger.info(
-        "========================================"
-    )
-
-    logger.info(
-        "TELEGRAM BOT CONNECTED"
-    )
-
-    logger.info(
-        f"Username: @{me.username}"
-    )
-
-    logger.info(
-        f"Bot ID: {me.id}"
-    )
-
-    logger.info(
-        "========================================"
-    )
-
-    # Keep the Telegram client alive.
-    await asyncio.Event().wait()
-
-
-# ============================================================
-# RUN
-# ============================================================
-
-if __name__ == "__main__":
+    # --------------------------------------------------------
+    # START BOT
+    # --------------------------------------------------------
 
     try:
 
@@ -225,11 +261,12 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
 
         logger.info(
-            "Bot stopped."
+            "Bot stopped by user."
         )
 
     except Exception as e:
 
         logger.exception(
-            f"Critical startup error: {e}"
+            "Critical startup error: %s",
+            e
         )
