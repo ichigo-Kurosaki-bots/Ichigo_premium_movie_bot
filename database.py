@@ -690,5 +690,5 @@ async def get_all_user_ids():
     return [
         user["user_id"]
         for user in users
-        if user.get("user_id")
+        if user.get("user_id") is not None
     ]
