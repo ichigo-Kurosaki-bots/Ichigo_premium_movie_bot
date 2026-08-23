@@ -1,7 +1,6 @@
 from pyrogram import filters
 
 from config import (
-    OWNER_ID,
     ADMIN_IDS,
     PREMIUM_PLANS
 )
@@ -20,26 +19,20 @@ from premium import (
 )
 
 from utils.buttons import (
-    premium_buttons
+    premium_buttons,
+    main_buttons
 )
 
-
-# ============================================================
-# REGISTER PREMIUM HANDLERS
-# ============================================================
 
 def register_premium_handlers(app):
 
     # ========================================================
-    # /PLANS
+    # /PLANS AND /PREMIUM
     # ========================================================
 
     @app.on_message(
         filters.command(
-            [
-                "plans",
-                "premium"
-            ]
+            ["plans", "premium"]
         )
     )
     async def plans_handler(
@@ -58,18 +51,14 @@ def register_premium_handlers(app):
     # ========================================================
 
     @app.on_message(
-        filters.command(
-            "myplan"
-        )
+        filters.command("myplan")
     )
     async def myplan_handler(
         client,
         message
     ):
 
-        user_id = (
-            message.from_user.id
-        )
+        user_id = message.from_user.id
 
         user = await get_user(
             user_id
@@ -88,22 +77,18 @@ def register_premium_handlers(app):
             )
 
         await message.reply_text(
-            get_user_plan_text(
-                user
-            )
+            get_user_plan_text(user)
         )
 
 
     # ========================================================
-    # PREMIUM BUTTON
+    # PREMIUM PLANS BUTTON
     # ========================================================
 
     @app.on_callback_query(
-        filters.regex(
-            "^premium_plans$"
-        )
+        filters.regex("^premium_plans$")
     )
-    async def premium_callback(
+    async def premium_plans_callback(
         client,
         callback
     ):
@@ -117,21 +102,105 @@ def register_premium_handlers(app):
 
 
     # ========================================================
+    # PLAN SELECTION
+    #
+    # callback:
+    # plan_10
+    # plan_20
+    # plan_50
+    # etc.
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(r"^plan_\d+$")
+    )
+    async def plan_callback(
+        client,
+        callback
+    ):
+
+        try:
+
+            amount = int(
+                callback.data.split("_")[1]
+            )
+
+        except (ValueError, IndexError):
+
+            await callback.answer(
+                "Invalid plan.",
+                show_alert=True
+            )
+
+            return
+
+        plan = get_plan_by_amount(
+            amount
+        )
+
+        if not plan:
+
+            await callback.answer(
+                "Plan not found.",
+                show_alert=True
+            )
+
+            return
+
+        user_id = callback.from_user.id
+
+        # Make sure user exists.
+        user = await get_user(
+            user_id
+        )
+
+        if not user:
+
+            await create_user(
+                user_id,
+                callback.from_user.first_name,
+                callback.from_user.username
+            )
+
+        text = (
+            "💎 <b>Premium Plan</b>\n\n"
+
+            f"📦 Plan: <b>{plan['name']}</b>\n"
+            f"💰 Price: <b>₹{amount}</b>\n"
+            f"🎬 Requests: "
+            f"<b>{plan['requests']}</b>\n\n"
+
+            "━━━━━━━━━━━━━━━━━━\n\n"
+
+            "💳 <b>How to activate</b>\n\n"
+
+            "1️⃣ Pay the owner.\n"
+            "2️⃣ Send your Telegram ID to the owner.\n"
+            "3️⃣ The owner will activate your plan.\n\n"
+
+            f"🆔 Your Telegram ID:\n"
+            f"<code>{user_id}</code>\n\n"
+
+            "After activation, you'll receive a "
+            "confirmation message automatically."
+        )
+
+        await callback.message.edit_text(
+            text,
+            reply_markup=main_buttons()
+        )
+
+        await callback.answer()
+
+
+    # ========================================================
     # OWNER: ADD PREMIUM
     #
-    # Usage:
-    #
     # /addpremium USER_ID AMOUNT
-    #
-    # Example:
-    #
-    # /addpremium 123456789 100
     # ========================================================
 
     @app.on_message(
-        filters.command(
-            "addpremium"
-        )
+        filters.command("addpremium")
     )
     async def add_premium_handler(
         client,
@@ -141,23 +210,18 @@ def register_premium_handlers(app):
         if message.from_user.id not in ADMIN_IDS:
 
             await message.reply_text(
-                "❌ <b>Access Denied</b>\n\n"
-                "Only the owner/admin can activate "
-                "Premium plans."
+                "❌ <b>Access Denied</b>"
             )
 
             return
 
-        if len(
-            message.command
-        ) < 3:
+        if len(message.command) < 3:
 
             await message.reply_text(
-                "❌ <b>Invalid usage</b>\n\n"
-                "Use:\n"
+                "❌ <b>Usage</b>\n\n"
                 "<code>/addpremium USER_ID AMOUNT</code>\n\n"
                 "Example:\n"
-                "<code>/addpremium 123456789 100</code>"
+                "<code>/addpremium 123456789 20</code>"
             )
 
             return
@@ -188,13 +252,13 @@ def register_premium_handlers(app):
         if not plan:
 
             available = ", ".join(
-                f"₹{x}"
-                for x in PREMIUM_PLANS.keys()
+                f"₹{amount}"
+                for amount in PREMIUM_PLANS
             )
 
             await message.reply_text(
-                "❌ <b>Invalid Premium amount.</b>\n\n"
-                f"Available plans:\n{available}"
+                "❌ Invalid plan.\n\n"
+                f"Available: {available}"
             )
 
             return
@@ -219,28 +283,22 @@ def register_premium_handlers(app):
         if not success:
 
             await message.reply_text(
-                "❌ Failed to activate Premium."
+                "❌ Premium activation failed."
             )
 
             return
 
-        # ----------------------------------------------------
-        # OWNER CONFIRMATION
-        # ----------------------------------------------------
-
+        # Owner confirmation.
         await message.reply_text(
             "✅ <b>Premium Activated</b>\n\n"
-            f"👤 User ID: <code>{user_id}</code>\n"
+            f"👤 User: <code>{user_id}</code>\n"
             f"📦 Plan: <b>{plan['name']}</b>\n"
-            f"💰 Amount: <b>₹{amount}</b>\n"
+            f"💰 Price: <b>₹{amount}</b>\n"
             f"🎬 Requests: "
             f"<b>{plan['requests']}</b>"
         )
 
-        # ----------------------------------------------------
-        # NOTIFY USER
-        # ----------------------------------------------------
-
+        # Notify the user.
         try:
 
             await client.send_message(
@@ -248,33 +306,31 @@ def register_premium_handlers(app):
 
                 "🎉 <b>Premium Activated!</b>\n\n"
                 f"💎 Plan: <b>{plan['name']}</b>\n"
-                f"💰 Amount: <b>₹{amount}</b>\n"
+                f"💰 Paid: <b>₹{amount}</b>\n"
                 f"🎬 Movie requests: "
                 f"<b>{plan['requests']}</b>\n\n"
-                "✅ Your Premium plan has been "
-                "activated for you.\n\n"
-                "You can now search for movies "
-                "and request files."
+                "✅ Your Premium plan is now "
+                "active.\n\n"
+                "Use /myplan to check your remaining "
+                "requests."
             )
 
         except Exception as e:
 
             print(
-                f"Could not notify user "
-                f"{user_id}: {e}"
+                f"Premium notification failed "
+                f"for {user_id}: {e}"
             )
 
 
     # ========================================================
-    # REMOVE PREMIUM
+    # OWNER: REMOVE PREMIUM
     #
     # /removepremium USER_ID
     # ========================================================
 
     @app.on_message(
-        filters.command(
-            "removepremium"
-        )
+        filters.command("removepremium")
     )
     async def remove_premium_handler(
         client,
@@ -289,12 +345,9 @@ def register_premium_handlers(app):
 
             return
 
-        if len(
-            message.command
-        ) < 2:
+        if len(message.command) < 2:
 
             await message.reply_text(
-                "Use:\n"
                 "<code>/removepremium USER_ID</code>"
             )
 
@@ -328,17 +381,14 @@ def register_premium_handlers(app):
 
         await message.reply_text(
             "✅ <b>Premium Removed</b>\n\n"
-            f"👤 User ID: "
-            f"<code>{user_id}</code>"
+            f"User: <code>{user_id}</code>"
         )
 
         try:
 
             await client.send_message(
                 user_id,
-
-                "ℹ️ <b>Premium Update</b>\n\n"
-                "Your Premium plan has been "
+                "ℹ️ Your Premium plan has been "
                 "removed by the administrator."
             )
 
@@ -347,15 +397,13 @@ def register_premium_handlers(app):
 
 
     # ========================================================
-    # PREMIUM INFO
+    # OWNER: PREMIUM INFO
     #
     # /premiuminfo USER_ID
     # ========================================================
 
     @app.on_message(
-        filters.command(
-            "premiuminfo"
-        )
+        filters.command("premiuminfo")
     )
     async def premium_info_handler(
         client,
@@ -370,12 +418,9 @@ def register_premium_handlers(app):
 
             return
 
-        if len(
-            message.command
-        ) < 2:
+        if len(message.command) < 2:
 
             await message.reply_text(
-                "Use:\n"
                 "<code>/premiuminfo USER_ID</code>"
             )
 
@@ -408,7 +453,7 @@ def register_premium_handlers(app):
             return
 
         await message.reply_text(
-            "👤 <b>User Premium Information</b>\n\n"
+            "👤 <b>Premium Information</b>\n\n"
             f"🆔 ID: <code>{user_id}</code>\n"
             f"💎 Premium: "
             f"<b>{'Yes' if user.get('premium') else 'No'}</b>\n"
@@ -416,8 +461,8 @@ def register_premium_handlers(app):
             f"<b>{user.get('plan') or 'Free'}</b>\n"
             f"💰 Paid: "
             f"<b>₹{user.get('paid_amount', 0)}</b>\n"
-            f"🎬 Total plan requests: "
+            f"🎬 Plan requests: "
             f"<b>{user.get('premium_requests', 0)}</b>\n"
             f"🎟 Remaining: "
             f"<b>{user.get('remaining_requests', 0)}</b>"
-        )
+            )
