@@ -23,13 +23,11 @@ def main_buttons():
                     callback_data="premium_plans"
                 )
             ],
-
             [
                 InlineKeyboardButton(
                     "📚 Help",
                     callback_data="help"
                 ),
-
                 InlineKeyboardButton(
                     "🏠 Home",
                     callback_data="home"
@@ -47,7 +45,6 @@ def premium_buttons():
 
     buttons = []
 
-    # Create two buttons per row.
     row = []
 
     for amount, plan in PREMIUM_PLANS.items():
@@ -61,17 +58,12 @@ def premium_buttons():
 
         if len(row) == 2:
 
-            buttons.append(
-                row
-            )
+            buttons.append(row)
 
             row = []
 
     if row:
-
-        buttons.append(
-            row
-        )
+        buttons.append(row)
 
     buttons.append(
         [
@@ -82,24 +74,24 @@ def premium_buttons():
         ]
     )
 
-    return InlineKeyboardMarkup(
-        buttons
-    )
+    return InlineKeyboardMarkup(buttons)
 
 
 # ============================================================
-# SEARCH RESULT BUTTONS
+# SEARCH RESULTS
 # ============================================================
 
 def search_result_buttons(
     results,
-    page=0
+    query,
+    page=0,
+    has_next=False
 ):
 
     buttons = []
 
     # --------------------------------------------------------
-    # FILE RESULTS
+    # FILE BUTTONS
     # --------------------------------------------------------
 
     for item in results:
@@ -108,34 +100,20 @@ def search_result_buttons(
             "message_id"
         )
 
-        title = item.get(
-            "title"
+        title = (
+            item.get("title")
+            or item.get("file_name")
+            or "Unknown File"
         )
 
-        if not title:
-
-            title = item.get(
-                "file_name",
-                "Unknown File"
-            )
-
-        # Telegram button text has a practical
-        # length limit, so shorten very long names.
-
         if len(title) > 55:
-
-            title = (
-                title[:52]
-                + "..."
-            )
+            title = title[:52] + "..."
 
         buttons.append(
             [
                 InlineKeyboardButton(
                     f"🎬 {title}",
-                    callback_data=(
-                        f"file_{message_id}"
-                    )
+                    callback_data=f"file_{message_id}"
                 )
             ]
         )
@@ -152,27 +130,24 @@ def search_result_buttons(
             InlineKeyboardButton(
                 "⬅️ Previous",
                 callback_data=(
-                    f"page_{page - 1}"
+                    f"searchpage_{page - 1}_{query[:40]}"
                 )
             )
         )
 
-    if len(results) >= RESULTS_PER_PAGE:
+    if has_next:
 
         navigation.append(
             InlineKeyboardButton(
                 "Next ➡️",
                 callback_data=(
-                    f"page_{page + 1}"
+                    f"searchpage_{page + 1}_{query[:40]}"
                 )
             )
         )
 
     if navigation:
-
-        buttons.append(
-            navigation
-        )
+        buttons.append(navigation)
 
     # --------------------------------------------------------
     # PREMIUM
@@ -196,9 +171,7 @@ def search_result_buttons(
         ]
     )
 
-    return InlineKeyboardMarkup(
-        buttons
-    )
+    return InlineKeyboardMarkup(buttons)
 
 
 # ============================================================
@@ -216,4 +189,4 @@ def back_button():
                 )
             ]
         ]
-    )
+)
