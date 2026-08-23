@@ -1,10 +1,16 @@
 from pyrogram.types import (
-    InlineKeyboardMarkup,
-    InlineKeyboardButton
+    InlineKeyboardButton,
+    InlineKeyboardMarkup
 )
 
-from config import PREMIUM_PLANS
+from config import (
+    PREMIUM_PLANS
+)
 
+
+# ============================================================
+# MAIN MENU
+# ============================================================
 
 def main_buttons():
 
@@ -12,49 +18,191 @@ def main_buttons():
         [
             [
                 InlineKeyboardButton(
-                    "🔎 Search Movie",
-                    callback_data="search"
+                    "💎 Premium Plans",
+                    callback_data="premium_plans"
                 )
             ],
+
             [
                 InlineKeyboardButton(
-                    "💎 Premium",
-                    callback_data="premium"
-                ),
-                InlineKeyboardButton(
-                    "📊 My Plan",
-                    callback_data="myplan"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "ℹ️ Help",
+                    "📚 Help",
                     callback_data="help"
+                ),
+
+                InlineKeyboardButton(
+                    "🏠 Home",
+                    callback_data="home"
                 )
             ]
         ]
     )
 
 
+# ============================================================
+# PREMIUM PLANS
+# ============================================================
+
 def premium_buttons():
 
-    rows = []
+    buttons = []
+
+    # Create two buttons per row.
+    row = []
 
     for amount, plan in PREMIUM_PLANS.items():
 
-        rows.append(
+        row.append(
+            InlineKeyboardButton(
+                f"₹{amount} • {plan['requests']} Movies",
+                callback_data=f"plan_{amount}"
+            )
+        )
+
+        if len(row) == 2:
+
+            buttons.append(
+                row
+            )
+
+            row = []
+
+    if row:
+
+        buttons.append(
+            row
+        )
+
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                "🏠 Home",
+                callback_data="home"
+            )
+        ]
+    )
+
+    return InlineKeyboardMarkup(
+        buttons
+    )
+
+
+# ============================================================
+# SEARCH RESULT BUTTONS
+# ============================================================
+
+def search_result_buttons(
+    results,
+    page=0
+):
+
+    buttons = []
+
+    # --------------------------------------------------------
+    # FILE RESULTS
+    # --------------------------------------------------------
+
+    for item in results:
+
+        message_id = item.get(
+            "message_id"
+        )
+
+        title = item.get(
+            "title"
+        )
+
+        if not title:
+
+            title = item.get(
+                "file_name",
+                "Unknown File"
+            )
+
+        # Telegram button text has a practical
+        # length limit, so shorten very long names.
+
+        if len(title) > 55:
+
+            title = (
+                title[:52]
+                + "..."
+            )
+
+        buttons.append(
             [
                 InlineKeyboardButton(
-                    f"₹{amount} • {plan['requests']} Movies",
-                    callback_data=f"plan_{amount}"
+                    f"🎬 {title}",
+                    callback_data=(
+                        f"file_{message_id}"
+                    )
                 )
             ]
         )
 
-    return InlineKeyboardMarkup(
-        rows
+    # --------------------------------------------------------
+    # PAGINATION
+    # --------------------------------------------------------
+
+    navigation = []
+
+    if page > 0:
+
+        navigation.append(
+            InlineKeyboardButton(
+                "⬅️ Previous",
+                callback_data=(
+                    f"page_{page - 1}"
+                )
+            )
+        )
+
+    if len(results) >= 10:
+
+        navigation.append(
+            InlineKeyboardButton(
+                "Next ➡️",
+                callback_data=(
+                    f"page_{page + 1}"
+                )
+            )
+        )
+
+    if navigation:
+
+        buttons.append(
+            navigation
+        )
+
+    # --------------------------------------------------------
+    # PREMIUM
+    # --------------------------------------------------------
+
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                "💎 Premium Plans",
+                callback_data="premium_plans"
+            )
+        ]
     )
 
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                "🏠 Home",
+                callback_data="home"
+            )
+        ]
+    )
+
+    return InlineKeyboardMarkup(
+        buttons
+    )
+
+
+# ============================================================
+# BACK BUTTON
+# ============================================================
 
 def back_button():
 
@@ -67,61 +215,4 @@ def back_button():
                 )
             ]
         ]
-    )
-
-
-def search_result_buttons(
-    results,
-    page=0
-):
-
-    buttons = []
-
-    for item in results:
-
-        title = item.get(
-            "title",
-            "Unknown"
-        )
-
-        media_id = item.get(
-            "message_id"
-        )
-
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    title[:60],
-                    callback_data=f"file_{media_id}"
-                )
-            ]
-        )
-
-    navigation = []
-
-    if page > 0:
-
-        navigation.append(
-            InlineKeyboardButton(
-                "⬅️ Previous",
-                callback_data=f"page_{page - 1}"
-            )
-        )
-
-    if len(results) >= 10:
-
-        navigation.append(
-            InlineKeyboardButton(
-                "Next ➡️",
-                callback_data=f"page_{page + 1}"
-            )
-        )
-
-    if navigation:
-        buttons.append(
-            navigation
-        )
-
-    return InlineKeyboardMarkup(
-        buttons
     )
