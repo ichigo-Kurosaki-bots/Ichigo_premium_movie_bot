@@ -11,6 +11,8 @@ from database import (
 from utils.helpers import (
     clean_title,
     get_message_title,
+    get_search_key,
+    get_original_filename,
     is_media_message
 )
 
@@ -34,52 +36,123 @@ INDEX_RUNNING = False
 def build_media_data(message):
 
     if not is_media_message(message):
+
         return None
 
-    title = get_message_title(message)
+    title = get_message_title(
+        message
+    )
+
+    original_filename = (
+        get_original_filename(
+            message
+        )
+    )
+
+    # --------------------------------------------------------
+    # FILE INFORMATION
+    # --------------------------------------------------------
 
     if message.document:
 
-        file_id = message.document.file_id
-        file_size = message.document.file_size or 0
-        mime_type = message.document.mime_type or ""
+        file_id = (
+            message.document.file_id
+        )
+
+        file_size = (
+            message.document.file_size
+            or 0
+        )
+
+        mime_type = (
+            message.document.mime_type
+            or ""
+        )
+
+        media_type = "document"
 
     elif message.video:
 
-        file_id = message.video.file_id
-        file_size = message.video.file_size or 0
-        mime_type = message.video.mime_type or ""
+        file_id = (
+            message.video.file_id
+        )
+
+        file_size = (
+            message.video.file_size
+            or 0
+        )
+
+        mime_type = (
+            message.video.mime_type
+            or ""
+        )
+
+        media_type = "video"
 
     elif message.audio:
 
-        file_id = message.audio.file_id
-        file_size = message.audio.file_size or 0
-        mime_type = message.audio.mime_type or ""
+        file_id = (
+            message.audio.file_id
+        )
+
+        file_size = (
+            message.audio.file_size
+            or 0
+        )
+
+        mime_type = (
+            message.audio.mime_type
+            or ""
+        )
+
+        media_type = "audio"
 
     else:
+
         return None
 
+
+    # --------------------------------------------------------
+    # DATABASE DOCUMENT
+    # --------------------------------------------------------
+
     return {
-        "channel_id": message.chat.id,
-        "message_id": message.id,
 
-        "title": title,
+        "channel_id":
+            message.chat.id,
 
-        "title_key": clean_title(
-            title
-        ),
+        "message_id":
+            message.id,
 
-        "file_name": title,
+        "title":
+            title,
 
-        "file_id": file_id,
+        "title_key":
+            clean_title(title),
 
-        "file_size": file_size,
+        "search_key":
+            get_search_key(title),
 
-        "mime_type": mime_type,
+        "file_name":
+            original_filename,
 
-        "caption": message.caption or "",
+        "file_id":
+            file_id,
 
-        "indexed_at": datetime.utcnow()
+        "file_size":
+            file_size,
+
+        "mime_type":
+            mime_type,
+
+        "media_type":
+            media_type,
+
+        "caption":
+            message.caption or "",
+
+        "indexed_at":
+            datetime.utcnow()
     }
 
 
