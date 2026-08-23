@@ -250,9 +250,8 @@ async def index_message(message):
     except Exception as e:
 
         logger.exception(
-            "Failed to index message %s: %s",
-            message.id,
-            e
+            "Failed to index message %s",
+            message.id
         )
 
         return False
@@ -267,19 +266,31 @@ async def handle_database_post(
     message
 ):
 
-    if not is_database_channel(
-        message
-    ):
-
-        return
-
-    if not is_media_message(
-        message
-    ):
-
-        return
-
     try:
+
+        # ----------------------------------------------------
+        # ONLY DATABASE CHANNEL
+        # ----------------------------------------------------
+
+        if not is_database_channel(
+            message
+        ):
+
+            return False
+
+        # ----------------------------------------------------
+        # CHECK MEDIA
+        # ----------------------------------------------------
+
+        if not is_media_message(
+            message
+        ):
+
+            return False
+
+        # ----------------------------------------------------
+        # INDEX MESSAGE
+        # ----------------------------------------------------
 
         indexed = await index_message(
             message
@@ -307,50 +318,6 @@ async def handle_database_post(
                 message.id
             )
 
-    except Exception as e:
-
-        logger.exception(
-            "Automatic indexing failed: %s",
-            e
-        )
-
-# ============================================================
-# HANDLE NEW DATABASE CHANNEL POST
-# ============================================================
-
-async def handle_database_post(
-    client,
-    message
-):
-
-    try:
-
-        if message.chat.id != DATABASE_CHANNEL_ID:
-            return False
-
-        indexed = await index_message(
-            message
-        )
-
-        if indexed:
-
-            state = await get_indexer_state()
-
-            current_count = state.get(
-                "indexed_count",
-                0
-            )
-
-            await save_indexer_state(
-                last_message_id=message.id,
-                indexed_count=current_count + 1
-            )
-
-            logger.info(
-                "Auto-indexed message %s",
-                message.id
-            )
-
             return True
 
         return False
@@ -358,12 +325,12 @@ async def handle_database_post(
     except Exception as e:
 
         logger.exception(
-            "Failed to auto-index message %s: %s",
-            message.id,
+            "Automatic indexing failed: %s",
             e
         )
 
         return False
+
 
 # ============================================================
 # MANUAL INDEX COMMAND
