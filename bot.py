@@ -153,20 +153,30 @@ async def main():
         workers=4
     )
 
-# ============================================================
-# DATABASE CHANNEL AUTO INDEXER
-# ============================================================
+    # ============================================================
+    # DATABASE CHANNEL AUTO INDEXER
+    # ============================================================
 
-@app.on_channel_post()
-async def database_channel_post_handler(
-    client,
-    message
-):
-
-    await handle_database_post(
+    @app.on_channel_post()
+    async def database_channel_post_handler(
         client,
         message
-    )
+    ):
+        try:
+            # Only index posts from the configured database channel
+            if message.chat.id != DATABASE_CHANNEL_ID:
+                return
+
+            await handle_database_post(
+                client,
+                message
+            )
+
+        except Exception as e:
+            logger.exception(
+                "Database channel auto-index error: %s",
+                e
+            )
 
     # --------------------------------------------------------
     # REGISTER HANDLERS
