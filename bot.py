@@ -1,11 +1,25 @@
 import asyncio
 import logging
 import threading
+from indexer import handle_database_post
 
+# ============================================================
+# DATABASE CHANNEL AUTO INDEXER
+# ============================================================
+
+@app.on_channel_post()
+async def database_channel_post_handler(
+    client,
+    message
+):
+
+    await handle_database_post(
+        client,
+        message
+    )
+    
 from flask import Flask
-
 from pyrogram import Client, filters
-
 from config import (
     API_ID,
     API_HASH,
