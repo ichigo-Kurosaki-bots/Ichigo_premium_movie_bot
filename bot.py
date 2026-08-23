@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import threading
-from indexer import handle_database_post
     
 from flask import Flask
 from pyrogram import Client, filters
@@ -157,24 +156,26 @@ async def main():
     # DATABASE CHANNEL AUTO INDEXER
     # ============================================================
 
-    @app.on_channel_post()
-    async def database_channel_post_handler(
-        client,
-        message
-    ):
-        try:
-            # Only index posts from the configured database channel
-            if message.chat.id != DATABASE_CHANNEL_ID:
-                return
+    @app.on_message(filters.channel)
+    async def database_channel_post_handler(client, message):
+        if message.chat.id != DATABASE_CHANNEL_ID:
+            return
 
-            await handle_database_post(
-                client,
-                message
-            )
+        try:
+            from indexer import index_message
+
+            indexed = await index_message(message)
+
+            if indexed:
+                logger.info(
+                    "Auto-indexed new media: message_id=%s",
+                    message.id
+                )
 
         except Exception as e:
             logger.exception(
-                "Database channel auto-index error: %s",
+                "Auto-index failed for message %s: %s",
+                message.id,
                 e
             )
 
