@@ -11,21 +11,22 @@ from config import (
 
 
 # ============================================================
-# CLEAN SEARCH QUERY
+# NORMALIZE QUERY
 # ============================================================
 
 def normalize_query(text):
 
-    text = text.lower()
+    if not text:
+        return ""
 
-    # Remove common punctuation.
+    text = str(text).lower()
+
     text = re.sub(
         r"[^a-z0-9\s]",
         " ",
         text
     )
 
-    # Remove extra spaces.
     text = re.sub(
         r"\s+",
         " ",
@@ -49,57 +50,86 @@ async def search_movies(
     )
 
     if not query:
-        return []
+        return [], False
 
+    if page < 0:
+        page = 0
 
     # --------------------------------------------------------
-    # MongoDB text-style regex search
+    # Escape query for MongoDB regex.
     # --------------------------------------------------------
 
     pattern = re.escape(
         query
     )
 
-    cursor = media_collection.find(
-        {
-            "$or": [
-                {
-                    "title": {
-                        "$regex": pattern,
-                        "$options": "i"
-                    }
-                },
-                {
-                    "file_name": {
-                        "$regex": pattern,
-                        "$options": "i"
-                    }
+    # --------------------------------------------------------
+    # Search title + original filename.
+    # --------------------------------------------------------
+
+    search_filter = {
+        "$or": [
+            {
+                "title": {
+                    "$regex": pattern,
+                    "$options": "i"
                 }
-            ]
-        }
-    ).sort(
-        "message_id",
-        -1
+            },
+            {
+                "file_name": {
+                    "$regex": pattern,
+                    "$options": "i"
+                }
+            }
+        ]
+    }
+
+    # --------------------------------------------------------
+    # Calculate pagination.
+    # --------------------------------------------------------
+
+    skip = (
+        page * RESULTS_PER_PAGE
     )
 
+    # Don't allow extremely large offsets.
+    if skip >= MAX_RESULTS:
 
-    # Maximum number of results.
-    skip = page * RESULTS_PER_PAGE
+        return [], False
+
+    # We request one extra result.
+    # This tells us whether a next page exists.
+    limit = RESULTS_PER_PAGE + 1
+
+    cursor = (
+        media_collection
+        .find(search_filter)
+        .sort(
+            "message_id",
+            -1
+        )
+        .skip(skip)
+        .limit(limit)
+    )
 
     results = []
 
     async for item in cursor:
 
-        if len(results) >= RESULTS_PER_PAGE:
-
-            break
-
-        if len(results) >= MAX_RESULTS:
-
-            break
-
         results.append(
             item
         )
 
-    return results
+    has_next = (
+        len(results)
+        > RESULTS_PER_PAGE
+    )
+
+    results = results[
+        :RESULTS_PER_PAGE
+    ]
+
+    return (
+        results,
+        has_next
+    )
