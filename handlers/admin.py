@@ -31,7 +31,7 @@ def is_admin(user_id):
 
 
 admin_only = filters.create(
-    lambda _, message: (
+    lambda _, __, message: (
         message.from_user is not None
         and is_admin(message.from_user.id)
     )
