@@ -9,7 +9,8 @@ from config import (
     API_HASH,
     BOT_TOKEN,
     PORT,
-    LOG_LEVEL
+    LOG_LEVEL,
+    DATABASE_CHANNEL_ID
 )
 
 from database import (
@@ -31,6 +32,10 @@ from handlers.search import (
 
 from handlers.admin import (
     register_admin_handlers
+)
+
+from indexer import (
+    handle_database_post
 )
 
 
@@ -156,23 +161,54 @@ async def main():
     # DATABASE CHANNEL AUTO INDEXER
     # ============================================================
 
-    @app.on_message(filters.channel)
-    async def database_channel_post_handler(client, message):
-        if message.chat.id != DATABASE_CHANNEL_ID:
-            return
+    @app.on_message(
+        filters.channel
+    )
+    async def database_channel_post_handler(
+        client,
+        message
+    ):
+
+        # ----------------------------------------------------
+        # ONLY DATABASE CHANNEL
+        # ----------------------------------------------------
 
         try:
-            from indexer import index_message
 
-            indexed = await index_message(message)
+            if int(message.chat.id) != int(
+                DATABASE_CHANNEL_ID
+            ):
+
+                return
+
+        except (
+            TypeError,
+            ValueError
+        ):
+
+            return
+
+        # ----------------------------------------------------
+        # AUTO INDEX
+        # ----------------------------------------------------
+
+        try:
+
+            indexed = await handle_database_post(
+                client,
+                message
+            )
 
             if indexed:
+
                 logger.info(
-                    "Auto-indexed new media: message_id=%s",
+                    "Auto-indexed new media: "
+                    "message_id=%s",
                     message.id
                 )
 
         except Exception as e:
+
             logger.exception(
                 "Auto-index failed for message %s: %s",
                 message.id,
@@ -305,4 +341,4 @@ if __name__ == "__main__":
         logger.exception(
             "Critical startup error: %s",
             e
-        )
+    )
