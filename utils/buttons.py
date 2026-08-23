@@ -4,7 +4,8 @@ from pyrogram.types import (
 )
 
 from config import (
-    PREMIUM_PLANS
+    PREMIUM_PLANS,
+    RESULTS_PER_PAGE
 )
 
 
@@ -156,7 +157,7 @@ def search_result_buttons(
             )
         )
 
-    if len(results) >= 10:
+    if len(results) >= RESULTS_PER_PAGE:
 
         navigation.append(
             InlineKeyboardButton(
