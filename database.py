@@ -215,7 +215,6 @@ async def update_user(
         }
     )
 
-
 # ============================================================
 # REQUEST SYSTEM
 # ============================================================
@@ -227,7 +226,7 @@ async def activate_premium(
     requests
 ):
 
-    result = await users.update_one(
+    result = await users_collection.update_one(
         {
             "user_id": user_id
         },
@@ -237,7 +236,8 @@ async def activate_premium(
                 "plan": plan_name,
                 "paid_amount": amount,
                 "premium_requests": requests,
-                "remaining_requests": requests
+                "remaining_requests": requests,
+                "updated_at": datetime.utcnow()
             }
         }
     )
@@ -247,7 +247,7 @@ async def activate_premium(
 
 async def remove_premium(user_id):
 
-    result = await users.update_one(
+    result = await users_collection.update_one(
         {
             "user_id": user_id
         },
@@ -257,7 +257,8 @@ async def remove_premium(user_id):
                 "plan": "Free",
                 "paid_amount": 0,
                 "premium_requests": 0,
-                "remaining_requests": FREE_REQUESTS
+                "remaining_requests": FREE_REQUESTS,
+                "updated_at": datetime.utcnow()
             }
         }
     )
@@ -267,7 +268,7 @@ async def remove_premium(user_id):
 
 async def consume_request(user_id):
 
-    result = await users.update_one(
+    result = await users_collection.update_one(
         {
             "user_id": user_id,
             "remaining_requests": {
@@ -278,6 +279,9 @@ async def consume_request(user_id):
             "$inc": {
                 "remaining_requests": -1,
                 "total_requests_used": 1
+            },
+            "$set": {
+                "updated_at": datetime.utcnow()
             }
         }
     )
@@ -287,14 +291,20 @@ async def consume_request(user_id):
 
 async def restore_request(user_id):
 
-    result = await users.update_one(
+    result = await users_collection.update_one(
         {
-            "user_id": user_id
+            "user_id": user_id,
+            "total_requests_used": {
+                "$gt": 0
+            }
         },
         {
             "$inc": {
                 "remaining_requests": 1,
                 "total_requests_used": -1
+            },
+            "$set": {
+                "updated_at": datetime.utcnow()
             }
         }
     )
