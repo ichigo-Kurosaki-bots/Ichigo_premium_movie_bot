@@ -1,12 +1,7 @@
-import asyncio
 import logging
+from datetime import datetime
 
-from pyrogram import Client
-
-from config import (
-    DATABASE_CHANNEL_ID,
-    INDEX_BATCH_SIZE
-)
+from config import DATABASE_CHANNEL_ID
 
 from database import (
     add_media,
@@ -16,7 +11,6 @@ from database import (
 
 from utils.helpers import (
     get_message_title,
-    get_original_filename,
     get_search_key,
     human_size,
     is_media_message
@@ -34,15 +28,45 @@ indexer_running = False
 
 
 # ============================================================
+# CHECK DATABASE CHANNEL
+# ============================================================
+
+def is_database_channel(message):
+
+    if not message:
+        return False
+
+    if not message.chat:
+        return False
+
+    try:
+
+        return int(message.chat.id) == int(
+            DATABASE_CHANNEL_ID
+        )
+
+    except (TypeError, ValueError):
+
+        return False
+
+
+# ============================================================
 # GET MEDIA INFORMATION
 # ============================================================
 
 def get_media_information(message):
 
     media_type = None
+
     file_name = ""
+
     file_size = 0
+
     mime_type = ""
+
+    # --------------------------------------------------------
+    # DOCUMENT
+    # --------------------------------------------------------
 
     if message.document:
 
@@ -63,6 +87,10 @@ def get_media_information(message):
             or ""
         )
 
+    # --------------------------------------------------------
+    # VIDEO
+    # --------------------------------------------------------
+
     elif message.video:
 
         media_type = "video"
@@ -81,6 +109,10 @@ def get_media_information(message):
             message.video.mime_type
             or ""
         )
+
+    # --------------------------------------------------------
+    # AUDIO
+    # --------------------------------------------------------
 
     elif message.audio:
 
@@ -105,11 +137,20 @@ def get_media_information(message):
 
         return None
 
+    # --------------------------------------------------------
+    # TITLE
+    # --------------------------------------------------------
+
     title = get_message_title(
         message
     )
 
+    # --------------------------------------------------------
+    # DATABASE DOCUMENT
+    # --------------------------------------------------------
+
     return {
+
         "channel_id": message.chat.id,
 
         "message_id": message.id,
@@ -143,7 +184,7 @@ def get_media_information(message):
 
         "date": message.date,
 
-        "indexed_at": None
+        "indexed_at": datetime.utcnow()
     }
 
 
@@ -153,11 +194,29 @@ def get_media_information(message):
 
 async def index_message(message):
 
+    # --------------------------------------------------------
+    # ONLY DATABASE CHANNEL
+    # --------------------------------------------------------
+
+    if not is_database_channel(
+        message
+    ):
+
+        return False
+
+    # --------------------------------------------------------
+    # CHECK MEDIA
+    # --------------------------------------------------------
+
     if not is_media_message(
         message
     ):
 
         return False
+
+    # --------------------------------------------------------
+    # GET MEDIA DATA
+    # --------------------------------------------------------
 
     data = get_media_information(
         message
@@ -167,17 +226,139 @@ async def index_message(message):
 
         return False
 
-    from datetime import datetime
+    # --------------------------------------------------------
+    # SAVE TO MONGODB
+    # --------------------------------------------------------
 
-    data["indexed_at"] = (
-        datetime.utcnow()
+    try:
+
+        success = await add_media(
+            data
+        )
+
+        if success:
+
+            logger.info(
+                "Indexed message %s",
+                message.id
+            )
+
+            return True
+
+        return False
+
+    except Exception as e:
+
+        logger.exception(
+            "Failed to index message %s: %s",
+            message.id,
+            e
+        )
+
+        return False
+
+
+# ============================================================
+# AUTO INDEX DATABASE CHANNEL POST
+# ============================================================
+
+async def handle_database_post(
+    client,
+    message
+):
+
+    if not is_database_channel(
+        message
+    ):
+
+        return
+
+    if not is_media_message(
+        message
+    ):
+
+        return
+
+    try:
+
+        indexed = await index_message(
+            message
+        )
+
+        if indexed:
+
+            state = await get_indexer_state()
+
+            current_count = state.get(
+                "indexed_count",
+                0
+            )
+
+            await save_indexer_state(
+
+                last_message_id=message.id,
+
+                indexed_count=current_count + 1
+            )
+
+            logger.info(
+                "New database file indexed: "
+                "message_id=%s",
+                message.id
+            )
+
+    except Exception as e:
+
+        logger.exception(
+            "Automatic indexing failed: %s",
+            e
+        )
+
+
+# ============================================================
+# MANUAL INDEX COMMAND
+# ============================================================
+#
+# IMPORTANT:
+#
+# A Telegram BOT cannot use:
+#
+# app.get_chat_history()
+#
+# Telegram blocks messages.GetHistory for bot accounts.
+#
+# Therefore /index cannot scan old channel history.
+#
+# New files are indexed automatically through
+# handle_database_post().
+#
+# ============================================================
+
+async def start_indexer(
+    app,
+    force=False
+):
+
+    logger.warning(
+        "Manual history indexing is not available "
+        "with a Telegram bot account."
     )
 
-    await add_media(
-        data
-    )
+    return {
 
-    return True
+        "success": False,
+
+        "message": (
+            "Telegram bots cannot read channel history "
+            "using get_chat_history().\n\n"
+            "New database files are indexed "
+            "automatically when they are posted."
+        ),
+
+        "scanned": 0,
+
+        "indexed": 0
+    }
 
 
 # ============================================================
@@ -189,218 +370,7 @@ async def index_database_channel(
     force=False
 ):
 
-    global indexer_running
-
-    if indexer_running:
-
-        logger.warning(
-            "Indexer is already running."
-        )
-
-        return {
-            "success": False,
-            "message": "Indexer is already running."
-        }
-
-    if not DATABASE_CHANNEL_ID:
-
-        return {
-            "success": False,
-            "message": (
-                "DATABASE_CHANNEL_ID is not configured."
-            )
-        }
-
-    indexer_running = True
-
-    indexed_count = 0
-    scanned_count = 0
-
-    try:
-
-        # ----------------------------------------------------
-        # GET LAST INDEXED MESSAGE
-        # ----------------------------------------------------
-
-        state = await get_indexer_state()
-
-        last_message_id = state.get(
-            "last_message_id",
-            0
-        )
-
-        if force:
-
-            last_message_id = 0
-
-            indexed_count = 0
-
-        logger.info(
-            "Starting database channel indexer."
-        )
-
-        logger.info(
-            "Starting after message ID: %s",
-            last_message_id
-        )
-
-        # ----------------------------------------------------
-        # TELEGRAM HISTORY
-        # ----------------------------------------------------
-
-        async for message in app.get_chat_history(
-            DATABASE_CHANNEL_ID
-        ):
-
-            # ------------------------------------------------
-            # STOP AT ALREADY INDEXED MESSAGES
-            # ------------------------------------------------
-
-            if (
-                not force
-                and message.id <= last_message_id
-            ):
-
-                break
-
-            scanned_count += 1
-
-            # ------------------------------------------------
-            # INDEX MEDIA
-            # ------------------------------------------------
-
-            try:
-
-                indexed = await index_message(
-                    message
-                )
-
-                if indexed:
-
-                    indexed_count += 1
-
-            except Exception as e:
-
-                logger.exception(
-                    "Failed to index message %s: %s",
-                    message.id,
-                    e
-                )
-
-            # ------------------------------------------------
-            # SAVE PROGRESS
-            # ------------------------------------------------
-
-            if (
-                scanned_count
-                % INDEX_BATCH_SIZE
-                == 0
-            ):
-
-                await save_indexer_state(
-                    last_message_id=message.id,
-                    indexed_count=(
-                        state.get(
-                            "indexed_count",
-                            0
-                        )
-                        + indexed_count
-                    )
-                )
-
-                logger.info(
-                    "Indexer progress: "
-                    "scanned=%s indexed=%s "
-                    "last_message=%s",
-                    scanned_count,
-                    indexed_count,
-                    message.id
-                )
-
-                # Give Telegram/network a little breathing room.
-                await asyncio.sleep(
-                    0.2
-                )
-
-        # ----------------------------------------------------
-        # FINAL STATE
-        # ----------------------------------------------------
-
-        final_last_message_id = (
-            last_message_id
-        )
-
-        if scanned_count > 0:
-
-            # The history iterator processes newest
-            # messages first, so get the newest scanned
-            # message through the state saved during batches.
-            current_state = (
-                await get_indexer_state()
-            )
-
-            final_last_message_id = (
-                current_state.get(
-                    "last_message_id",
-                    last_message_id
-                )
-            )
-
-        await save_indexer_state(
-            last_message_id=(
-                final_last_message_id
-            ),
-            indexed_count=(
-                state.get(
-                    "indexed_count",
-                    0
-                )
-                + indexed_count
-            )
-        )
-
-        logger.info(
-            "Indexer completed. "
-            "Scanned=%s Indexed=%s",
-            scanned_count,
-            indexed_count
-        )
-
-        return {
-            "success": True,
-            "scanned": scanned_count,
-            "indexed": indexed_count
-        }
-
-    except Exception as e:
-
-        logger.exception(
-            "Database channel indexer failed: %s",
-            e
-        )
-
-        return {
-            "success": False,
-            "message": str(e),
-            "scanned": scanned_count,
-            "indexed": indexed_count
-        }
-
-    finally:
-
-        indexer_running = False
-
-
-# ============================================================
-# START INDEXING
-# ============================================================
-
-async def start_indexer(
-    app,
-    force=False
-):
-
-    return await index_database_channel(
+    return await start_indexer(
         app,
         force=force
     )
