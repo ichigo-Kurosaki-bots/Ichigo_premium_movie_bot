@@ -1,13 +1,18 @@
 import re
+from datetime import datetime
 
 from pyrogram.types import Message
 
 
 # ============================================================
-# VIDEO / DOCUMENT / AUDIO CHECK
+# MEDIA CHECK
 # ============================================================
 
-def is_media_message(message: Message):
+def is_media_message(message: Message) -> bool:
+    """
+    Check whether a Telegram message contains
+    a supported media/file type.
+    """
 
     if message.document:
         return True
@@ -22,10 +27,13 @@ def is_media_message(message: Message):
 
 
 # ============================================================
-# GET ORIGINAL FILE NAME
+# GET FILE NAME
 # ============================================================
 
-def get_original_filename(message):
+def get_original_filename(message: Message) -> str:
+    """
+    Get the original filename from Telegram media.
+    """
 
     if message.document:
 
@@ -55,15 +63,14 @@ def get_original_filename(message):
 # REMOVE FILE EXTENSION
 # ============================================================
 
-def remove_extension(
-    filename
-):
+def remove_extension(filename: str) -> str:
 
     if not filename:
         return ""
 
     return re.sub(
-        r"\.(mkv|mp4|avi|mov|webm|flv|wmv|mp3|m4a|aac|flac|wav|zip|rar|7z)$",
+        r"\.(mkv|mp4|avi|mov|webm|flv|wmv|"
+        r"mp3|m4a|aac|flac|wav|zip|rar|7z)$",
         "",
         filename,
         flags=re.IGNORECASE
@@ -74,22 +81,22 @@ def remove_extension(
 # CLEAN TITLE
 # ============================================================
 
-def clean_title(
-    title
-):
+def clean_title(title: str) -> str:
+    """
+    Convert a filename into a cleaner searchable title.
+    """
 
     if not title:
         return ""
 
-    title = str(
-        title
-    )
+    title = str(title)
 
+    # Remove extension.
     title = remove_extension(
         title
     )
 
-    # Replace separators with spaces.
+    # Replace common separators.
     title = re.sub(
         r"[._]+",
         " ",
@@ -102,7 +109,7 @@ def clean_title(
         title
     )
 
-    # Remove common technical tags.
+    # Resolution.
     title = re.sub(
         r"\b(2160p|1440p|1080p|720p|576p|480p|360p)\b",
         " ",
@@ -110,6 +117,7 @@ def clean_title(
         flags=re.IGNORECASE
     )
 
+    # Quality names.
     title = re.sub(
         r"\b(4k|2k|uhd|fhd|hd)\b",
         " ",
@@ -117,29 +125,54 @@ def clean_title(
         flags=re.IGNORECASE
     )
 
+    # Release sources.
     title = re.sub(
-        r"\b(web[- ]?dl|web[- ]?rip|bluray|blu[- ]?ray|bdrip|brrip|dvdrip)\b",
+        r"\b("
+        r"web[- ]?dl|"
+        r"web[- ]?rip|"
+        r"bluray|"
+        r"blu[- ]?ray|"
+        r"bdrip|"
+        r"brrip|"
+        r"dvdrip|"
+        r"hdtv"
+        r")\b",
         " ",
         title,
         flags=re.IGNORECASE
     )
 
+    # Video codecs.
     title = re.sub(
-        r"\b(x264|x265|h264|h265|hevc|av1)\b",
+        r"\b("
+        r"x264|"
+        r"x265|"
+        r"h264|"
+        r"h265|"
+        r"hevc|"
+        r"av1"
+        r")\b",
         " ",
         title,
         flags=re.IGNORECASE
     )
 
+    # Audio codecs.
     title = re.sub(
-        r"\b(aac|ac3|ddp|dd5\.1|dts|atmos)\b",
+        r"\b("
+        r"aac|"
+        r"ac3|"
+        r"ddp|"
+        r"dd5\.1|"
+        r"dts|"
+        r"atmos"
+        r")\b",
         " ",
         title,
         flags=re.IGNORECASE
     )
 
-    # Remove season/episode technical markers only
-    # from the searchable title when appropriate.
+    # Remove S01E01 style markers.
     title = re.sub(
         r"\bS\d{1,2}E\d{1,3}\b",
         " ",
@@ -147,7 +180,7 @@ def clean_title(
         flags=re.IGNORECASE
     )
 
-    # Remove repeated whitespace.
+    # Remove excessive spaces.
     title = re.sub(
         r"\s+",
         " ",
@@ -161,9 +194,10 @@ def clean_title(
 # GET MESSAGE TITLE
 # ============================================================
 
-def get_message_title(
-    message: Message
-):
+def get_message_title(message: Message) -> str:
+    """
+    Determine the searchable title for a Telegram media message.
+    """
 
     filename = get_original_filename(
         message
@@ -171,10 +205,14 @@ def get_message_title(
 
     if filename:
 
-        return clean_title(
+        title = clean_title(
             filename
         )
 
+        if title:
+            return title
+
+    # If no filename exists, use the first caption line.
     if message.caption:
 
         first_line = (
@@ -185,9 +223,12 @@ def get_message_title(
 
         if first_line:
 
-            return clean_title(
+            title = clean_title(
                 first_line
             )
+
+            if title:
+                return title
 
     return "Untitled Media"
 
@@ -196,9 +237,18 @@ def get_message_title(
 # SEARCH NORMALIZATION
 # ============================================================
 
-def normalize_search_text(
-    text
-):
+def normalize_search_text(text: str) -> str:
+    """
+    Normalize user search input.
+
+    Example:
+
+        Avengers: Endgame!
+        
+    becomes:
+
+        avengers endgame
+    """
 
     if not text:
         return ""
@@ -223,12 +273,13 @@ def normalize_search_text(
 
 
 # ============================================================
-# GET SEARCH KEY
+# SEARCH KEY
 # ============================================================
 
-def get_search_key(
-    title
-):
+def get_search_key(title: str) -> str:
+    """
+    Create a normalized search key for MongoDB.
+    """
 
     return normalize_search_text(
         clean_title(title)
@@ -236,19 +287,21 @@ def get_search_key(
 
 
 # ============================================================
-# FORMAT FILE SIZE
+# FILE SIZE
 # ============================================================
 
-def human_size(
-    size
-):
+def human_size(size) -> str:
+    """
+    Convert bytes into a readable size.
+    """
 
     if not size:
         return "Unknown"
 
-    size = float(
-        size
-    )
+    try:
+        size = float(size)
+    except (TypeError, ValueError):
+        return "Unknown"
 
     units = [
         "B",
@@ -262,15 +315,11 @@ def human_size(
 
         if size < 1024:
 
-            return (
-                f"{size:.2f} {unit}"
-            )
+            return f"{size:.2f} {unit}"
 
         size /= 1024
 
-    return (
-        f"{size:.2f} PB"
-    )
+    return f"{size:.2f} PB"
 
 
 # ============================================================
@@ -280,10 +329,9 @@ def human_size(
 def shorten(
     text,
     length=50
-):
+) -> str:
 
     if not text:
-
         return ""
 
     text = str(
@@ -291,10 +339,46 @@ def shorten(
     )
 
     if len(text) <= length:
-
         return text
 
     return (
         text[:length - 3]
         + "..."
-        )
+    )
+
+
+# ============================================================
+# ESCAPE HTML
+# ============================================================
+
+def escape_html(text) -> str:
+    """
+    Safely escape text before putting it into
+    Telegram HTML messages.
+    """
+
+    if text is None:
+        return ""
+
+    text = str(
+        text
+    )
+
+    return (
+        text
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+
+# ============================================================
+# CURRENT UTC TIME
+# ============================================================
+
+def utc_now():
+    """
+    Return current UTC datetime.
+    """
+
+    return datetime.utcnow()
