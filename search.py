@@ -1,5 +1,8 @@
 from database import media_collection
-from utils.helpers import clean_title
+
+from utils.helpers import (
+    clean_title
+)
 
 
 async def search_movies(
@@ -7,23 +10,66 @@ async def search_movies(
     limit=10,
     skip=0
 ):
-    """
-    Search indexed media in MongoDB.
-
-    Searches:
-    - title
-    - normalized title
-    - filename
-    """
 
     query = query.strip()
 
     if not query:
         return []
 
-    title_key = clean_title(query)
+    # --------------------------------------------------------
+    # First use MongoDB text search.
+    # --------------------------------------------------------
 
-    # First try exact/prefix-style search
+    try:
+
+        cursor = media_collection.find(
+            {
+                "$text": {
+                    "$search": query
+                }
+            },
+            {
+                "score": {
+                    "$meta": "textScore"
+                }
+            }
+        ).sort(
+            [
+                (
+                    "score",
+                    {
+                        "$meta": "textScore"
+                    }
+                )
+            ]
+        ).skip(
+            skip
+        ).limit(
+            limit
+        )
+
+        results = await cursor.to_list(
+            length=limit
+        )
+
+        if results:
+            return results
+
+    except Exception as e:
+
+        print(
+            f"Text search error: {e}"
+        )
+
+
+    # --------------------------------------------------------
+    # Fallback search.
+    # --------------------------------------------------------
+
+    title_key = clean_title(
+        query
+    )
+
     regex = {
         "$regex": title_key,
         "$options": "i"
@@ -40,12 +86,12 @@ async def search_movies(
                 },
                 {
                     "file_name": regex
+                },
+                {
+                    "caption": regex
                 }
             ]
         }
-    ).sort(
-        "title",
-        1
     ).skip(
         skip
     ).limit(
@@ -57,17 +103,34 @@ async def search_movies(
     )
 
 
-async def count_search_results(query):
-    """
-    Return the number of matching files.
-    """
+async def count_search_results(
+    query
+):
 
     query = query.strip()
 
     if not query:
         return 0
 
-    title_key = clean_title(query)
+    try:
+
+        count = await media_collection.count_documents(
+            {
+                "$text": {
+                    "$search": query
+                }
+            }
+        )
+
+        if count:
+            return count
+
+    except Exception:
+        pass
+
+    title_key = clean_title(
+        query
+    )
 
     regex = {
         "$regex": title_key,
@@ -85,6 +148,9 @@ async def count_search_results(query):
                 },
                 {
                     "file_name": regex
+                },
+                {
+                    "caption": regex
                 }
             ]
         }
