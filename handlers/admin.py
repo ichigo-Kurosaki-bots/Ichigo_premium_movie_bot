@@ -1,4 +1,5 @@
 import logging
+import asyncio
 
 from pyrogram import filters
 
@@ -6,6 +7,7 @@ from config import OWNER_ID, ADMIN_IDS
 
 from database import (
     get_user,
+    get_all_user_ids,
     count_users,
     count_premium_users,
     count_media,
@@ -29,7 +31,7 @@ def is_admin(user_id):
 
 
 admin_only = filters.create(
-    lambda _, message: (
+    lambda _, __, message: (
         message.from_user is not None
         and is_admin(message.from_user.id)
     )
@@ -606,6 +608,104 @@ def register_admin_handlers(app):
             await message.reply_text(
                 "❌ Failed to reset indexer."
             )
+
+    # ========================================================
+    # /broadcast
+    # ========================================================
+
+    @app.on_message(
+        filters.command("broadcast")
+        & admin_only
+    )
+    async def broadcast_handler(
+        client,
+        message
+    ):
+
+        if len(message.command) < 2:
+
+            await message.reply_text(
+                "📢 <b>Broadcast</b>\n\n"
+                "Usage:\n"
+                "<code>/broadcast Your message here</code>"
+            )
+
+            return
+
+        broadcast_text = message.text.split(
+            None,
+            1
+        )[1]
+
+        try:
+
+            users = await get_all_user_ids()
+
+        except Exception as e:
+
+            logger.exception(
+                "Could not get users for broadcast: %s",
+                e
+            )
+
+            await message.reply_text(
+                "❌ Failed to get users from database."
+            )
+
+            return
+
+        if not users:
+
+            await message.reply_text(
+                "❌ No users found."
+            )
+
+            return
+
+        status = await message.reply_text(
+            "📢 <b>Broadcast Started</b>\n\n"
+            f"👥 Total users: <b>{len(users)}</b>\n"
+            "⏳ Sending..."
+        )
+
+        success = 0
+        failed = 0
+
+        for user_id in users:
+
+            try:
+
+                await client.send_message(
+                    user_id,
+                    broadcast_text
+                )
+
+                success += 1
+
+            except Exception as e:
+
+                failed += 1
+
+                logger.warning(
+                    "Broadcast failed for %s: %s",
+                    user_id,
+                    e
+                )
+
+            await asyncio.sleep(0.05)
+
+        await status.edit_text(
+            "✅ <b>Broadcast Completed</b>\n\n"
+
+            f"👥 Total users: "
+            f"<b>{len(users)}</b>\n"
+
+            f"✅ Successfully sent: "
+            f"<b>{success}</b>\n"
+
+            f"❌ Failed: "
+            f"<b>{failed}</b>"
+        )
 
 
     # ========================================================
