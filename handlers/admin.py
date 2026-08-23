@@ -2,7 +2,7 @@ import logging
 import asyncio
 
 from pyrogram import filters
-
+from indexer import start_indexer
 from config import OWNER_ID, ADMIN_IDS
 
 from database import (
@@ -516,6 +516,62 @@ def register_admin_handlers(app):
                 user_id,
                 e
             )
+
+    # ========================================================
+    # /index
+    # ========================================================
+
+    @app.on_message(
+        filters.command("index")
+        & admin_only
+    )
+    async def index_handler(
+        client,
+        message
+    ):
+
+        status = await message.reply_text(
+            "📚 <b>Starting database indexing...</b>\n\n"
+            "⏳ Please wait."
+        )
+
+        try:
+            result = await start_indexer(
+                client,
+                force=False
+            )
+
+            if result.get("success"):
+
+                await status.edit_text(
+                    "✅ <b>Indexing Completed</b>\n\n"
+
+                    f"📥 Scanned: "
+                    f"<b>{result.get('scanned', 0)}</b>\n"
+
+                    f"🎬 Indexed: "
+                    f"<b>{result.get('indexed', 0)}</b>"
+                )
+
+            else:
+  
+                await status.edit_text(
+                    "❌ <b>Indexing Failed</b>\n\n"
+
+                    f"{result.get('message', 'Unknown error')}"
+                )
+
+        except Exception as e:
+
+            logger.exception(
+                "Index command error: %s",
+                e
+            )
+
+            await status.edit_text(
+                "❌ <b>Indexer Error</b>\n\n"
+                f"<code>{e}</code>"
+            )  
 
 
     # ========================================================
