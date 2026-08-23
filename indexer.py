@@ -314,24 +314,59 @@ async def handle_database_post(
             e
         )
 
+# ============================================================
+# HANDLE NEW DATABASE CHANNEL POST
+# ============================================================
+
+async def handle_database_post(
+    client,
+    message
+):
+
+    try:
+
+        if message.chat.id != DATABASE_CHANNEL_ID:
+            return False
+
+        indexed = await index_message(
+            message
+        )
+
+        if indexed:
+
+            state = await get_indexer_state()
+
+            current_count = state.get(
+                "indexed_count",
+                0
+            )
+
+            await save_indexer_state(
+                last_message_id=message.id,
+                indexed_count=current_count + 1
+            )
+
+            logger.info(
+                "Auto-indexed message %s",
+                message.id
+            )
+
+            return True
+
+        return False
+
+    except Exception as e:
+
+        logger.exception(
+            "Failed to auto-index message %s: %s",
+            message.id,
+            e
+        )
+
+        return False
 
 # ============================================================
 # MANUAL INDEX COMMAND
-# ============================================================
-#
-# IMPORTANT:
-#
-# A Telegram BOT cannot use:
-#
-# app.get_chat_history()
-#
-# Telegram blocks messages.GetHistory for bot accounts.
-#
-# Therefore /index cannot scan old channel history.
-#
-# New files are indexed automatically through
-# handle_database_post().
-#
 # ============================================================
 
 async def start_indexer(
