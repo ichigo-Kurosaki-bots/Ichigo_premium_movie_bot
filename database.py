@@ -620,3 +620,66 @@ async def reset_indexer():
 
         upsert=True
     )
+
+# ============================================================
+# SEARCH MEDIA
+# ============================================================
+
+async def search_media(
+    query,
+    skip=0,
+    limit=10
+):
+    """
+    Search indexed media by title, filename,
+    search key, or caption.
+    """
+
+    if not query:
+        return []
+
+    query = str(query).strip()
+
+    if not query:
+        return []
+
+    import re
+
+    # Escape user input so it is treated as normal
+    # search text rather than a raw regular expression.
+    pattern = re.escape(query)
+
+    regex = {
+        "$regex": pattern,
+        "$options": "i"
+    }
+
+    cursor = media_collection.find(
+        {
+            "$or": [
+                {
+                    "title": regex
+                },
+                {
+                    "file_name": regex
+                },
+                {
+                    "search_key": regex
+                },
+                {
+                    "caption": regex
+                }
+            ]
+        }
+    ).sort(
+        "message_id",
+        -1
+    ).skip(
+        int(skip)
+    ).limit(
+        int(limit)
+    )
+
+    return await cursor.to_list(
+        length=int(limit)
+    )
