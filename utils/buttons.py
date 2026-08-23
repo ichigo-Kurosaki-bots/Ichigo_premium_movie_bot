@@ -3,20 +3,23 @@ from pyrogram.types import (
     InlineKeyboardMarkup
 )
 
-from config import (
-    PREMIUM_PLANS,
-    RESULTS_PER_PAGE
-)
+from config import PREMIUM_PLANS
 
 
 # ============================================================
-# MAIN MENU
+# HOME BUTTONS
 # ============================================================
 
-def main_buttons():
+def home_buttons():
 
     return InlineKeyboardMarkup(
         [
+            [
+                InlineKeyboardButton(
+                    "🔎 Search Movies",
+                    callback_data="search_help"
+                )
+            ],
             [
                 InlineKeyboardButton(
                     "💎 Premium Plans",
@@ -25,12 +28,12 @@ def main_buttons():
             ],
             [
                 InlineKeyboardButton(
-                    "📚 Help",
-                    callback_data="help"
+                    "👤 My Account",
+                    callback_data="my_account"
                 ),
                 InlineKeyboardButton(
-                    "🏠 Home",
-                    callback_data="home"
+                    "📚 Help",
+                    callback_data="help"
                 )
             ]
         ]
@@ -38,7 +41,7 @@ def main_buttons():
 
 
 # ============================================================
-# PREMIUM PLANS
+# PREMIUM PLAN BUTTONS
 # ============================================================
 
 def premium_buttons():
@@ -49,9 +52,19 @@ def premium_buttons():
 
     for amount, plan in PREMIUM_PLANS.items():
 
+        plan_name = plan.get(
+            "name",
+            "Premium"
+        )
+
+        requests = plan.get(
+            "requests",
+            0
+        )
+
         row.append(
             InlineKeyboardButton(
-                f"₹{amount} • {plan['requests']} Movies",
+                f"₹{amount} • {requests} 🎬",
                 callback_data=f"plan_{amount}"
             )
         )
@@ -63,27 +76,108 @@ def premium_buttons():
             row = []
 
     if row:
+
         buttons.append(row)
 
     buttons.append(
         [
             InlineKeyboardButton(
-                "🏠 Home",
+                "⬅️ Back",
                 callback_data="home"
             )
         ]
     )
 
-    return InlineKeyboardMarkup(buttons)
+    return InlineKeyboardMarkup(
+        buttons
+    )
 
 
 # ============================================================
-# SEARCH RESULTS
+# SELECTED PREMIUM PLAN
+# ============================================================
+
+def plan_confirm_buttons(amount):
+
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "💳 Payment Instructions",
+                    callback_data=f"pay_{amount}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "⬅️ All Plans",
+                    callback_data="premium_plans"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🏠 Home",
+                    callback_data="home"
+                )
+            ]
+        ]
+    )
+
+
+# ============================================================
+# ACCOUNT BUTTONS
+# ============================================================
+
+def account_buttons():
+
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "💎 Premium Plans",
+                    callback_data="premium_plans"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🏠 Home",
+                    callback_data="home"
+                )
+            ]
+        ]
+    )
+
+
+# ============================================================
+# HELP BUTTONS
+# ============================================================
+
+def help_buttons():
+
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "💎 Premium Plans",
+                    callback_data="premium_plans"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🏠 Home",
+                    callback_data="home"
+                )
+            ]
+        ]
+    )
+
+
+# ============================================================
+# SEARCH RESULT BUTTONS
 # ============================================================
 
 def search_result_buttons(
     results,
-    query,
+    session_id,
     page=0,
     has_next=False
 ):
@@ -91,7 +185,7 @@ def search_result_buttons(
     buttons = []
 
     # --------------------------------------------------------
-    # FILE BUTTONS
+    # FILE RESULTS
     # --------------------------------------------------------
 
     for item in results:
@@ -107,13 +201,19 @@ def search_result_buttons(
         )
 
         if len(title) > 55:
-            title = title[:52] + "..."
+
+            title = (
+                title[:52]
+                + "..."
+            )
 
         buttons.append(
             [
                 InlineKeyboardButton(
                     f"🎬 {title}",
-                    callback_data=f"file_{message_id}"
+                    callback_data=(
+                        f"file_{message_id}"
+                    )
                 )
             ]
         )
@@ -130,7 +230,9 @@ def search_result_buttons(
             InlineKeyboardButton(
                 "⬅️ Previous",
                 callback_data=(
-                    f"searchpage_{page - 1}_{query[:40]}"
+                    f"searchpage_"
+                    f"{session_id}_"
+                    f"{page - 1}"
                 )
             )
         )
@@ -141,13 +243,18 @@ def search_result_buttons(
             InlineKeyboardButton(
                 "Next ➡️",
                 callback_data=(
-                    f"searchpage_{page + 1}_{query[:40]}"
+                    f"searchpage_"
+                    f"{session_id}_"
+                    f"{page + 1}"
                 )
             )
         )
 
     if navigation:
-        buttons.append(navigation)
+
+        buttons.append(
+            navigation
+        )
 
     # --------------------------------------------------------
     # PREMIUM
@@ -162,6 +269,10 @@ def search_result_buttons(
         ]
     )
 
+    # --------------------------------------------------------
+    # HOME
+    # --------------------------------------------------------
+
     buttons.append(
         [
             InlineKeyboardButton(
@@ -171,7 +282,33 @@ def search_result_buttons(
         ]
     )
 
-    return InlineKeyboardMarkup(buttons)
+    return InlineKeyboardMarkup(
+        buttons
+    )
+
+
+# ============================================================
+# FILE CONFIRMATION BUTTONS
+# ============================================================
+
+def file_buttons():
+
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "💎 Premium Plans",
+                    callback_data="premium_plans"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🏠 Home",
+                    callback_data="home"
+                )
+            ]
+        ]
+    )
 
 
 # ============================================================
@@ -189,4 +326,22 @@ def back_button():
                 )
             ]
         ]
-)
+    )
+
+
+# ============================================================
+# CANCEL BUTTON
+# ============================================================
+
+def cancel_button():
+
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "❌ Cancel",
+                    callback_data="home"
+                )
+            ]
+        ]
+        )
