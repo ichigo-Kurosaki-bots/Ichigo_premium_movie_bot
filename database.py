@@ -665,3 +665,30 @@ async def search_media(
     return await cursor.to_list(
         length=int(limit)
     )
+
+# ============================================================
+# BROADCAST
+# ============================================================
+
+async def get_all_user_ids():
+    """
+    Get all registered Telegram user IDs.
+    """
+
+    cursor = users_collection.find(
+        {},
+        {
+            "_id": 0,
+            "user_id": 1
+        }
+    )
+
+    users = await cursor.to_list(
+        length=None
+    )
+
+    return [
+        user["user_id"]
+        for user in users
+        if user.get("user_id")
+    ]
