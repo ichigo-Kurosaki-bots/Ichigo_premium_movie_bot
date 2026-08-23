@@ -1,4 +1,5 @@
 from pyrogram import filters
+from pyrogram.errors import FloodWait
 
 from database import (
     create_user,
@@ -21,16 +22,27 @@ from utils.buttons import (
 )
 
 from config import (
+    DATABASE_CHANNEL_ID,
     RESULTS_PER_PAGE
 )
 
 
-# Store the user's latest search.
+# ============================================================
+# USER SEARCH CACHE
+# ============================================================
 
 USER_SEARCHES = {}
 
 
+# ============================================================
+# REGISTER SEARCH HANDLERS
+# ============================================================
+
 def register_search_handlers(app):
+
+    # ========================================================
+    # MOVIE SEARCH
+    # ========================================================
 
     @app.on_message(
         filters.text
@@ -46,6 +58,7 @@ def register_search_handlers(app):
                 "about",
                 "addpremium",
                 "removepremium",
+                "premiuminfo",
                 "users"
             ]
         )
@@ -60,7 +73,7 @@ def register_search_handlers(app):
         if not user:
             return
 
-        # Make sure user exists.
+        # Create user if necessary.
         await create_user(
             user.id,
             user.first_name,
@@ -71,17 +84,19 @@ def register_search_handlers(app):
             user.id
         )
 
-        # Check remaining requests.
+        # ----------------------------------------------------
+        # CHECK REQUEST LIMIT
+        # ----------------------------------------------------
+
         if not can_use_movie(
             user_data
         ):
 
             await message.reply_text(
-                "⚠️ <b>Your movie request limit "
-                "has been reached.</b>\n\n"
-                "🆓 Your 5 free requests are finished.\n\n"
-                "💎 Choose a Premium plan to "
-                "continue searching.",
+                "⚠️ <b>Movie Request Limit Reached</b>\n\n"
+                "You have used all your available "
+                "movie requests.\n\n"
+                "💎 Choose a Premium plan to continue.",
                 reply_markup=premium_buttons()
             )
 
@@ -102,6 +117,10 @@ def register_search_handlers(app):
             "🔎 <b>Searching...</b>"
         )
 
+        # ----------------------------------------------------
+        # SEARCH DATABASE
+        # ----------------------------------------------------
+
         results = await search_movies(
             query,
             limit=RESULTS_PER_PAGE,
@@ -115,39 +134,19 @@ def register_search_handlers(app):
         if not results:
 
             await wait.edit_text(
-                "❌ <b>No results found.</b>\n\n"
+                "❌ <b>No Results Found</b>\n\n"
                 f"🔎 Search: <code>{query}</code>\n\n"
                 "Try another movie or series name."
             )
 
             return
 
-        # Save search for pagination.
+        # Save search.
         USER_SEARCHES[
             user.id
         ] = query
 
-        # A request is counted when results
-        # are successfully returned.
-        success = await use_request(
-            user.id
-        )
-
-        if not success:
-
-            await wait.edit_text(
-                "⚠️ Your request limit has "
-                "been reached.",
-                reply_markup=premium_buttons()
-            )
-
-            return
-
-        remaining_user = await get_user(
-            user.id
-        )
-
-        remaining = remaining_user.get(
+        remaining = user_data.get(
             "remaining_requests",
             0
         )
@@ -155,10 +154,10 @@ def register_search_handlers(app):
         text = (
             "🎬 <b>Search Results</b>\n\n"
             f"🔎 Query: <code>{query}</code>\n"
-            f"📁 Results: <b>{total}</b>\n"
+            f"📁 Results found: <b>{total}</b>\n"
             f"🎟 Requests remaining: "
             f"<b>{remaining}</b>\n\n"
-            "👇 Select a file:"
+            "👇 Select the movie/file you want:"
         )
 
         await wait.edit_text(
@@ -169,6 +168,10 @@ def register_search_handlers(app):
             )
         )
 
+
+    # ========================================================
+    # PAGINATION
+    # ========================================================
 
     @app.on_callback_query(
         filters.regex(
@@ -189,7 +192,7 @@ def register_search_handlers(app):
         if not query:
 
             await callback.answer(
-                "Search expired. Search again.",
+                "Search expired. Please search again.",
                 show_alert=True
             )
 
@@ -233,3 +236,172 @@ def register_search_handlers(app):
         )
 
         await callback.answer()
+
+
+    # ========================================================
+    # SEND SELECTED FILE
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^file_\d+$"
+        )
+    )
+    async def file_handler(
+        client,
+        callback
+    ):
+
+        user_id = callback.from_user.id
+
+        try:
+
+            message_id = int(
+                callback.data.split("_")[1]
+            )
+
+        except ValueError:
+
+            await callback.answer(
+                "Invalid file.",
+                show_alert=True
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # CHECK USER
+        # ----------------------------------------------------
+
+        user = await get_user(
+            user_id
+        )
+
+        if not user:
+
+            await create_user(
+                user_id,
+                callback.from_user.first_name,
+                callback.from_user.username
+            )
+
+            user = await get_user(
+                user_id
+            )
+
+        # ----------------------------------------------------
+        # CHECK REQUEST LIMIT AGAIN
+        # ----------------------------------------------------
+
+        if not can_use_movie(
+            user
+        ):
+
+            await callback.answer(
+                "Your movie request limit is finished.",
+                show_alert=True
+            )
+
+            try:
+
+                await callback.message.edit_text(
+                    "⚠️ <b>Request Limit Reached</b>\n\n"
+                    "💎 Please choose a Premium plan "
+                    "to continue.",
+                    reply_markup=premium_buttons()
+                )
+
+            except Exception:
+                pass
+
+            return
+
+        await callback.answer(
+            "📤 Sending file..."
+        )
+
+        status = await callback.message.reply_text(
+            "📤 <b>Preparing your file...</b>"
+        )
+
+        # ----------------------------------------------------
+        # COPY FILE FROM DATABASE CHANNEL
+        # ----------------------------------------------------
+
+        try:
+
+            sent_message = await client.copy_message(
+                chat_id=user_id,
+                from_chat_id=DATABASE_CHANNEL_ID,
+                message_id=message_id
+            )
+
+        except FloodWait as e:
+
+            await status.edit_text(
+                f"⏳ Telegram requested a wait.\n"
+                f"Please try again in {e.value} seconds."
+            )
+
+            return
+
+        except Exception as e:
+
+            print(
+                f"File delivery error: {e}"
+            )
+
+            await status.edit_text(
+                "❌ <b>File Delivery Failed</b>\n\n"
+                "The requested file could not be sent.\n"
+                "Please try again later."
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # COUNT REQUEST ONLY AFTER SUCCESS
+        # ----------------------------------------------------
+
+        used = await use_request(
+            user_id
+        )
+
+        if not used:
+
+            # The file was already sent, so don't
+            # send another file. Inform the user.
+            await status.edit_text(
+                "⚠️ File sent, but your request "
+                "counter could not be updated.\n\n"
+                "Please contact the owner."
+            )
+
+            return
+
+        # Get updated account.
+        updated_user = await get_user(
+            user_id
+        )
+
+        remaining = updated_user.get(
+            "remaining_requests",
+            0
+        )
+
+        # ----------------------------------------------------
+        # SUCCESS MESSAGE
+        # ----------------------------------------------------
+
+        await status.edit_text(
+            "✅ <b>File Sent Successfully!</b>\n\n"
+            f"🎬 Requests remaining: "
+            f"<b>{remaining}</b>\n\n"
+            "🍿 Enjoy!"
+        )
+
+        print(
+            f"Delivered message {message_id} "
+            f"to user {user_id}. "
+            f"Remaining: {remaining}"
+        )
