@@ -162,6 +162,25 @@ register_admin_handlers(
     app
 )
 
+# ============================================================
+# DEBUG UPDATE HANDLER
+# ============================================================
+
+from pyrogram import filters
+
+
+@app.on_message(
+    filters.all,
+    group=99
+)
+async def debug_update_handler(client, message):
+
+    logger.info(
+        "UPDATE RECEIVED | chat_id=%s | user_id=%s | text=%r",
+        message.chat.id if message.chat else None,
+        message.from_user.id if message.from_user else None,
+        message.text
+    )
 
 # ============================================================
 # MAIN
