@@ -21,19 +21,21 @@ from utils.buttons import (
 )
 
 
-# ============================================================
-# START HANDLER
-# ============================================================
-
 def register_start_handlers(app):
+
+    # ========================================================
+    # START
+    # ========================================================
 
     @app.on_message(
         filters.command("start")
     )
-    async def start_handler(
-        client,
-        message
-    ):
+    async def start_handler(client, message):
+
+        print(
+            f"START RECEIVED from "
+            f"{message.from_user.id}"
+        )
 
         user_id = message.from_user.id
 
@@ -46,10 +48,6 @@ def register_start_handlers(app):
             message.from_user.username
             or ""
         )
-
-        # ----------------------------------------------------
-        # CREATE USER IF NEW
-        # ----------------------------------------------------
 
         user = await get_user(
             user_id
@@ -65,7 +63,6 @@ def register_start_handlers(app):
 
         else:
 
-            # Keep Telegram profile information updated.
             await update_user(
                 user_id=user_id,
                 first_name=first_name,
@@ -76,33 +73,20 @@ def register_start_handlers(app):
                 user_id
             )
 
-        # ----------------------------------------------------
-        # WELCOME MESSAGE
-        # ----------------------------------------------------
-
         remaining = user.get(
             "remaining_requests",
             FREE_REQUESTS
         )
 
         text = (
-            f"👋 <b>Welcome, "
-            f"{first_name}!</b>\n\n"
-
+            f"👋 <b>Welcome, {first_name}!</b>\n\n"
             "🎬 <b>Premium Movie Bot</b>\n\n"
-
-            "Search for a movie, series, anime, "
-            "or other media available in our database.\n\n"
-
+            "Send the name of a movie or series "
+            "to search the database.\n\n"
             f"🆓 Free requests remaining: "
             f"<b>{remaining}</b>\n\n"
-
-            "🔎 <b>How to use:</b>\n"
-            "Simply send the movie or series name "
-            "you want to search for.\n\n"
-
             "💎 After your free requests are finished, "
-            "you can activate Premium."
+            "activate Premium to continue."
         )
 
         await message.reply_text(
@@ -112,13 +96,11 @@ def register_start_handlers(app):
 
 
     # ========================================================
-    # HOME CALLBACK
+    # HOME
     # ========================================================
 
     @app.on_callback_query(
-        filters.regex(
-            r"^home$"
-        )
+        filters.regex(r"^home$")
     )
     async def home_callback(
         client,
@@ -126,11 +108,6 @@ def register_start_handlers(app):
     ):
 
         user_id = callback.from_user.id
-
-        first_name = (
-            callback.from_user.first_name
-            or "User"
-        )
 
         user = await get_user(
             user_id
@@ -140,7 +117,10 @@ def register_start_handlers(app):
 
             user = await create_user(
                 user_id=user_id,
-                first_name=first_name,
+                first_name=(
+                    callback.from_user.first_name
+                    or "User"
+                ),
                 username=(
                     callback.from_user.username
                     or ""
@@ -153,16 +133,10 @@ def register_start_handlers(app):
         )
 
         text = (
-            f"🏠 <b>Premium Movie Bot</b>\n\n"
-
-            f"👤 Hello, "
-            f"<b>{first_name}</b>!\n\n"
-
+            "🏠 <b>Premium Movie Bot</b>\n\n"
             f"🎟 Requests remaining: "
             f"<b>{remaining}</b>\n\n"
-
-            "🔎 Send a movie or series name "
-            "to search."
+            "🔎 Send a movie name to search."
         )
 
         await callback.message.edit_text(
@@ -174,13 +148,11 @@ def register_start_handlers(app):
 
 
     # ========================================================
-    # MY ACCOUNT
+    # ACCOUNT
     # ========================================================
 
     @app.on_callback_query(
-        filters.regex(
-            r"^my_account$"
-        )
+        filters.regex(r"^my_account$")
     )
     async def account_callback(
         client,
@@ -224,19 +196,15 @@ def register_start_handlers(app):
     # ========================================================
 
     @app.on_callback_query(
-        filters.regex(
-            r"^premium_plans$"
-        )
+        filters.regex(r"^premium_plans$")
     )
     async def premium_plans_callback(
         client,
         callback
     ):
 
-        text = format_plans()
-
         await callback.message.edit_text(
-            text,
+            format_plans(),
             reply_markup=premium_buttons()
         )
 
@@ -248,9 +216,7 @@ def register_start_handlers(app):
     # ========================================================
 
     @app.on_callback_query(
-        filters.regex(
-            r"^help$"
-        )
+        filters.regex(r"^help$")
     )
     async def help_callback(
         client,
@@ -259,25 +225,13 @@ def register_start_handlers(app):
 
         text = (
             "📚 <b>How to use the bot</b>\n\n"
-
-            "1️⃣ Press <b>Search Movies</b> "
-            "or simply send a movie name.\n\n"
-
-            "2️⃣ The bot searches the movie database.\n\n"
-
+            "1️⃣ Send a movie or series name.\n\n"
+            "2️⃣ The bot searches the database.\n\n"
             "3️⃣ Select the file you want.\n\n"
-
-            "4️⃣ Your request is counted when "
-            "the file is delivered.\n\n"
-
             f"🆓 Free users get "
             f"<b>{FREE_REQUESTS}</b> requests.\n\n"
-
-            "💎 After that, activate a Premium plan "
-            "to continue using the bot.\n\n"
-
-            "💳 Premium plans are activated by "
-            "the bot owner after payment."
+            "💎 Activate Premium after the "
+            "free requests are used."
         )
 
         await callback.message.edit_text(
@@ -293,9 +247,7 @@ def register_start_handlers(app):
     # ========================================================
 
     @app.on_callback_query(
-        filters.regex(
-            r"^search_help$"
-        )
+        filters.regex(r"^search_help$")
     )
     async def search_help_callback(
         client,
@@ -304,15 +256,10 @@ def register_start_handlers(app):
 
         text = (
             "🔎 <b>Search Movies</b>\n\n"
-
-            "Just send the name of the movie, "
-            "series, anime, or other media.\n\n"
-
+            "Send the name of the movie, series, "
+            "anime, or other authorized media.\n\n"
             "<b>Example:</b>\n"
-            "<code>Avengers Endgame</code>\n\n"
-
-            "The bot will show matching files "
-            "from the database."
+            "<code>Example Movie</code>"
         )
 
         await callback.message.edit_text(
@@ -321,8 +268,3 @@ def register_start_handlers(app):
         )
 
         await callback.answer()
-
-
-# ============================================================
-# END
-# ============================================================
