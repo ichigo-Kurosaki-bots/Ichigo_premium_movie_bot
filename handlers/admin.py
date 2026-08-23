@@ -28,12 +28,12 @@ def is_admin(user_id):
     return user_id == OWNER_ID or user_id in ADMIN_IDS
 
 
-def admin_only(func):
-    return filters.create(
-        lambda _, __, message: is_admin(
-            message.from_user.id
-        )
+admin_only = filters.create(
+    lambda _, message: (
+        message.from_user is not None
+        and is_admin(message.from_user.id)
     )
+)
 
 
 # ============================================================
