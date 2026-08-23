@@ -1,11 +1,10 @@
 import asyncio
 import logging
-import os
 import threading
 
 from flask import Flask
 
-from pyrogram import Client
+from pyrogram import Client, filters
 
 from config import (
     API_ID,
@@ -72,9 +71,7 @@ web_app = Flask(
 @web_app.route("/")
 def home():
 
-    return (
-        "Premium Movie Bot is running."
-    )
+    return "Premium Movie Bot is running."
 
 
 @web_app.route("/health")
@@ -103,19 +100,13 @@ def validate_config():
     missing = []
 
     if not BOT_TOKEN:
-        missing.append(
-            "BOT_TOKEN"
-        )
+        missing.append("BOT_TOKEN")
 
     if not API_ID:
-        missing.append(
-            "API_ID"
-        )
+        missing.append("API_ID")
 
     if not API_HASH:
-        missing.append(
-            "API_HASH"
-        )
+        missing.append("API_HASH")
 
     if missing:
 
@@ -124,63 +115,6 @@ def validate_config():
             + ", ".join(missing)
         )
 
-
-# ============================================================
-# PYROGRAM CLIENT
-# ============================================================
-
-app = Client(
-    "premium_movie_bot",
-
-    api_id=API_ID,
-
-    api_hash=API_HASH,
-
-    bot_token=BOT_TOKEN,
-
-    workers=4
-)
-
-
-# ============================================================
-# REGISTER HANDLERS
-# ============================================================
-
-register_start_handlers(
-    app
-)
-
-register_premium_handlers(
-    app
-)
-
-register_search_handlers(
-    app
-)
-
-register_admin_handlers(
-    app
-)
-
-# ============================================================
-# DEBUG UPDATE HANDLER
-# ============================================================
-
-from pyrogram import filters
-
-
-@app.on_message(
-    filters.all,
-    group=99
-)
-async def debug_update_handler(client, message):
-
-    logger.info(
-        "UPDATE RECEIVED | chat_id=%s | user_id=%s | text=%r",
-        message.chat.id if message.chat else None,
-        message.from_user.id if message.from_user else None,
-        message.text
-    )
 
 # ============================================================
 # MAIN
@@ -205,6 +139,64 @@ async def main():
     )
 
     # --------------------------------------------------------
+    # PYROGRAM CLIENT
+    # --------------------------------------------------------
+
+    app = Client(
+        "premium_movie_bot",
+
+        api_id=API_ID,
+
+        api_hash=API_HASH,
+
+        bot_token=BOT_TOKEN,
+
+        workers=4
+    )
+
+    # --------------------------------------------------------
+    # REGISTER HANDLERS
+    # --------------------------------------------------------
+
+    register_start_handlers(app)
+
+    register_premium_handlers(app)
+
+    register_search_handlers(app)
+
+    register_admin_handlers(app)
+
+    # --------------------------------------------------------
+    # DEBUG UPDATE HANDLER
+    # --------------------------------------------------------
+
+    @app.on_message(
+        filters.all,
+        group=99
+    )
+    async def debug_update_handler(
+        client,
+        message
+    ):
+
+        logger.info(
+            "UPDATE RECEIVED | "
+            "chat_id=%s | "
+            "user_id=%s | "
+            "text=%r",
+
+            message.chat.id
+            if message.chat
+            else None,
+
+            message.from_user.id
+            if message.from_user
+            else None,
+
+            message.text
+        )
+
+    # --------------------------------------------------------
     # START TELEGRAM CLIENT
     # --------------------------------------------------------
 
@@ -227,7 +219,7 @@ async def main():
     )
 
     # --------------------------------------------------------
-    # KEEP PROCESS ALIVE
+    # KEEP BOT RUNNING
     # --------------------------------------------------------
 
     try:
@@ -252,7 +244,7 @@ async def main():
 if __name__ == "__main__":
 
     # --------------------------------------------------------
-    # START WEB SERVER FOR RENDER
+    # START RENDER WEB SERVER
     # --------------------------------------------------------
 
     web_thread = threading.Thread(
@@ -268,7 +260,7 @@ if __name__ == "__main__":
     )
 
     # --------------------------------------------------------
-    # START BOT
+    # START TELEGRAM BOT
     # --------------------------------------------------------
 
     try:
