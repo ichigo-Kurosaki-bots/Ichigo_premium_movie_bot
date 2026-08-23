@@ -465,4 +465,4 @@ def register_premium_handlers(app):
             f"<b>{user.get('premium_requests', 0)}</b>\n"
             f"🎟 Remaining: "
             f"<b>{user.get('remaining_requests', 0)}</b>"
-            )
+        )
