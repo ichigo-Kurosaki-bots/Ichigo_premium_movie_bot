@@ -7,7 +7,7 @@ from config import (
 
 
 # ============================================================
-# MONGODB
+# MONGODB CONNECTION
 # ============================================================
 
 if not MONGO_URI:
@@ -42,17 +42,30 @@ settings_collection = db["settings"]
 
 async def init_database():
 
+    # --------------------------------------------------------
+    # USERS
+    # --------------------------------------------------------
+
     await users_collection.create_index(
         "user_id",
         unique=True
     )
 
+    # --------------------------------------------------------
+    # MEDIA
+    # --------------------------------------------------------
+
     await media_collection.create_index(
-        "title_key"
+        [
+            ("title", "text"),
+            ("file_name", "text"),
+            ("caption", "text")
+        ],
+        name="media_text_search"
     )
 
     await media_collection.create_index(
-        "title"
+        "title_key"
     )
 
     await media_collection.create_index(
@@ -63,6 +76,10 @@ async def init_database():
         "channel_id"
     )
 
+    # --------------------------------------------------------
+    # ADMINS
+    # --------------------------------------------------------
+
     await admins_collection.create_index(
         "user_id",
         unique=True
@@ -72,7 +89,7 @@ async def init_database():
 
 
 # ============================================================
-# USER
+# USER FUNCTIONS
 # ============================================================
 
 async def create_user(
@@ -92,18 +109,29 @@ async def create_user(
 
     user = {
         "user_id": user_id,
+
         "first_name": first_name or "",
+
         "username": username or "",
 
+        # Free requests
         "free_requests": 5,
+
+        # Request tracking
         "used_requests": 0,
 
+        "total_requests": 0,
+
+        "remaining_requests": 5,
+
+        # Premium
         "premium": False,
+
         "plan": None,
+
         "paid_amount": 0,
 
-        "total_requests": 0,
-        "remaining_requests": 5,
+        "premium_requests": 0,
 
         "activated_at": None
     }
@@ -117,13 +145,11 @@ async def create_user(
 
 async def get_user(user_id):
 
-    user = await users_collection.find_one(
+    return await users_collection.find_one(
         {
             "user_id": user_id
         }
     )
-
-    return user
 
 
 async def update_user_info(
@@ -159,24 +185,13 @@ async def update_user_info(
 
 async def use_request(user_id):
 
-    user = await get_user(
-        user_id
-    )
-
-    if not user:
-        return False
-
-    remaining = user.get(
-        "remaining_requests",
-        0
-    )
-
-    if remaining <= 0:
-        return False
-
-    await users_collection.update_one(
+    result = await users_collection.update_one(
         {
-            "user_id": user_id
+            "user_id": user_id,
+
+            "remaining_requests": {
+                "$gt": 0
+            }
         },
         {
             "$inc": {
@@ -187,7 +202,7 @@ async def use_request(user_id):
         }
     )
 
-    return True
+    return result.modified_count > 0
 
 
 # ============================================================
@@ -201,6 +216,8 @@ async def activate_premium(
     requests
 ):
 
+    from datetime import datetime
+
     result = await users_collection.update_one(
         {
             "user_id": user_id
@@ -208,15 +225,20 @@ async def activate_premium(
         {
             "$set": {
                 "premium": True,
+
                 "plan": plan_name,
+
                 "paid_amount": amount,
+
                 "premium_requests": requests,
+
                 "remaining_requests": requests,
+
                 "used_requests": 0,
+
                 "total_requests": 0,
-                "activated_at": __import__(
-                    "datetime"
-                ).datetime.utcnow()
+
+                "activated_at": datetime.utcnow()
             }
         }
     )
@@ -233,9 +255,13 @@ async def remove_premium(user_id):
         {
             "$set": {
                 "premium": False,
+
                 "plan": None,
+
                 "paid_amount": 0,
+
                 "premium_requests": 0,
+
                 "remaining_requests": 0
             }
         }
@@ -253,6 +279,7 @@ async def add_media(media):
     await media_collection.update_one(
         {
             "channel_id": media["channel_id"],
+
             "message_id": media["message_id"]
         },
         {
@@ -273,10 +300,20 @@ async def search_media(
             "$text": {
                 "$search": query
             }
+        },
+        {
+            "score": {
+                "$meta": "textScore"
+            }
         }
     ).sort(
         [
-            ("score", {"$meta": "textScore"})
+            (
+                "score",
+                {
+                    "$meta": "textScore"
+                }
+            )
         ]
     ).skip(
         skip
@@ -289,14 +326,22 @@ async def search_media(
     )
 
 
+# ============================================================
+# STATISTICS
+# ============================================================
+
 async def count_users():
 
-    return await users_collection.count_documents({})
+    return await users_collection.count_documents(
+        {}
+    )
 
 
 async def count_media():
 
-    return await media_collection.count_documents({})
+    return await media_collection.count_documents(
+        {}
+    )
 
 
 async def count_premium_users():
