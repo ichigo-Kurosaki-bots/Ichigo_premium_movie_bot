@@ -31,7 +31,7 @@ def is_admin(user_id):
 
 
 admin_only = filters.create(
-    lambda _, __, message: (
+    lambda _, message: (
         message.from_user is not None
         and is_admin(message.from_user.id)
     )
@@ -726,3 +726,134 @@ def register_admin_handlers(app):
             "🆔 <b>Your Telegram ID</b>\n\n"
             f"<code>{user_id}</code>"
             )
+
+    # ========================================================
+    # /broadcast
+    #
+    # Usage:
+    #
+    # Reply to any message:
+    # /broadcast
+    #
+    # The bot will copy that message to all users.
+    # ========================================================
+
+    @app.on_message(
+        filters.command("broadcast")
+        & admin_only
+    )
+    async def broadcast_handler(
+        client,
+        message
+    ):
+
+        # ----------------------------------------------------
+        # BROADCAST MUST BE USED AS A REPLY
+        # ----------------------------------------------------
+
+        if not message.reply_to_message:
+
+            await message.reply_text(
+                "❌ <b>Reply to a message to broadcast it.</b>\n\n"
+
+                "Example:\n"
+                "1️⃣ Send your broadcast message\n"
+                "2️⃣ Reply to that message\n"
+                "3️⃣ Send <code>/broadcast</code>"
+            )
+
+            return
+
+        status = await message.reply_text(
+            "📢 <b>Broadcast started...</b>\n\n"
+            "⏳ Please wait."
+        )
+
+        try:
+
+            user_ids = await get_all_user_ids()
+
+        except Exception as e:
+
+            logger.exception(
+                "Could not get users for broadcast: %s",
+                e
+            )
+
+            await status.edit_text(
+                "❌ Failed to get users from database."
+            )
+
+            return
+
+        total = len(user_ids)
+
+        if total == 0:
+
+            await status.edit_text(
+                "❌ No users found in database."
+            )
+
+            return
+
+        success = 0
+        failed = 0
+
+        # ----------------------------------------------------
+        # SEND BROADCAST
+        # ----------------------------------------------------
+
+        for user_id in user_ids:
+
+            try:
+
+                await client.copy_message(
+                    chat_id=user_id,
+                    from_chat_id=message.chat.id,
+                    message_id=message.reply_to_message.id
+                )
+
+                success += 1
+
+            except Exception as e:
+
+                failed += 1
+
+                logger.warning(
+                    "Broadcast failed for %s: %s",
+                    user_id,
+                    e
+                )
+
+            # Small delay to reduce Telegram flood pressure.
+            await asyncio.sleep(0.05)
+
+            # Update status every 50 users.
+            if (success + failed) % 50 == 0:
+
+                try:
+
+                    await status.edit_text(
+                        "📢 <b>Broadcasting...</b>\n\n"
+
+                        f"👥 Total users: <b>{total}</b>\n"
+                        f"✅ Sent: <b>{success}</b>\n"
+                        f"❌ Failed: <b>{failed}</b>\n"
+                        f"📊 Progress: "
+                        f"<b>{success + failed}/{total}</b>"
+                    )
+
+                except Exception:
+                    pass
+
+        # ----------------------------------------------------
+        # FINAL RESULT
+        # ----------------------------------------------------
+
+        await status.edit_text(
+            "📢 <b>Broadcast Completed</b>\n\n"
+
+            f"👥 Total users: <b>{total}</b>\n"
+            f"✅ Successfully sent: <b>{success}</b>\n"
+            f"❌ Failed: <b>{failed}</b>"
+        )
