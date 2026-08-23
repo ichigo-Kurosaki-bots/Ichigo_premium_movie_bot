@@ -18,7 +18,11 @@ from config import (
     ADMIN_IDS
 )
 
-from indexer import index_channel
+from indexer import (
+    index_channel,
+    stop_indexing,
+    get_index_status
+)
 
 def is_admin(user_id):
 
@@ -210,6 +214,162 @@ def register_admin_handlers(app):
                 "❌ <b>Indexing Failed</b>\n\n"
                 f"<code>{str(e)[:1000]}</code>"
             )
+
+    # ========================================================
+    # START / RESUME INDEXING
+    # ========================================================
+
+    @app.on_message(
+        filters.command("index")
+    )
+    async def index_handler(
+        client,
+        message
+    ):
+
+        if not is_admin(
+            message.from_user.id
+        ):
+
+            await message.reply_text(
+                "❌ You are not authorized."
+            )
+
+            return
+
+        status = await get_index_status()
+
+        if status["running"]:
+
+            await message.reply_text(
+                "⚠️ <b>Indexer is already running.</b>\n\n"
+                f"🎬 Indexed: "
+                f"<b>{status['indexed_count']}</b>"
+            )
+
+            return
+
+        status_message = await message.reply_text(
+            "🚀 <b>Database indexing started.</b>\n\n"
+            "The bot will resume from its last "
+            "saved position."
+        )
+
+        try:
+
+            count = await index_channel(
+                client,
+                status_message
+            )
+
+            final_status = await get_index_status()
+
+            await status_message.edit_text(
+                "✅ <b>Indexing Finished</b>\n\n"
+                f"🎬 Total indexed: "
+                f"<b>{count}</b>\n"
+                f"🆔 Last message: "
+                f"<code>{final_status['last_message_id']}</code>"
+            )
+
+        except Exception as e:
+
+            print(
+                f"Indexer error: {e}"
+            )
+
+            await status_message.edit_text(
+                "❌ <b>Indexer Error</b>\n\n"
+                f"<code>{str(e)[:1500]}</code>"
+            )
+
+
+    # ========================================================
+    # INDEX STATUS
+    # ========================================================
+
+    @app.on_message(
+        filters.command("indexstatus")
+    )
+    async def index_status_handler(
+        client,
+        message
+    ):
+
+        if not is_admin(
+            message.from_user.id
+        ):
+
+            return
+
+        status = await get_index_status()
+
+        running = (
+            "🟢 Running"
+            if status["running"]
+            else "🔴 Stopped"
+        )
+
+        updated = status.get(
+            "updated_at"
+        )
+
+        if updated:
+
+            updated_text = str(
+                updated
+            )
+
+        else:
+
+            updated_text = "Never"
+
+        await message.reply_text(
+            "📊 <b>Database Indexer</b>\n\n"
+            f"Status: <b>{running}</b>\n"
+            f"🎬 Indexed: "
+            f"<b>{status['indexed_count']}</b>\n"
+            f"🆔 Last message: "
+            f"<code>{status['last_message_id']}</code>\n"
+            f"🕐 Updated: "
+            f"<code>{updated_text}</code>"
+        )
+
+
+    # ========================================================
+    # STOP INDEXING
+    # ========================================================
+
+    @app.on_message(
+        filters.command("stopindex")
+    )
+    async def stop_index_handler(
+        client,
+        message
+    ):
+
+        if not is_admin(
+            message.from_user.id
+        ):
+
+            return
+
+        status = await get_index_status()
+
+        if not status["running"]:
+
+            await message.reply_text(
+                "ℹ️ The indexer is not running."
+            )
+
+            return
+
+        stop_indexing()
+
+        await message.reply_text(
+            "🛑 <b>Stopping indexer...</b>\n\n"
+            "The current progress will be saved."
+        )
 
 
     # ========================================================
