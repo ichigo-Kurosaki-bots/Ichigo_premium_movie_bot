@@ -327,7 +327,7 @@ async def activate_premium(
         }
     )
 
-    return result.modified_count > 0
+    return result.matched_count > 0
 
 
 async def remove_premium(user_id):
@@ -361,7 +361,7 @@ async def remove_premium(user_id):
         }
     )
 
-    return result.modified_count > 0
+    return result.matched_count > 0
 
 
 # ============================================================
