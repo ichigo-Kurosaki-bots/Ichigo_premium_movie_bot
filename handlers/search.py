@@ -57,6 +57,7 @@ def register_search_handlers(app):
                 "premium",
                 "plans",
                 "myplan",
+                "user",
                 "id",
                 "addpremium",
                 "removepremium",
