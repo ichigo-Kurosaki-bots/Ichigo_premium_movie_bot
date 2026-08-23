@@ -106,6 +106,12 @@ async def init_database():
 
     await media_collection.create_index(
         [
+            ("search_key", 1)
+        ]
+    )
+
+    await media_collection.create_index(
+        [
             ("message_id", 1)
         ]
     )
