@@ -220,78 +220,6 @@ async def update_user(
 # REQUEST SYSTEM
 # ============================================================
 
-async def consume_request(user_id):
-
-    """
-    Atomically consume exactly one request.
-
-    Returns:
-        True  -> request consumed
-        False -> no requests available
-    """
-
-    result = await users_collection.find_one_and_update(
-
-        {
-            "user_id": user_id,
-
-            "remaining_requests": {
-                "$gt": 0
-            }
-        },
-
-        {
-            "$inc": {
-                "remaining_requests": -1,
-
-                "total_requests_used": 1
-            },
-
-            "$set": {
-                "updated_at":
-                    datetime.utcnow()
-            }
-        },
-
-        return_document=ReturnDocument.AFTER
-    )
-
-    return result is not None
-
-
-async def restore_request(user_id):
-
-    """
-    Restore one request if Telegram file delivery fails.
-    """
-
-    result = await users_collection.update_one(
-
-        {
-            "user_id": user_id
-        },
-
-        {
-            "$inc": {
-                "remaining_requests": 1,
-
-                "total_requests_used": -1
-            },
-
-            "$set": {
-                "updated_at":
-                    datetime.utcnow()
-            }
-        }
-    )
-
-    return result.modified_count > 0
-
-
-# ============================================================
-# PREMIUM
-# ============================================================
-
 async def activate_premium(
     user_id,
     plan_name,
@@ -299,30 +227,17 @@ async def activate_premium(
     requests
 ):
 
-    result = await users_collection.update_one(
-
+    result = await users.update_one(
         {
             "user_id": user_id
         },
-
         {
             "$set": {
-
                 "premium": True,
-
                 "plan": plan_name,
-
                 "paid_amount": amount,
-
                 "premium_requests": requests,
-
-                "remaining_requests": requests,
-
-                "premium_activated_at":
-                    datetime.utcnow(),
-
-                "updated_at":
-                    datetime.utcnow()
+                "remaining_requests": requests
             }
         }
     )
@@ -332,37 +247,59 @@ async def activate_premium(
 
 async def remove_premium(user_id):
 
-    result = await users_collection.update_one(
-
+    result = await users.update_one(
         {
             "user_id": user_id
         },
-
         {
             "$set": {
-
                 "premium": False,
-
-                "plan": None,
-
+                "plan": "Free",
                 "paid_amount": 0,
-
                 "premium_requests": 0,
-
-                "remaining_requests":
-                    FREE_REQUESTS,
-
-                "premium_removed_at":
-                    datetime.utcnow(),
-
-                "updated_at":
-                    datetime.utcnow()
+                "remaining_requests": FREE_REQUESTS
             }
         }
     )
 
     return result.matched_count > 0
 
+
+async def consume_request(user_id):
+
+    result = await users.update_one(
+        {
+            "user_id": user_id,
+            "remaining_requests": {
+                "$gt": 0
+            }
+        },
+        {
+            "$inc": {
+                "remaining_requests": -1,
+                "total_requests_used": 1
+            }
+        }
+    )
+
+    return result.matched_count > 0
+
+
+async def restore_request(user_id):
+
+    result = await users.update_one(
+        {
+            "user_id": user_id
+        },
+        {
+            "$inc": {
+                "remaining_requests": 1,
+                "total_requests_used": -1
+            }
+        }
+    )
+
+    return result.matched_count > 0
 
 # ============================================================
 # MEDIA INDEX
