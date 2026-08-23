@@ -146,56 +146,38 @@ async def create_user(
     first_name="",
     username=""
 ):
-
     now = datetime.utcnow()
 
-    user = {
-
-        "user_id": user_id,
-
-        "first_name": first_name or "",
-
-        "username": username or "",
-
-        # Free user starts with 5 requests.
-        "premium": False,
-
-        "plan": None,
-
-        "paid_amount": 0,
-
-        "premium_requests": 0,
-
-        "remaining_requests": FREE_REQUESTS,
-
-        "total_requests_used": 0,
-
-        "created_at": now,
-
-        "updated_at": now
-    }
+    first_name = first_name or ""
+    username = username or ""
 
     await users_collection.update_one(
-
         {
             "user_id": user_id
         },
-
         {
-            "$setOnInsert": user,
-
             "$set": {
-                "first_name": first_name or "",
-                "username": username or "",
+                "first_name": first_name,
+                "username": username,
                 "updated_at": now
+            },
+
+            "$setOnInsert": {
+                "user_id": user_id,
+                "premium": False,
+                "plan": None,
+                "paid_amount": 0,
+                "premium_requests": 0,
+                "remaining_requests": FREE_REQUESTS,
+                "total_requests_used": 0,
+                "created_at": now
             }
         },
-
         upsert=True
     )
 
     return await get_user(user_id)
-
+    
 
 async def get_user(user_id):
 
