@@ -18,6 +18,7 @@ from config import (
     ADMIN_IDS
 )
 
+from indexer import index_channel
 
 def is_admin(user_id):
 
@@ -159,6 +160,55 @@ def register_admin_handlers(app):
             print(
                 f"Could not notify user "
                 f"{user_id}: {e}"
+            )
+
+    # ========================================================
+    # INDEX DATABASE CHANNEL
+    # ========================================================
+
+    @app.on_message(
+        filters.command("index")
+    )
+    async def index_handler(
+        client,
+        message
+    ):
+
+        if message.from_user.id not in ADMIN_IDS:
+
+            await message.reply_text(
+                "❌ You are not authorized."
+            )
+
+            return
+
+        status = await message.reply_text(
+            "🔄 <b>Indexing started...</b>\n\n"
+            "Please wait while the bot scans "
+            "the database channel."
+        )
+
+        try:
+
+            count = await index_channel(
+                client
+            )
+
+            await status.edit_text(
+                "✅ <b>Indexing Completed</b>\n\n"
+                f"🎬 Files indexed: <b>{count}</b>\n\n"
+                "You can now search the database."
+            )
+
+        except Exception as e:
+
+            print(
+                f"Indexing error: {e}"
+            )
+
+            await status.edit_text(
+                "❌ <b>Indexing Failed</b>\n\n"
+                f"<code>{str(e)[:1000]}</code>"
             )
 
 
