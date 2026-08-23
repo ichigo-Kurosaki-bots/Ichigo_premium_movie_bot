@@ -3,7 +3,8 @@ from pyrogram import filters
 from database import (
     get_user,
     create_user,
-    consume_request
+    consume_request,
+    restore_request
 )
 
 from search import (
@@ -11,8 +12,7 @@ from search import (
 )
 
 from premium import (
-    can_use_movie,
-    get_user_plan_text
+    can_use_movie
 )
 
 from utils.buttons import (
@@ -22,8 +22,7 @@ from utils.buttons import (
 
 from config import (
     FREE_REQUESTS,
-    DATABASE_CHANNEL_ID,
-    RESULTS_PER_PAGE
+    DATABASE_CHANNEL_ID
 )
 
 
@@ -46,7 +45,10 @@ def register_search_handlers(app):
                 "plans",
                 "premium",
                 "myplan",
-                "id"
+                "id",
+                "index",
+                "indexstatus",
+                "stopindex"
             ]
         )
     )
@@ -66,9 +68,8 @@ def register_search_handlers(app):
         if not query:
             return
 
-
         # ----------------------------------------------------
-        # GET / CREATE USER
+        # GET USER
         # ----------------------------------------------------
 
         user = await get_user(
@@ -87,27 +88,22 @@ def register_search_handlers(app):
                 user_id
             )
 
-
         # ----------------------------------------------------
         # CHECK REQUEST BALANCE
         # ----------------------------------------------------
 
-        if not can_use_movie(
-            user
-        ):
+        if not can_use_movie(user):
 
             await message.reply_text(
-                "🚫 <b>Your movie request limit "
-                "has been reached.</b>\n\n"
-                "🆓 Free plan: "
-                f"<b>{FREE_REQUESTS}</b> requests\n\n"
-                "💎 Choose a Premium plan to "
-                "continue searching.",
+                "🚫 <b>Movie request limit reached.</b>\n\n"
+                f"🆓 Free requests: "
+                f"<b>{FREE_REQUESTS}</b>\n\n"
+                "💎 Choose a Premium plan "
+                "to continue.",
                 reply_markup=premium_buttons()
             )
 
             return
-
 
         # ----------------------------------------------------
         # SEARCH
@@ -119,9 +115,11 @@ def register_search_handlers(app):
 
         try:
 
-            results = await search_movies(
-                query,
-                page=0
+            results, has_next = (
+                await search_movies(
+                    query,
+                    page=0
+                )
             )
 
         except Exception as e:
@@ -132,11 +130,10 @@ def register_search_handlers(app):
 
             await wait.edit_text(
                 "❌ Search failed.\n"
-                "Please try again later."
+                "Please try again."
             )
 
             return
-
 
         # ----------------------------------------------------
         # NO RESULTS
@@ -146,26 +143,136 @@ def register_search_handlers(app):
 
             await wait.edit_text(
                 "😕 <b>No results found.</b>\n\n"
-                f"Search: <code>{query}</code>"
+                f"🔎 Search: "
+                f"<code>{query}</code>"
             )
 
             return
-
 
         # ----------------------------------------------------
         # SHOW RESULTS
         # ----------------------------------------------------
 
         await wait.edit_text(
-            f"🎬 <b>Results for:</b>\n"
+            f"🔎 <b>Search:</b> "
             f"<code>{query}</code>\n\n"
-            f"Found: <b>{len(results)}</b>\n\n"
-            "Select a file below:",
+            f"🎬 Results: "
+            f"<b>{len(results)}</b>\n\n"
+            "Select the file you want:",
             reply_markup=search_result_buttons(
                 results,
-                page=0
+                query,
+                page=0,
+                has_next=has_next
             )
         )
+
+
+    # ========================================================
+    # SEARCH PAGINATION
+    #
+    # callback:
+    #
+    # searchpage_PAGE_QUERY
+    #
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^searchpage_\d+_.+$"
+        )
+    )
+    async def search_page_callback(
+        client,
+        callback
+    ):
+
+        try:
+
+            parts = callback.data.split(
+                "_",
+                2
+            )
+
+            page = int(
+                parts[1]
+            )
+
+            query = parts[2].strip()
+
+        except (ValueError, IndexError):
+
+            await callback.answer(
+                "Invalid page.",
+                show_alert=True
+            )
+
+            return
+
+        if not query:
+
+            await callback.answer(
+                "Invalid search.",
+                show_alert=True
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # SEARCH PAGE
+        # ----------------------------------------------------
+
+        try:
+
+            results, has_next = (
+                await search_movies(
+                    query,
+                    page=page
+                )
+            )
+
+        except Exception as e:
+
+            print(
+                f"Pagination error: {e}"
+            )
+
+            await callback.answer(
+                "Search failed.",
+                show_alert=True
+            )
+
+            return
+
+        if not results:
+
+            await callback.answer(
+                "No more results.",
+                show_alert=True
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # UPDATE MESSAGE
+        # ----------------------------------------------------
+
+        await callback.message.edit_text(
+            f"🔎 <b>Search:</b> "
+            f"<code>{query}</code>\n\n"
+            f"📄 Page: <b>{page + 1}</b>\n"
+            f"🎬 Results: "
+            f"<b>{len(results)}</b>\n\n"
+            "Select a file:",
+            reply_markup=search_result_buttons(
+                results,
+                query,
+                page=page,
+                has_next=has_next
+            )
+        )
+
+        await callback.answer()
 
 
     # ========================================================
@@ -201,7 +308,6 @@ def register_search_handlers(app):
 
             return
 
-
         # ----------------------------------------------------
         # GET USER
         # ----------------------------------------------------
@@ -222,39 +328,8 @@ def register_search_handlers(app):
                 user_id
             )
 
-
         # ----------------------------------------------------
-        # CHECK BALANCE AGAIN
-        #
-        # Important because the user may have opened
-        # an old result after their balance changed.
-        # ----------------------------------------------------
-
-        if not can_use_movie(
-            user
-        ):
-
-            await callback.answer(
-                "Your movie request limit is finished.",
-                show_alert=True
-            )
-
-            await callback.message.reply_text(
-                "💎 <b>Premium required</b>\n\n"
-                "Your available movie requests "
-                "have been used.",
-                reply_markup=premium_buttons()
-            )
-
-            return
-
-
-        # ----------------------------------------------------
-        # CONSUME ONE REQUEST
-        #
-        # The database function should perform this
-        # atomically so two clicks cannot consume the
-        # same request incorrectly.
+        # ATOMICALLY CONSUME REQUEST
         # ----------------------------------------------------
 
         consumed = await consume_request(
@@ -264,25 +339,29 @@ def register_search_handlers(app):
         if not consumed:
 
             await callback.answer(
-                "No requests remaining.",
+                "Your request limit is finished.",
                 show_alert=True
+            )
+
+            await callback.message.reply_text(
+                "💎 <b>Premium required</b>\n\n"
+                "Your available requests are finished.",
+                reply_markup=premium_buttons()
             )
 
             return
 
-
         await callback.answer(
-            "🎬 Preparing your file..."
+            "🎬 Sending file..."
         )
 
-
         # ----------------------------------------------------
-        # COPY FILE FROM DATABASE CHANNEL
+        # COPY AUTHORIZED MEDIA
         # ----------------------------------------------------
 
         try:
 
-            sent = await client.copy_message(
+            await client.copy_message(
                 chat_id=user_id,
                 from_chat_id=DATABASE_CHANNEL_ID,
                 message_id=message_id
@@ -291,41 +370,23 @@ def register_search_handlers(app):
         except Exception as e:
 
             print(
-                f"File delivery error: {e}"
+                f"Delivery error: {e}"
             )
 
-            # ------------------------------------------------
-            # IMPORTANT:
-            # If delivery fails, restore the request.
-            # ------------------------------------------------
-
-            try:
-
-                from database import (
-                    restore_request
-                )
-
-                await restore_request(
-                    user_id
-                )
-
-            except Exception as restore_error:
-
-                print(
-                    f"Request restore error: "
-                    f"{restore_error}"
-                )
+            # Restore the consumed request.
+            await restore_request(
+                user_id
+            )
 
             await callback.message.reply_text(
                 "❌ <b>File delivery failed.</b>\n\n"
-                "Your request was not charged."
+                "Your request has been restored."
             )
 
             return
 
-
         # ----------------------------------------------------
-        # GET UPDATED BALANCE
+        # UPDATED BALANCE
         # ----------------------------------------------------
 
         updated_user = await get_user(
@@ -341,15 +402,9 @@ def register_search_handlers(app):
             else 0
         )
 
-
-        # ----------------------------------------------------
-        # SEND BALANCE INFO
-        # ----------------------------------------------------
-
         await client.send_message(
             user_id,
-
             "✅ <b>File sent successfully!</b>\n\n"
-            f"🎟 Requests remaining: "
+            f"🎟 Remaining requests: "
             f"<b>{remaining}</b>"
-        )
+            )
