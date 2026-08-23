@@ -1,69 +1,324 @@
+import logging
+
 from pyrogram import filters
+
+from config import OWNER_ID, ADMIN_IDS
 
 from database import (
     get_user,
-    activate_premium,
-    remove_premium,
     count_users,
+    count_premium_users,
     count_media,
-    count_premium_users
+    get_stats,
+    activate_premium,
+    remove_premium
 )
 
-from premium import (
-    get_plan_by_amount
-)
+from premium import get_plan_by_amount
 
-from config import (
-    OWNER_ID,
-    ADMIN_IDS
-)
 
-from indexer import (
-    index_channel,
-    stop_indexing,
-    get_index_status
-)
+logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# ADMIN CHECK
+# ============================================================
 
 def is_admin(user_id):
+    return user_id == OWNER_ID or user_id in ADMIN_IDS
 
-    return user_id in ADMIN_IDS
 
+def admin_only(func):
+    return filters.create(
+        lambda _, __, message: is_admin(
+            message.from_user.id
+        )
+    )
+
+
+# ============================================================
+# REGISTER ADMIN HANDLERS
+# ============================================================
 
 def register_admin_handlers(app):
 
     # ========================================================
-    # ADD PREMIUM
+    # /stats
     # ========================================================
 
     @app.on_message(
-        filters.command(
-            "addpremium"
-        )
+        filters.command("stats")
+        & admin_only
     )
-    async def add_premium_handler(
+    async def stats_handler(
         client,
         message
     ):
 
-        if not is_admin(
-            message.from_user.id
-        ):
+        try:
+
+            stats = await get_stats()
+
+            users = stats.get(
+                "users",
+                0
+            )
+
+            premium_users = stats.get(
+                "premium_users",
+                0
+            )
+
+            media = stats.get(
+                "media",
+                0
+            )
 
             await message.reply_text(
-                "❌ You are not authorized."
+                "📊 <b>Bot Statistics</b>\n\n"
+
+                f"👥 Total users: "
+                f"<b>{users}</b>\n"
+
+                f"💎 Premium users: "
+                f"<b>{premium_users}</b>\n"
+
+                f"🎬 Indexed files: "
+                f"<b>{media}</b>"
+            )
+
+        except Exception as e:
+
+            logger.exception(
+                "Stats error: %s",
+                e
+            )
+
+            await message.reply_text(
+                "❌ Failed to get statistics."
+            )
+
+
+    # ========================================================
+    # /user USER_ID
+    # ========================================================
+
+    @app.on_message(
+        filters.command("user")
+        & admin_only
+    )
+    async def user_handler(
+        client,
+        message
+    ):
+
+        if len(message.command) < 2:
+
+            await message.reply_text(
+                "❌ <b>Usage:</b>\n\n"
+                "<code>/user USER_ID</code>\n\n"
+                "<b>Example:</b>\n"
+                "<code>/user 123456789</code>"
             )
 
             return
 
-        if len(
-            message.command
-        ) != 3:
+        try:
+
+            user_id = int(
+                message.command[1]
+            )
+
+        except ValueError:
 
             await message.reply_text(
-                "Usage:\n"
-                "<code>/addpremium USER_ID AMOUNT</code>\n\n"
-                "Example:\n"
-                "<code>/addpremium 123456789 100</code>"
+                "❌ User ID must be a number."
+            )
+
+            return
+
+        user = await get_user(
+            user_id
+        )
+
+        if not user:
+
+            await message.reply_text(
+                "❌ User not found."
+            )
+
+            return
+
+        username = user.get(
+            "username",
+            ""
+        )
+
+        first_name = user.get(
+            "first_name",
+            ""
+        )
+
+        premium = user.get(
+            "premium",
+            False
+        )
+
+        plan = user.get(
+            "plan"
+        ) or "Free"
+
+        paid_amount = user.get(
+            "paid_amount",
+            0
+        )
+
+        remaining = user.get(
+            "remaining_requests",
+            0
+        )
+
+        used = user.get(
+            "total_requests_used",
+            0
+        )
+
+        text = (
+            "👤 <b>User Information</b>\n\n"
+
+            f"🆔 ID: <code>{user_id}</code>\n"
+            f"👤 Name: <b>{first_name}</b>\n"
+            f"🔹 Username: "
+            f"<b>@{username}</b>\n"
+            if username
+            else
+            "👤 <b>User Information</b>\n\n"
+            f"🆔 ID: <code>{user_id}</code>\n"
+            f"👤 Name: <b>{first_name}</b>\n"
+        )
+
+        text += (
+            f"💎 Premium: "
+            f"<b>{'Yes' if premium else 'No'}</b>\n"
+            f"📦 Plan: <b>{plan}</b>\n"
+            f"💰 Paid: <b>₹{paid_amount}</b>\n"
+            f"🎟 Remaining: <b>{remaining}</b>\n"
+            f"📊 Used: <b>{used}</b>"
+        )
+
+        await message.reply_text(
+            text
+        )
+
+
+    # ========================================================
+    # /premiumuser USER_ID
+    #
+    # Same purpose as /user, but convenient for checking
+    # a user's Premium status.
+    # ========================================================
+
+    @app.on_message(
+        filters.command("premiumuser")
+        & admin_only
+    )
+    async def premium_user_handler(
+        client,
+        message
+    ):
+
+        if len(message.command) < 2:
+
+            await message.reply_text(
+                "❌ <b>Usage:</b>\n"
+                "<code>/premiumuser USER_ID</code>"
+            )
+
+            return
+
+        try:
+
+            user_id = int(
+                message.command[1]
+            )
+
+        except ValueError:
+
+            await message.reply_text(
+                "❌ Invalid User ID."
+            )
+
+            return
+
+        user = await get_user(
+            user_id
+        )
+
+        if not user:
+
+            await message.reply_text(
+                "❌ User not found."
+            )
+
+            return
+
+        premium = user.get(
+            "premium",
+            False
+        )
+
+        if not premium:
+
+            await message.reply_text(
+                "❌ This user does not currently "
+                "have Premium."
+            )
+
+            return
+
+        await message.reply_text(
+            "💎 <b>Premium User</b>\n\n"
+
+            f"🆔 ID: <code>{user_id}</code>\n"
+
+            f"📦 Plan: "
+            f"<b>{user.get('plan', 'Premium')}</b>\n"
+
+            f"💰 Paid: "
+            f"<b>₹{user.get('paid_amount', 0)}</b>\n"
+
+            f"🎬 Total plan requests: "
+            f"<b>{user.get('premium_requests', 0)}</b>\n"
+
+            f"🎟 Remaining: "
+            f"<b>{user.get('remaining_requests', 0)}</b>"
+        )
+
+
+    # ========================================================
+    # /activate USER_ID AMOUNT
+    #
+    # Example:
+    #
+    # /activate 123456789 100
+    # ========================================================
+
+    @app.on_message(
+        filters.command("activate")
+        & admin_only
+    )
+    async def activate_handler(
+        client,
+        message
+    ):
+
+        if len(message.command) < 3:
+
+            await message.reply_text(
+                "❌ <b>Usage:</b>\n\n"
+                "<code>/activate USER_ID AMOUNT</code>\n\n"
+                "<b>Example:</b>\n"
+                "<code>/activate 123456789 100</code>"
             )
 
             return
@@ -81,8 +336,8 @@ def register_admin_handlers(app):
         except ValueError:
 
             await message.reply_text(
-                "❌ USER_ID and AMOUNT "
-                "must be numbers."
+                "❌ User ID and amount must "
+                "be numbers."
             )
 
             return
@@ -94,15 +349,7 @@ def register_admin_handlers(app):
         if not plan:
 
             await message.reply_text(
-                "❌ Invalid premium amount.\n\n"
-                "Available plans:\n"
-                "₹10\n"
-                "₹20\n"
-                "₹50\n"
-                "₹100\n"
-                "₹200\n"
-                "₹500\n"
-                "₹1000"
+                "❌ Invalid Premium plan."
             )
 
             return
@@ -114,21 +361,27 @@ def register_admin_handlers(app):
         if not user:
 
             await message.reply_text(
-                "❌ User not found.\n\n"
-                "Ask the user to start the bot "
-                "first using /start."
+                "❌ User does not exist in "
+                "the database.\n\n"
+                "Ask the user to start the bot first."
             )
 
             return
 
-        activated = await activate_premium(
+        success = await activate_premium(
             user_id=user_id,
-            plan_name=plan["name"],
+            plan_name=plan.get(
+                "name",
+                "Premium"
+            ),
             amount=amount,
-            requests=plan["requests"]
+            requests=plan.get(
+                "requests",
+                0
+            )
         )
 
-        if not activated:
+        if not success:
 
             await message.reply_text(
                 "❌ Premium activation failed."
@@ -138,267 +391,66 @@ def register_admin_handlers(app):
 
         await message.reply_text(
             "✅ <b>Premium Activated</b>\n\n"
-            f"👤 User ID: <code>{user_id}</code>\n"
-            f"📦 Plan: <b>{plan['name']}</b>\n"
-            f"💰 Amount: ₹{amount}\n"
+
+            f"🆔 User: "
+            f"<code>{user_id}</code>\n"
+
+            f"📦 Plan: "
+            f"<b>{plan.get('name', 'Premium')}</b>\n"
+
+            f"💰 Amount: "
+            f"<b>₹{amount}</b>\n"
+
             f"🎬 Requests: "
-            f"<b>{plan['requests']}</b>"
+            f"<b>{plan.get('requests', 0)}</b>"
         )
 
-        # Notify user.
         try:
 
             await client.send_message(
                 user_id,
-                "🎉 <b>Premium Activated!</b>\n\n"
-                f"📦 Plan: <b>{plan['name']}</b>\n"
-                f"💰 Paid: ₹{amount}\n"
+
+                "🎉 <b>Your Premium is Activated!</b>\n\n"
+
+                f"📦 Plan: "
+                f"<b>{plan.get('name', 'Premium')}</b>\n"
+
+                f"💰 Paid: "
+                f"<b>₹{amount}</b>\n"
+
                 f"🎬 Movie requests: "
-                f"<b>{plan['requests']}</b>\n\n"
-                "Your Premium plan is now active.\n"
-                "You can start searching movies! 🍿"
+                f"<b>{plan.get('requests', 0)}</b>\n\n"
+
+                "✅ You can now search and request movies."
             )
 
         except Exception as e:
 
-            print(
-                f"Could not notify user "
-                f"{user_id}: {e}"
+            logger.warning(
+                "Could not notify user %s: %s",
+                user_id,
+                e
             )
 
+
     # ========================================================
-    # INDEX DATABASE CHANNEL
+    # /deactivate USER_ID
     # ========================================================
 
     @app.on_message(
-        filters.command("index")
+        filters.command("deactivate")
+        & admin_only
     )
-    async def index_handler(
+    async def deactivate_handler(
         client,
         message
     ):
 
-        if message.from_user.id not in ADMIN_IDS:
+        if len(message.command) < 2:
 
             await message.reply_text(
-                "❌ You are not authorized."
-            )
-
-            return
-
-        status = await message.reply_text(
-            "🔄 <b>Indexing started...</b>\n\n"
-            "Please wait while the bot scans "
-            "the database channel."
-        )
-
-        try:
-
-            count = await index_channel(
-                client
-            )
-
-            await status.edit_text(
-                "✅ <b>Indexing Completed</b>\n\n"
-                f"🎬 Files indexed: <b>{count}</b>\n\n"
-                "You can now search the database."
-            )
-
-        except Exception as e:
-
-            print(
-                f"Indexing error: {e}"
-            )
-
-            await status.edit_text(
-                "❌ <b>Indexing Failed</b>\n\n"
-                f"<code>{str(e)[:1000]}</code>"
-            )
-
-    # ========================================================
-    # START / RESUME INDEXING
-    # ========================================================
-
-    @app.on_message(
-        filters.command("index")
-    )
-    async def index_handler(
-        client,
-        message
-    ):
-
-        if not is_admin(
-            message.from_user.id
-        ):
-
-            await message.reply_text(
-                "❌ You are not authorized."
-            )
-
-            return
-
-        status = await get_index_status()
-
-        if status["running"]:
-
-            await message.reply_text(
-                "⚠️ <b>Indexer is already running.</b>\n\n"
-                f"🎬 Indexed: "
-                f"<b>{status['indexed_count']}</b>"
-            )
-
-            return
-
-        status_message = await message.reply_text(
-            "🚀 <b>Database indexing started.</b>\n\n"
-            "The bot will resume from its last "
-            "saved position."
-        )
-
-        try:
-
-            count = await index_channel(
-                client,
-                status_message
-            )
-
-            final_status = await get_index_status()
-
-            await status_message.edit_text(
-                "✅ <b>Indexing Finished</b>\n\n"
-                f"🎬 Total indexed: "
-                f"<b>{count}</b>\n"
-                f"🆔 Last message: "
-                f"<code>{final_status['last_message_id']}</code>"
-            )
-
-        except Exception as e:
-
-            print(
-                f"Indexer error: {e}"
-            )
-
-            await status_message.edit_text(
-                "❌ <b>Indexer Error</b>\n\n"
-                f"<code>{str(e)[:1500]}</code>"
-            )
-
-
-    # ========================================================
-    # INDEX STATUS
-    # ========================================================
-
-    @app.on_message(
-        filters.command("indexstatus")
-    )
-    async def index_status_handler(
-        client,
-        message
-    ):
-
-        if not is_admin(
-            message.from_user.id
-        ):
-
-            return
-
-        status = await get_index_status()
-
-        running = (
-            "🟢 Running"
-            if status["running"]
-            else "🔴 Stopped"
-        )
-
-        updated = status.get(
-            "updated_at"
-        )
-
-        if updated:
-
-            updated_text = str(
-                updated
-            )
-
-        else:
-
-            updated_text = "Never"
-
-        await message.reply_text(
-            "📊 <b>Database Indexer</b>\n\n"
-            f"Status: <b>{running}</b>\n"
-            f"🎬 Indexed: "
-            f"<b>{status['indexed_count']}</b>\n"
-            f"🆔 Last message: "
-            f"<code>{status['last_message_id']}</code>\n"
-            f"🕐 Updated: "
-            f"<code>{updated_text}</code>"
-        )
-
-
-    # ========================================================
-    # STOP INDEXING
-    # ========================================================
-
-    @app.on_message(
-        filters.command("stopindex")
-    )
-    async def stop_index_handler(
-        client,
-        message
-    ):
-
-        if not is_admin(
-            message.from_user.id
-        ):
-
-            return
-
-        status = await get_index_status()
-
-        if not status["running"]:
-
-            await message.reply_text(
-                "ℹ️ The indexer is not running."
-            )
-
-            return
-
-        stop_indexing()
-
-        await message.reply_text(
-            "🛑 <b>Stopping indexer...</b>\n\n"
-            "The current progress will be saved."
-        )
-
-
-    # ========================================================
-    # REMOVE PREMIUM
-    # ========================================================
-
-    @app.on_message(
-        filters.command(
-            "removepremium"
-        )
-    )
-    async def remove_premium_handler(
-        client,
-        message
-    ):
-
-        if not is_admin(
-            message.from_user.id
-        ):
-
-            return
-
-        if len(
-            message.command
-        ) != 2:
-
-            await message.reply_text(
-                "Usage:\n"
-                "<code>/removepremium USER_ID</code>"
+                "❌ <b>Usage:</b>\n"
+                "<code>/deactivate USER_ID</code>"
             )
 
             return
@@ -412,81 +464,7 @@ def register_admin_handlers(app):
         except ValueError:
 
             await message.reply_text(
-                "❌ Invalid user ID."
-            )
-
-            return
-
-        success = await remove_premium(
-            user_id
-        )
-
-        if success:
-
-            await message.reply_text(
-                "✅ Premium removed from "
-                f"<code>{user_id}</code>."
-            )
-
-            try:
-
-                await client.send_message(
-                    user_id,
-                    "⚠️ Your Premium plan "
-                    "has been deactivated."
-                )
-
-            except Exception:
-                pass
-
-        else:
-
-            await message.reply_text(
-                "❌ User not found."
-            )
-
-
-    # ========================================================
-    # USER PLAN CHECK
-    # ========================================================
-
-    @app.on_message(
-        filters.command(
-            "premiuminfo"
-        )
-    )
-    async def premium_info_handler(
-        client,
-        message
-    ):
-
-        if not is_admin(
-            message.from_user.id
-        ):
-
-            return
-
-        if len(
-            message.command
-        ) != 2:
-
-            await message.reply_text(
-                "Usage:\n"
-                "<code>/premiuminfo USER_ID</code>"
-            )
-
-            return
-
-        try:
-
-            user_id = int(
-                message.command[1]
-            )
-
-        except ValueError:
-
-            await message.reply_text(
-                "❌ Invalid user ID."
+                "❌ Invalid User ID."
             )
 
             return
@@ -503,57 +481,148 @@ def register_admin_handlers(app):
 
             return
 
-        await message.reply_text(
-            "👤 <b>User Information</b>\n\n"
-            f"🆔 ID: <code>{user_id}</code>\n"
-            f"👤 Name: "
-            f"{user.get('first_name', '')}\n"
-            f"📦 Premium: "
-            f"{user.get('premium', False)}\n"
-            f"💎 Plan: "
-            f"{user.get('plan', 'None')}\n"
-            f"💰 Paid: "
-            f"₹{user.get('paid_amount', 0)}\n"
-            f"🎬 Remaining: "
-            f"{user.get('remaining_requests', 0)}\n"
-            f"📊 Used: "
-            f"{user.get('used_requests', 0)}"
+        success = await remove_premium(
+            user_id
         )
+
+        if not success:
+
+            await message.reply_text(
+                "❌ Failed to deactivate Premium."
+            )
+
+            return
+
+        await message.reply_text(
+            "✅ <b>Premium Deactivated</b>\n\n"
+            f"🆔 User: <code>{user_id}</code>"
+        )
+
+        try:
+
+            await client.send_message(
+                user_id,
+
+                "ℹ️ <b>Premium Deactivated</b>\n\n"
+                "Your Premium access has been removed."
+            )
+
+        except Exception as e:
+
+            logger.warning(
+                "Could not notify user %s: %s",
+                user_id,
+                e
+            )
 
 
     # ========================================================
-    # BOT STATS
+    # /indexstatus
     # ========================================================
 
     @app.on_message(
-        filters.command(
-            "stats"
-        )
+        filters.command("indexstatus")
+        & admin_only
     )
-    async def stats_handler(
+    async def index_status_handler(
         client,
         message
     ):
 
-        if not is_admin(
-            message.from_user.id
-        ):
+        try:
 
-            return
+            from database import (
+                get_indexer_state
+            )
 
-        users = await count_users()
+            state = await get_indexer_state()
 
-        media = await count_media()
+            last_message = state.get(
+                "last_message_id",
+                0
+            )
 
-        premium_users = (
-            await count_premium_users()
-        )
+            indexed = state.get(
+                "indexed_count",
+                0
+            )
+
+            await message.reply_text(
+                "📚 <b>Indexer Status</b>\n\n"
+
+                f"🆔 Last message ID: "
+                f"<code>{last_message}</code>\n"
+
+                f"🎬 Indexed files: "
+                f"<b>{indexed}</b>"
+            )
+
+        except Exception as e:
+
+            logger.exception(
+                "Indexer status error: %s",
+                e
+            )
+
+            await message.reply_text(
+                "❌ Could not get indexer status."
+            )
+
+
+    # ========================================================
+    # /resetindex
+    # ========================================================
+
+    @app.on_message(
+        filters.command("resetindex")
+        & admin_only
+    )
+    async def reset_index_handler(
+        client,
+        message
+    ):
+
+        try:
+
+            from database import (
+                reset_indexer
+            )
+
+            await reset_indexer()
+
+            await message.reply_text(
+                "✅ <b>Indexer position reset.</b>\n\n"
+                "The next indexing run will start "
+                "from the beginning."
+            )
+
+        except Exception as e:
+
+            logger.exception(
+                "Reset index error: %s",
+                e
+            )
+
+            await message.reply_text(
+                "❌ Failed to reset indexer."
+            )
+
+
+    # ========================================================
+    # /id
+    # ========================================================
+
+    @app.on_message(
+        filters.command("id")
+    )
+    async def id_handler(
+        client,
+        message
+    ):
+
+        user_id = message.from_user.id
 
         await message.reply_text(
-            "📊 <b>Bot Statistics</b>\n\n"
-            f"👥 Users: <b>{users}</b>\n"
-            f"💎 Premium Users: "
-            f"<b>{premium_users}</b>\n"
-            f"🎬 Indexed Files: "
-            f"<b>{media}</b>"
-        )
+            "🆔 <b>Your Telegram ID</b>\n\n"
+            f"<code>{user_id}</code>"
+            )
