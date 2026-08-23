@@ -1,49 +1,84 @@
+import logging
+from datetime import datetime
+
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from config import (
     MONGO_URI,
-    DB_NAME
+    DB_NAME,
+    FREE_REQUESTS
+)
+
+
+logger = logging.getLogger(
+    "premium_movie_bot.database"
 )
 
 
 # ============================================================
-# MONGODB CONNECTION
+# MONGODB
 # ============================================================
 
-if not MONGO_URI:
-    raise RuntimeError(
-        "MONGO_URI environment variable is missing."
-    )
+mongo_client = None
+db = None
 
-
-mongo_client = AsyncIOMotorClient(
-    MONGO_URI
-)
-
-db = mongo_client[DB_NAME]
+users_collection = None
+media_collection = None
+admins_collection = None
+settings_collection = None
 
 
 # ============================================================
-# COLLECTIONS
-# ============================================================
-
-users_collection = db["users"]
-
-media_collection = db["media"]
-
-admins_collection = db["admins"]
-
-settings_collection = db["settings"]
-
-
-# ============================================================
-# DATABASE INITIALIZATION
+# INITIALIZE DATABASE
 # ============================================================
 
 async def init_database():
 
+    global mongo_client
+    global db
+    global users_collection
+    global media_collection
+    global admins_collection
+    global settings_collection
+
+    if not MONGO_URI:
+
+        raise RuntimeError(
+            "MONGO_URI is missing."
+        )
+
+    mongo_client = AsyncIOMotorClient(
+        MONGO_URI,
+        serverSelectionTimeoutMS=10000
+    )
+
+    # Test connection.
+    await mongo_client.admin.command(
+        "ping"
+    )
+
+    db = mongo_client[
+        DB_NAME
+    ]
+
+    users_collection = db[
+        "users"
+    ]
+
+    media_collection = db[
+        "media"
+    ]
+
+    admins_collection = db[
+        "admins"
+    ]
+
+    settings_collection = db[
+        "settings"
+    ]
+
     # --------------------------------------------------------
-    # USERS
+    # USER INDEXES
     # --------------------------------------------------------
 
     await users_collection.create_index(
@@ -51,80 +86,91 @@ async def init_database():
         unique=True
     )
 
+    await users_collection.create_index(
+        "username"
+    )
+
+    await users_collection.create_index(
+        "premium"
+    )
+
     # --------------------------------------------------------
-    # MEDIA
+    # MEDIA INDEXES
     # --------------------------------------------------------
 
     await media_collection.create_index(
         [
-            ("title", "text"),
-            ("file_name", "text"),
-            ("caption", "text")
+            ("title_key", 1)
+        ]
+    )
+
+    await media_collection.create_index(
+        [
+            ("message_id", 1)
+        ]
+    )
+
+    await media_collection.create_index(
+        [
+            ("channel_id", 1),
+            ("message_id", 1)
         ],
-        name="media_text_search"
-    )
-
-    await media_collection.create_index(
-        "title_key"
-    )
-
-    await media_collection.create_index(
-        "message_id"
-    )
-
-    await media_collection.create_index(
-        "channel_id"
-    )
-
-    # --------------------------------------------------------
-    # ADMINS
-    # --------------------------------------------------------
-
-    await admins_collection.create_index(
-        "user_id",
         unique=True
     )
 
-    print("MongoDB indexes ready.")
+    # --------------------------------------------------------
+    # SETTINGS INDEX
+    # --------------------------------------------------------
+
+    await settings_collection.create_index(
+        "_id",
+        unique=True
+    )
+
+    logger.info(
+        "MongoDB indexes ready."
+    )
 
 
 # ============================================================
-# USER FUNCTIONS
+# CLOSE DATABASE
+# ============================================================
+
+async def close_database():
+
+    global mongo_client
+
+    if mongo_client:
+
+        mongo_client.close()
+
+        mongo_client = None
+
+
+# ============================================================
+# CREATE USER
 # ============================================================
 
 async def create_user(
     user_id,
-    first_name="",
-    username=""
+    first_name=None,
+    username=None
 ):
 
-    existing = await users_collection.find_one(
-        {
-            "user_id": user_id
-        }
-    )
+    now = datetime.utcnow()
 
-    if existing:
-        return existing
+    document = {
 
-    user = {
         "user_id": user_id,
 
-        "first_name": first_name or "",
+        "first_name": (
+            first_name or ""
+        ),
 
-        "username": username or "",
+        "username": (
+            username or ""
+        ),
 
-        # Free requests
-        "free_requests": 5,
-
-        # Request tracking
-        "used_requests": 0,
-
-        "total_requests": 0,
-
-        "remaining_requests": 5,
-
-        # Premium
         "premium": False,
 
         "plan": None,
@@ -133,17 +179,44 @@ async def create_user(
 
         "premium_requests": 0,
 
-        "activated_at": None
+        "remaining_requests": FREE_REQUESTS,
+
+        "total_requests_used": 0,
+
+        "created_at": now,
+
+        "updated_at": now
     }
 
-    await users_collection.insert_one(
-        user
+    await users_collection.update_one(
+
+        {
+            "user_id": user_id
+        },
+
+        {
+            "$setOnInsert": document,
+
+            "$set": {
+                "updated_at": now
+            }
+        },
+
+        upsert=True
     )
 
-    return user
+    return await get_user(
+        user_id
+    )
 
 
-async def get_user(user_id):
+# ============================================================
+# GET USER
+# ============================================================
+
+async def get_user(
+    user_id
+):
 
     return await users_collection.find_one(
         {
@@ -152,40 +225,51 @@ async def get_user(user_id):
     )
 
 
-async def update_user_info(
+# ============================================================
+# UPDATE USER PROFILE
+# ============================================================
+
+async def update_user_profile(
     user_id,
     first_name=None,
     username=None
 ):
 
-    update = {}
-
-    if first_name is not None:
-        update["first_name"] = first_name
-
-    if username is not None:
-        update["username"] = username
-
-    if not update:
-        return
-
     await users_collection.update_one(
+
         {
             "user_id": user_id
         },
+
         {
-            "$set": update
-        }
+            "$set": {
+                "first_name": (
+                    first_name or ""
+                ),
+
+                "username": (
+                    username or ""
+                ),
+
+                "updated_at":
+                    datetime.utcnow()
+            }
+        },
+
+        upsert=True
     )
 
 
 # ============================================================
-# REQUEST COUNTER
+# ATOMIC REQUEST CONSUMPTION
 # ============================================================
 
-async def use_request(user_id):
+async def consume_request(
+    user_id
+):
 
-    result = await users_collection.update_one(
+    result = await users_collection.find_one_and_update(
+
         {
             "user_id": user_id,
 
@@ -193,11 +277,52 @@ async def use_request(user_id):
                 "$gt": 0
             }
         },
+
         {
             "$inc": {
-                "used_requests": 1,
-                "total_requests": 1,
-                "remaining_requests": -1
+                "remaining_requests": -1,
+
+                "total_requests_used": 1
+            },
+
+            "$set": {
+                "updated_at":
+                    datetime.utcnow()
+            }
+        },
+
+        return_document=True
+    )
+
+    return result is not None
+
+
+# ============================================================
+# RESTORE REQUEST
+#
+# Used if file delivery fails after charging the request.
+# ============================================================
+
+async def restore_request(
+    user_id
+):
+
+    result = await users_collection.update_one(
+
+        {
+            "user_id": user_id
+        },
+
+        {
+            "$inc": {
+                "remaining_requests": 1,
+
+                "total_requests_used": -1
+            },
+
+            "$set": {
+                "updated_at":
+                    datetime.utcnow()
             }
         }
     )
@@ -206,7 +331,7 @@ async def use_request(user_id):
 
 
 # ============================================================
-# PREMIUM
+# ACTIVATE PREMIUM
 # ============================================================
 
 async def activate_premium(
@@ -216,14 +341,15 @@ async def activate_premium(
     requests
 ):
 
-    from datetime import datetime
-
     result = await users_collection.update_one(
+
         {
             "user_id": user_id
         },
+
         {
             "$set": {
+
                 "premium": True,
 
                 "plan": plan_name,
@@ -234,11 +360,11 @@ async def activate_premium(
 
                 "remaining_requests": requests,
 
-                "used_requests": 0,
+                "premium_activated_at":
+                    datetime.utcnow(),
 
-                "total_requests": 0,
-
-                "activated_at": datetime.utcnow()
+                "updated_at":
+                    datetime.utcnow()
             }
         }
     )
@@ -246,14 +372,23 @@ async def activate_premium(
     return result.modified_count > 0
 
 
-async def remove_premium(user_id):
+# ============================================================
+# REMOVE PREMIUM
+# ============================================================
+
+async def remove_premium(
+    user_id
+):
 
     result = await users_collection.update_one(
+
         {
             "user_id": user_id
         },
+
         {
             "$set": {
+
                 "premium": False,
 
                 "plan": None,
@@ -262,7 +397,14 @@ async def remove_premium(user_id):
 
                 "premium_requests": 0,
 
-                "remaining_requests": 0
+                "remaining_requests":
+                    FREE_REQUESTS,
+
+                "premium_removed_at":
+                    datetime.utcnow(),
+
+                "updated_at":
+                    datetime.utcnow()
             }
         }
     )
@@ -271,63 +413,70 @@ async def remove_premium(user_id):
 
 
 # ============================================================
-# MEDIA
+# ADD MEDIA
 # ============================================================
 
-async def add_media(media):
+async def add_media(
+    data
+):
+
+    if not data:
+
+        return False
+
+    channel_id = data.get(
+        "channel_id"
+    )
+
+    message_id = data.get(
+        "message_id"
+    )
+
+    if channel_id is None:
+        return False
+
+    if message_id is None:
+        return False
 
     await media_collection.update_one(
-        {
-            "channel_id": media["channel_id"],
 
-            "message_id": media["message_id"]
-        },
         {
-            "$set": media
+            "channel_id": channel_id,
+
+            "message_id": message_id
         },
+
+        {
+            "$set": data
+        },
+
         upsert=True
     )
 
+    return True
 
-async def search_media(
-    query,
-    limit=10,
-    skip=0
+
+# ============================================================
+# GET MEDIA
+# ============================================================
+
+async def get_media(
+    channel_id,
+    message_id
 ):
 
-    cursor = media_collection.find(
-        {
-            "$text": {
-                "$search": query
-            }
-        },
-        {
-            "score": {
-                "$meta": "textScore"
-            }
-        }
-    ).sort(
-        [
-            (
-                "score",
-                {
-                    "$meta": "textScore"
-                }
-            )
-        ]
-    ).skip(
-        skip
-    ).limit(
-        limit
-    )
+    return await media_collection.find_one(
 
-    return await cursor.to_list(
-        length=limit
+        {
+            "channel_id": channel_id,
+
+            "message_id": message_id
+        }
     )
 
 
 # ============================================================
-# STATISTICS
+# COUNT USERS
 # ============================================================
 
 async def count_users():
@@ -337,12 +486,9 @@ async def count_users():
     )
 
 
-async def count_media():
-
-    return await media_collection.count_documents(
-        {}
-    )
-
+# ============================================================
+# COUNT PREMIUM USERS
+# ============================================================
 
 async def count_premium_users():
 
@@ -351,3 +497,139 @@ async def count_premium_users():
             "premium": True
         }
     )
+
+
+# ============================================================
+# COUNT MEDIA
+# ============================================================
+
+async def count_media():
+
+    return await media_collection.count_documents(
+        {}
+    )
+
+
+# ============================================================
+# BOT STATS
+# ============================================================
+
+async def get_stats():
+
+    total_users = await count_users()
+
+    premium_users = await count_premium_users()
+
+    total_media = await count_media()
+
+    return {
+
+        "users":
+            total_users,
+
+        "premium_users":
+            premium_users,
+
+        "media":
+            total_media
+    }
+
+
+# ============================================================
+# INDEXER STATE
+# ============================================================
+
+async def get_indexer_state():
+
+    state = await settings_collection.find_one(
+        {
+            "_id": "indexer"
+        }
+    )
+
+    if not state:
+
+        return {
+
+            "last_message_id": 0,
+
+            "indexed_count": 0,
+
+            "updated_at": None
+        }
+
+    return state
+
+
+# ============================================================
+# SAVE INDEXER STATE
+# ============================================================
+
+async def save_indexer_state(
+    last_message_id,
+    indexed_count
+):
+
+    await settings_collection.update_one(
+
+        {
+            "_id": "indexer"
+        },
+
+        {
+            "$set": {
+
+                "last_message_id":
+                    last_message_id,
+
+                "indexed_count":
+                    indexed_count,
+
+                "updated_at":
+                    datetime.utcnow()
+            }
+        },
+
+        upsert=True
+    )
+
+
+# ============================================================
+# RESET INDEXER
+# ============================================================
+
+async def reset_indexer():
+
+    await settings_collection.update_one(
+
+        {
+            "_id": "indexer"
+        },
+
+        {
+            "$set": {
+
+                "last_message_id": 0,
+
+                "indexed_count": 0,
+
+                "updated_at":
+                    datetime.utcnow()
+            }
+        },
+
+        upsert=True
+    )
+
+
+# ============================================================
+# DELETE MEDIA INDEX
+# ============================================================
+
+async def delete_media_index():
+
+    result = await media_collection.delete_many(
+        {}
+    )
+
+    return result.deleted_count
