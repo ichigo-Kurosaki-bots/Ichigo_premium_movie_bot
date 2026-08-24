@@ -13,6 +13,7 @@ from database import (
     count_media,
     count_chats,
     get_stats,
+    get_media_storage_stats,
     activate_premium,
     remove_premium
 )
@@ -629,9 +630,9 @@ def register_admin_handlers(app):
 
         try:
 
-            from database import (
-                get_indexer_state
-            )
+            # ----------------------------------------------------
+            # GET INDEXER STATE
+            # ----------------------------------------------------
 
             state = await get_indexer_state()
 
@@ -640,19 +641,68 @@ def register_admin_handlers(app):
                 0
             )
 
-            indexed = state.get(
-                "indexed_count",
+            # ----------------------------------------------------
+            # GET REAL MONGODB MEDIA STATISTICS
+            # ----------------------------------------------------
+
+            storage = await get_media_storage_stats()
+
+            total_files = storage.get(
+                "total_files",
                 0
             )
 
+            total_size = storage.get(
+                "total_size",
+                0
+            )
+
+            # ----------------------------------------------------
+            # CONVERT BYTES
+            # ----------------------------------------------------
+
+            if total_size >= 1024 ** 3:
+
+                size_text = (
+                    f"{total_size / (1024 ** 3):.2f} GB"
+                )
+
+            elif total_size >= 1024 ** 2:
+
+                size_text = (
+                    f"{total_size / (1024 ** 2):.2f} MB"
+            )
+
+            elif total_size >= 1024:
+
+                size_text = (
+                    f"{total_size / 1024:.2f} KB"
+            )
+
+            else:
+
+                size_text = (
+                    f"{total_size} B"
+                )
+
+            # ----------------------------------------------------
+            # RESPONSE
+            # ----------------------------------------------------
+
             await message.reply_text(
-                "📚 <b>Indexer Status</b>\n\n"
 
-                f"🆔 Last message ID: "
-                f"<code>{last_message}</code>\n"
+                "📚 <b>INDEXER STATUS</b>\n\n"
 
-                f"🎬 Indexed files: "
-                f"<b>{indexed}</b>"
+                f"🎬 <b>Total Indexed Files:</b> "
+                f"<b>{total_files:,}</b>\n\n"
+
+                f"💾 <b>Total Indexed Storage:</b> "
+                f"<b>{size_text}</b>\n\n"
+
+                f"🆔 <b>Last Message ID:</b> "
+                f"<code>{last_message}</code>\n\n"
+
+                "✅ <b>Database: MongoDB</b>"
             )
 
         except Exception as e:
@@ -663,7 +713,8 @@ def register_admin_handlers(app):
             )
 
             await message.reply_text(
-                "❌ Could not get indexer status."
+                "❌ <b>Could not get indexer status.</b>\n\n"
+                f"<code>{e}</code>"
             )
 
 
