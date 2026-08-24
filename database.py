@@ -4,7 +4,12 @@ from datetime import datetime
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import ReturnDocument
 
-from config import MONGO_URI, DB_NAME, FREE_REQUESTS
+from config import (
+    MONGO_URI,
+    DB_NAME,
+    FREE_REQUESTS,
+    STORAGE_LIMIT_MB
+)
 
 
 logger = logging.getLogger(__name__)
@@ -21,6 +26,7 @@ users_collection = None
 media_collection = None
 search_sessions_collection = None
 settings_collection = None
+chats_collection = None
 
 
 # ============================================================
@@ -35,6 +41,7 @@ async def init_database():
     global media_collection
     global search_sessions_collection
     global settings_collection
+    global chats_collection
 
     if not MONGO_URI:
         raise RuntimeError(
@@ -63,12 +70,21 @@ async def init_database():
         "settings"
     ]
 
+    chats_collection = db[
+        "chats"
+    ]
+
     # --------------------------------------------------------
     # USER INDEX
     # --------------------------------------------------------
 
     await users_collection.create_index(
         "user_id",
+        unique=True
+    )
+
+    await chats_collection.create_index(
+        "chat_id",
         unique=True
     )
 
@@ -215,6 +231,50 @@ async def update_user(
         }
     )
 
+# ============================================================
+# CHAT STATISTICS
+# ============================================================
+
+async def register_chat(
+    chat_id,
+    chat_type=None,
+    title=None
+):
+
+    if chat_id is None:
+        return False
+
+    await chats_collection.update_one(
+
+        {
+            "chat_id": chat_id
+        },
+
+        {
+            "$set": {
+                "chat_id": chat_id,
+                "chat_type": chat_type or "",
+                "title": title or "",
+                "updated_at": datetime.utcnow()
+            },
+
+            "$setOnInsert": {
+                "created_at": datetime.utcnow()
+            }
+        },
+
+        upsert=True
+    )
+
+    return True
+
+
+async def count_chats():
+
+    return await chats_collection.count_documents(
+        {}
+    )
+    
 # ============================================================
 # REQUEST SYSTEM
 # ============================================================
@@ -453,22 +513,120 @@ async def count_premium_users():
     )
 
 
+async def count_media():
+
+    return await media_collection.count_documents(
+        {}
+    )
+
+
+async def count_chats():
+
+    return await chats_collection.count_documents(
+        {}
+    )
+
+
+async def get_total_file_size():
+
+    pipeline = [
+
+        {
+            "$match": {
+                "file_size": {
+                    "$exists": True,
+                    "$type": "number"
+                }
+            }
+        },
+
+        {
+            "$group": {
+
+                "_id": None,
+
+                "total_size": {
+                    "$sum": "$file_size"
+                }
+            }
+        }
+    ]
+
+    result = await media_collection.aggregate(
+        pipeline
+    ).to_list(
+        length=1
+    )
+
+    if not result:
+
+        return 0
+
+    return result[0].get(
+        "total_size",
+        0
+    )
+
+
 async def get_stats():
 
     users = await count_users()
 
-    premium_users = await count_premium_users()
+    chats = await count_chats()
+
+    premium_users = (
+        await count_premium_users()
+    )
 
     media = await count_media()
 
+    total_size_bytes = (
+        await get_total_file_size()
+    )
+
+    # --------------------------------------------------------
+    # STORAGE
+    # --------------------------------------------------------
+
+    used_storage_mb = (
+        total_size_bytes
+        / (1024 * 1024)
+    )
+
+    free_storage_mb = max(
+        STORAGE_LIMIT_MB
+        - used_storage_mb,
+        0
+    )
+
     return {
 
-        "users": users,
+        "users":
+            users,
+
+        "chats":
+            chats,
 
         "premium_users":
             premium_users,
 
-        "media": media
+        "media":
+            media,
+
+        "total_size":
+            total_size_bytes,
+
+        "used_storage":
+            used_storage_mb,
+
+        "free_storage":
+            free_storage_mb,
+
+        "used_storage_text":
+            f"{used_storage_mb:.2f} MB",
+
+        "free_storage_text":
+            f"{free_storage_mb:.2f} MB"
     }
 
 
