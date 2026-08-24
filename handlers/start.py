@@ -70,17 +70,17 @@ def start_buttons(bot_username):
         [
             [
                 InlineKeyboardButton(
-                    "➕ Add Me To Your Group",
+                    "• ᴀᴅᴅ ᴍᴇ ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ •",
                     url=add_group_url
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "ℹ️ About",
+                    "• ᴀʙᴏᴜᴛ •",
                     callback_data="start_about"
                 ),
                 InlineKeyboardButton(
-                    "📢 Updates",
+                    "• ᴜᴘᴅᴀᴛᴇs •",
                     url=UPDATES_URL
                 )
             ]
@@ -102,20 +102,18 @@ def build_start_text(
 
         "<b>MY NAME IS PREMIUM MOVIE BOT 🎬</b>\n\n"
 
-        "I AM A POWERFUL MOVIE SEARCH BOT. "
-        "YOU CAN USE ME IN YOUR GROUP TO "
-        "SEARCH MOVIES, SERIES AND MORE. 🤩\n\n"
+        "<b>I AM A POWERFUL MOVIE SEARCH BOT.</b> "
+        "<b>YOU CAN USE ME IN YOUR GROUP TO </b>"
+        "<b>SEARCH MOVIES, SERIES AND MORE. 🤩</b>\n\n"
 
         f"🆓 <b>FREE REQUESTS REMAINING:</b> "
         f"<b>{remaining}</b>\n\n"
 
-        "💎 ACTIVATE PREMIUM AFTER YOUR "
-        "FREE REQUESTS ARE FINISHED.\n\n"
+        "<b> ACTIVATE PREMIUM AFTER YOUR</b> "
+        "<b>FREE REQUESTS ARE FINISHED.</b>\n\n"
 
-        "🌿 <b>POWERED BY:</b> "
-        "<b>@Aero_Unity</b>"
+        "🌿<b>Mᴀɪɴᴛᴀɪɴᴇᴅ ʙʏ: @Mr_Mohammed_29</b>"
     )
-
 
 # ============================================================
 # REGISTER START HANDLERS
