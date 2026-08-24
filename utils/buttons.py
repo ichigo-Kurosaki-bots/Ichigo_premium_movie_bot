@@ -16,23 +16,23 @@ def home_buttons():
         [
             [
                 InlineKeyboardButton(
-                    "• Sᴇᴀʀᴄʜ Mᴏᴠɪᴇs •",
+                    "🔎 Search Movies",
                     callback_data="search_help"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
+                    "💎 Premium Plans",
                     callback_data="premium_plans"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "• Mʏ Aᴄᴄᴏᴜɴᴛ •",
+                    "👤 My Account",
                     callback_data="my_account"
                 ),
                 InlineKeyboardButton(
-                    "• ʜᴇʟᴘ •",
+                    "📚 Help",
                     callback_data="help"
                 )
             ]
@@ -47,15 +47,9 @@ def home_buttons():
 def premium_buttons():
 
     buttons = []
-
     row = []
 
     for amount, plan in PREMIUM_PLANS.items():
-
-        plan_name = plan.get(
-            "name",
-            "Premium"
-        )
 
         requests = plan.get(
             "requests",
@@ -70,27 +64,22 @@ def premium_buttons():
         )
 
         if len(row) == 2:
-
             buttons.append(row)
-
             row = []
 
     if row:
-
         buttons.append(row)
 
     buttons.append(
         [
             InlineKeyboardButton(
-                "• ʙᴀᴄᴋ •",
+                "⬅️ Back",
                 callback_data="home"
             )
         ]
     )
 
-    return InlineKeyboardMarkup(
-        buttons
-    )
+    return InlineKeyboardMarkup(buttons)
 
 
 # ============================================================
@@ -103,19 +92,19 @@ def plan_confirm_buttons(amount):
         [
             [
                 InlineKeyboardButton(
-                    "• 💳 Pᴀʏᴍᴇɴᴛ Iɴsᴛʀᴜᴄᴛɪᴏɴs •",
+                    "💳 Payment Instructions",
                     callback_data=f"pay_{amount}"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "• Aʟʟ Pʟᴀɴs •",
+                    "⬅️ All Plans",
                     callback_data="premium_plans"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "• ʜᴏᴍᴇ •",
+                    "🏠 Home",
                     callback_data="home"
                 )
             ]
@@ -133,13 +122,13 @@ def account_buttons():
         [
             [
                 InlineKeyboardButton(
-                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
+                    "💎 Premium Plans",
                     callback_data="premium_plans"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "• ʜᴏᴍᴇ •",
+                    "🏠 Home",
                     callback_data="home"
                 )
             ]
@@ -157,14 +146,32 @@ def help_buttons():
         [
             [
                 InlineKeyboardButton(
-                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
+                    "💎 Premium Plans",
                     callback_data="premium_plans"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "• ʜᴏᴍᴇ •",
+                    "🏠 Home",
                     callback_data="home"
+                )
+            ]
+        ]
+    )
+
+
+# ============================================================
+# UPDATES BUTTON
+# ============================================================
+
+def updates_button():
+
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "📢 Join Updates Channel",
+                    url="https://t.me/Aero_Unity"
                 )
             ]
         ]
@@ -201,25 +208,19 @@ def search_result_buttons(
         )
 
         if len(title) > 55:
-
-            title = (
-                title[:52]
-                + "..."
-            )
+            title = title[:52] + "..."
 
         buttons.append(
             [
                 InlineKeyboardButton(
-                    f"• {title}",
-                    callback_data=(
-                        f"file_{message_id}"
-                    )
+                    f"🎬 {title}",
+                    callback_data=f"file_{message_id}"
                 )
             ]
         )
 
     # --------------------------------------------------------
-    # SEND ALL
+    # SEND ALL + PREMIUM
     # --------------------------------------------------------
 
     if results:
@@ -227,12 +228,14 @@ def search_result_buttons(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    "• sᴇɴᴅ ᴀʟʟ •",
+                    "📤 SEND ALL",
                     callback_data=(
-                        f"sendall_"
-                        f"{session_id}_"
-                        f"{page}"
+                        f"sendall_{session_id}_{page}"
                     )
+                ),
+                InlineKeyboardButton(
+                    "💎 PREMIUM",
+                    callback_data="premium_plans"
                 )
             ]
         )
@@ -247,7 +250,7 @@ def search_result_buttons(
 
         navigation.append(
             InlineKeyboardButton(
-                "• ʙᴀᴄᴋ •",
+                "⬅️ Previous",
                 callback_data=(
                     f"searchpage_"
                     f"{session_id}_"
@@ -260,7 +263,7 @@ def search_result_buttons(
 
         navigation.append(
             InlineKeyboardButton(
-                "• ɴᴇxᴛ •",
+                "Next ➡️",
                 callback_data=(
                     f"searchpage_"
                     f"{session_id}_"
@@ -270,44 +273,13 @@ def search_result_buttons(
         )
 
     if navigation:
+        buttons.append(navigation)
 
-        buttons.append(
-            navigation
-        )
-
-    # --------------------------------------------------------
-    # PREMIUM
-    # --------------------------------------------------------
-
-    buttons.append(
-        [
-            InlineKeyboardButton(
-                "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
-                callback_data="premium_plans"
-            )
-        ]
-    )
-
-    # --------------------------------------------------------
-    # HOME
-    # --------------------------------------------------------
-
-    buttons.append(
-        [
-            InlineKeyboardButton(
-                "• ʜᴏᴍᴇ •",
-                callback_data="home"
-            )
-        ]
-    )
-
-    return InlineKeyboardMarkup(
-        buttons
-    )
+    return InlineKeyboardMarkup(buttons)
 
 
 # ============================================================
-# FILE CONFIRMATION BUTTONS
+# FILE BUTTONS
 # ============================================================
 
 def file_buttons():
@@ -316,14 +288,8 @@ def file_buttons():
         [
             [
                 InlineKeyboardButton(
-                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
-                    callback_data="premium_plans"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "• ʜᴏᴍᴇ •",
-                    callback_data="home"
+                    "📢 Join Updates Channel",
+                    url="https://t.me/Aero_Unity"
                 )
             ]
         ]
@@ -340,7 +306,7 @@ def back_button():
         [
             [
                 InlineKeyboardButton(
-                    "• ʙᴀᴄᴋ •",
+                    "⬅️ Back",
                     callback_data="home"
                 )
             ]
@@ -358,7 +324,7 @@ def cancel_button():
         [
             [
                 InlineKeyboardButton(
-                    "• ᴄᴀɴᴄᴇʟ •",
+                    "❌ Cancel",
                     callback_data="home"
                 )
             ]
