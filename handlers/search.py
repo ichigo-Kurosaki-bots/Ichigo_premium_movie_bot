@@ -30,7 +30,8 @@ from search import search_movies
 from utils.buttons import (
     search_result_buttons,
     premium_buttons,
-    home_buttons
+    home_buttons,
+    file_sent_buttons
 )
 
 from utils.helpers import (
@@ -39,6 +40,52 @@ from utils.helpers import (
 
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# SETTINGS
+# ============================================================
+
+FILE_DELETE_SECONDS = 300
+
+
+# ============================================================
+# AUTO DELETE SENT FILE
+# ============================================================
+
+async def delete_after_five_minutes(
+    client,
+    chat_id,
+    message_id
+):
+
+    try:
+
+        await asyncio.sleep(
+            FILE_DELETE_SECONDS
+        )
+
+        await client.delete_messages(
+            chat_id=chat_id,
+            message_ids=message_id
+        )
+
+        logger.info(
+            "Deleted sent file message %s "
+            "from user %s after 5 minutes.",
+            message_id,
+            chat_id
+        )
+
+    except Exception as e:
+
+        logger.warning(
+            "Could not delete sent file %s "
+            "from user %s: %s",
+            message_id,
+            chat_id,
+            e
+        )
 
 
 # ============================================================
@@ -490,7 +537,6 @@ def register_search_handlers(app):
             await message.reply_text(
                 "🚫 <b>Your movie request limit "
                 "has been reached.</b>\n\n"
-
                 "💎 Please activate a Premium plan "
                 "to continue receiving files.",
                 reply_markup=premium_buttons()
@@ -539,10 +585,8 @@ def register_search_handlers(app):
 
             await wait.edit_text(
                 "😕 <b>No results found.</b>\n\n"
-
-                f"🔎 Search:\n"
+                "🔎 Search:\n"
                 f"<code>{escape_html(query)}</code>\n\n"
-
                 "Try another movie or series name."
             )
 
@@ -727,10 +771,6 @@ def register_search_handlers(app):
 
     # ========================================================
     # SEND ALL
-    #
-    # callback:
-    #
-    # sendall_SESSION_ID_PAGE
     # ========================================================
 
     @app.on_callback_query(
@@ -877,14 +917,11 @@ def register_search_handlers(app):
 
             await callback.message.reply_text(
                 "💎 <b>Not enough requests</b>\n\n"
-
                 f"📦 Files to send: <b>{required}</b>\n"
-                f"🎟 Your remaining requests: "
+                f"🎟 Remaining requests: "
                 f"<b>{remaining}</b>\n\n"
-
                 "Please activate Premium to get "
                 "more requests.",
-
                 reply_markup=premium_buttons()
             )
 
@@ -902,10 +939,6 @@ def register_search_handlers(app):
         # SEND FILES
         # ----------------------------------------------------
 
-        sent_count = 0
-
-        failed_count = 0
-
         for item in results:
 
             message_id = item.get(
@@ -913,37 +946,56 @@ def register_search_handlers(app):
             )
 
             if not message_id:
-
-                failed_count += 1
-
                 continue
 
-            # ----------------------------------------------
-            # CONSUME ONE REQUEST
-            # ----------------------------------------------
+            # ------------------------------------------------
+            # CONSUME REQUEST
+            # ------------------------------------------------
 
             consumed = await consume_request(
                 user_id
             )
 
             if not consumed:
-
-                failed_count += 1
-
                 break
 
             try:
 
-                await client.copy_message(
-
+                sent_message = await client.copy_message(
                     chat_id=user_id,
-
                     from_chat_id=DATABASE_CHANNEL_ID,
-
                     message_id=int(message_id)
                 )
 
-                sent_count += 1
+                # --------------------------------------------
+                # ADD UPDATES BUTTON
+                # --------------------------------------------
+
+                try:
+
+                    await sent_message.edit_reply_markup(
+                        reply_markup=file_sent_buttons()
+                    )
+
+                except Exception as e:
+
+                    logger.warning(
+                        "Could not add Updates button "
+                        "to sent file: %s",
+                        e
+                    )
+
+                # --------------------------------------------
+                # DELETE AFTER 5 MINUTES
+                # --------------------------------------------
+
+                asyncio.create_task(
+                    delete_after_five_minutes(
+                        client=client,
+                        chat_id=user_id,
+                        message_id=sent_message.id
+                    )
+                )
 
             except Exception as e:
 
@@ -957,36 +1009,9 @@ def register_search_handlers(app):
                     user_id
                 )
 
-                failed_count += 1
-
         # ----------------------------------------------------
-        # UPDATED BALANCE
+        # DO NOT SEND COMPLETED MESSAGE
         # ----------------------------------------------------
-
-        updated_user = await get_user(
-            user_id
-        )
-
-        remaining = get_remaining_requests(
-            updated_user
-        )
-
-        # ----------------------------------------------------
-        # RESULT MESSAGE
-        # ----------------------------------------------------
-
-        text = (
-            "📤 <b>SEND ALL completed</b>\n\n"
-            f"✅ Sent: <b>{sent_count}</b>\n"
-            f"❌ Failed: <b>{failed_count}</b>\n\n"
-            f"🎟 Remaining requests: "
-            f"<b>{remaining}</b>"
-        )
-
-        await client.send_message(
-            user_id,
-            text
-        )
 
 
     # ========================================================
@@ -1023,6 +1048,10 @@ def register_search_handlers(app):
 
             return
 
+        # ----------------------------------------------------
+        # GET USER
+        # ----------------------------------------------------
+
         user = await get_user(
             user_id
         )
@@ -1041,6 +1070,10 @@ def register_search_handlers(app):
                 )
             )
 
+        # ----------------------------------------------------
+        # CHECK REQUEST BALANCE
+        # ----------------------------------------------------
+
         if not can_use_movie(user):
 
             await callback.answer(
@@ -1050,16 +1083,17 @@ def register_search_handlers(app):
 
             await callback.message.reply_text(
                 "💎 <b>Premium Required</b>\n\n"
-
                 "Your available movie requests "
                 "have been used.\n\n"
-
                 "Choose a Premium plan to continue.",
-
                 reply_markup=premium_buttons()
             )
 
             return
+
+        # ----------------------------------------------------
+        # CONSUME REQUEST
+        # ----------------------------------------------------
 
         consumed = await consume_request(
             user_id
@@ -1075,7 +1109,6 @@ def register_search_handlers(app):
             await callback.message.reply_text(
                 "💎 <b>Premium Required</b>\n\n"
                 "Please activate a Premium plan.",
-
                 reply_markup=premium_buttons()
             )
 
@@ -1085,14 +1118,15 @@ def register_search_handlers(app):
             "📤 Sending your file..."
         )
 
+        # ----------------------------------------------------
+        # SEND FILE
+        # ----------------------------------------------------
+
         try:
 
-            await client.copy_message(
-
+            sent_message = await client.copy_message(
                 chat_id=user_id,
-
                 from_chat_id=DATABASE_CHANNEL_ID,
-
                 message_id=message_id
             )
 
@@ -1109,27 +1143,38 @@ def register_search_handlers(app):
 
             await callback.message.reply_text(
                 "❌ <b>File delivery failed.</b>\n\n"
-
                 "Your movie request has been restored.\n"
                 "Please try again."
             )
 
             return
 
-        updated_user = await get_user(
-            user_id
-        )
+        # ----------------------------------------------------
+        # ADD UPDATES BUTTON
+        # ----------------------------------------------------
 
-        remaining = get_remaining_requests(
-            updated_user
-        )
+        try:
 
-        await client.send_message(
+            await sent_message.edit_reply_markup(
+                reply_markup=file_sent_buttons()
+            )
 
-            user_id,
+        except Exception as e:
 
-            "✅ <b>File sent successfully!</b>\n\n"
+            logger.warning(
+                "Could not add Updates button "
+                "to sent file: %s",
+                e
+            )
 
-            f"🎟 Remaining requests: "
-            f"<b>{remaining}</b>"
+        # ----------------------------------------------------
+        # DELETE AFTER 5 MINUTES
+        # ----------------------------------------------------
+
+        asyncio.create_task(
+            delete_after_five_minutes(
+                client=client,
+                chat_id=user_id,
+                message_id=sent_message.id
+            )
         )
