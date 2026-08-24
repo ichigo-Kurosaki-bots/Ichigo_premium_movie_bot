@@ -242,28 +242,28 @@ def register_start_handlers(app):
 
             animation = await client.send_message(
                 chat_id=user_id,
-                text="Sʜᴀᴅᴏᴡ Oғ Mᴏɴᴀʀᴄʜ. . ."
+                text="⚡️"
             )
 
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.6)
 
             await animation.edit_text(
                 "卍解 Bᴀɴᴋᴀɪ"
             )
 
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.6)
 
             await animation.edit_text(
                 "Tᴇɴsᴀ Zᴀɴɢᴇᴛsᴜ"
             )
 
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.6)
 
             await animation.edit_text(
-                "JIᴄʜɪɢᴏ Kᴜʀᴏsᴀᴋɪ..."
+                "Iᴄʜɪɢᴏ Kᴜʀᴏsᴀᴋɪ..."
             )
 
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.6)
 
             await animation.delete()
 
