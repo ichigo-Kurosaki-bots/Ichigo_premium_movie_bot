@@ -1,5 +1,8 @@
 import logging
 import asyncio
+import os
+import time
+import psutil
 
 from pyrogram import filters
 from indexer import start_indexer
@@ -62,15 +65,14 @@ def register_admin_handlers(app):
 
         try:
 
+            # ----------------------------------------------------
+            # DATABASE STATS
+            # ----------------------------------------------------
+
             stats = await get_stats()
 
             users = stats.get(
                 "users",
-                0
-            )
-
-            chats = stats.get(
-                "chats",
                 0
             )
 
@@ -89,41 +91,125 @@ def register_admin_handlers(app):
                 "0.00 MB"
             )
 
-            free_storage = stats.get(
-                "free_storage_text",
-                "0.00 MB"
+            # ----------------------------------------------------
+            # CHAT COUNT
+            # ----------------------------------------------------
+
+            chats = stats.get(
+                "chats",
+                0
             )
 
+            # ----------------------------------------------------
+            # RAM
+            # ----------------------------------------------------
+
+            memory = psutil.virtual_memory()
+ 
+            ram_percent = memory.percent
+
+            # ----------------------------------------------------
+            # CPU
+            # ----------------------------------------------------
+
+            cpu_percent = psutil.cpu_percent(
+                interval=0.5
+            )
+
+            # ----------------------------------------------------
+            # DISK
+            # ----------------------------------------------------
+
+            disk = psutil.disk_usage(
+                "/"
+            )
+
+            disk_percent = disk.percent
+
+            disk_used_gb = (
+                disk.used
+                / (1024 ** 3)
+            )
+
+            disk_free_gb = (
+                disk.free
+                / (1024 ** 3)
+            )
+
+            disk_total_gb = (
+                disk.total
+                / (1024 ** 3)
+            )
+
+            # ----------------------------------------------------
+            # PROGRESS BAR
+            # ----------------------------------------------------
+
+            def progress_bar(
+               percent,
+               length=10
+            ):
+
+               filled = int(
+                   percent / 100 * length
+               )
+
+               filled = max(
+                   0,
+                   min(
+                       filled,
+                       length
+                   )
+               )
+
+               empty = length - filled
+
+               return (
+                   "■" * filled
+                   + "□" * empty
+               )
+
+            # ----------------------------------------------------
+            # STATS TEXT
+            # ----------------------------------------------------
+
             text = (
-                f"🎬 <b>Tᴏᴛᴀʟ Fɪʟᴇs Fʀᴏᴍ Bᴏᴛʜ DBs:</b> "
-                f"<b>{media:,}</b>\n\n"
 
-               "<b>⍟─────[ Bᴏᴛ Usᴇʀs ᴀɴᴅ Cʜᴀᴛs Cᴏᴜɴᴛ ]─────⍟</b>\n\n"
+                "⌬ <b>𝗕𝗢𝗧 𝗦𝗧𝗔𝗧𝗜𝗦𝗧𝗜𝗖𝗦 :</b>\n\n"
 
-               f"★ <b>Tᴏᴛᴀʟ Usᴇʀs:</b> "
-               f"<b>{users:,}</b>\n"
+                f"┎ <b>Tᴏᴛᴀʟ Uꜱᴇʀꜱ :</b> "
+                f"<b>{users:,}</b>\n"
+                f"┖ <b>Tᴏᴛᴀʟ Cʜᴀᴛꜱ :</b> "
+                f"<b>{chats:,}</b>\n\n"
 
-               f"★ <b>Tᴏᴛᴀʟ Cʜᴀᴛs:</b> "
-               f"<b>{chats:,}</b>\n\n"
+                "┎ <b>RAM ( MEMORY ):</b>\n"
+                f"┖ [{progress_bar(ram_percent)}] "
+                f"<b>{ram_percent:.1f}%</b>\n\n"
 
-               "<b>⍟─────[ Pʀɪᴍᴀʀʏ Dᴀᴛᴀʙᴀsᴇ Sᴛᴀᴛɪsᴛɪᴄs ]─────⍟</b>\n\n"
+                "┎ <b>CPU ( USAGE ) :</b>\n"
+                f"┖ [{progress_bar(cpu_percent)}] "
+                f"<b>{cpu_percent:.1f}%</b>\n\n"
 
-               f"★ <b>Tᴏᴛᴀʟ Fɪʟᴇs:</b> "
-               f"<b>{media:,}</b>\n"
+                "┎ <b>DISK :</b>\n"
+                f"┃ [{progress_bar(disk_percent)}] "
+                f"<b>{disk_percent:.1f}%</b>\n"
+                f"┃ <b>Usᴇᴅ :</b> "
+                f"<b>{disk_used_gb:.2f} GB</b>\n"
+                f"┃ <b>Fʀᴇᴇ :</b> "
+                f"<b>{disk_free_gb:.2f} GB</b>\n"
+                f"┖ <b>Tᴏᴛᴀʟ :</b> "
+                f"<b>{disk_total_gb:.2f} GB</b>\n\n"
 
-               f"★ <b>Usᴇᴅ Sᴛᴏʀᴀɢᴇ:</b> "
-               f"<b>{used_storage}</b>\n"
+                "┎ <b>𝗗𝗔𝗧𝗔𝗕𝗔𝗦𝗘 𝗦𝗧𝗔𝗧𝗜𝗦𝗧𝗜𝗖𝗦 :</b>\n"
+                f"┃ <b>Tᴏᴛᴀʟ Fɪʟᴇs :</b> "
+                f"<b>{media:,}</b>\n"
+                f"┖ <b>Tᴏᴛᴀʟ Sᴛᴏʀᴀɢᴇ Usᴇᴅ :</b> "
+                f"<b>{used_storage}</b>\n\n"
 
-               f"★ <b>Fʀᴇᴇ Sᴛᴏʀᴀɢᴇ:</b> "
-               f"<b>{free_storage}</b>\n\n"
+                f"💎 <b>Pʀᴇᴍɪᴜᴍ Usᴇʀs :</b> "
+                f"<b>{premium_users:,}</b>\n\n"
 
-               f"💎 <b>Pʀᴇᴍɪᴜᴍ Usᴇʀs:</b> "
-               f"<b>{premium_users:,}</b>\n\n"
-
-               "<b>Powered By: @Aero_Unity</b>\n\n"
-
-               "<b>⍟─────[ ʙᴏᴛ sᴛᴀᴛᴜ𝗌 ]─────⟟</b>"
-
+                "<b>Powered By: @Aero_Unity</b>"
             )
 
             await message.reply_text(
@@ -337,15 +423,6 @@ def register_admin_handlers(app):
             f"🎟 Remaining: "
             f"<b>{user.get('remaining_requests', 0)}</b>"
         )
-
-
-    # ========================================================
-    # /activate USER_ID AMOUNT
-    #
-    # Example:
-    #
-    # /activate 123456789 100
-    # ========================================================
 
     @app.on_message(
         filters.command("activate")
