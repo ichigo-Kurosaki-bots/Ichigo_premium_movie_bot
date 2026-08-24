@@ -11,6 +11,7 @@ from database import (
     count_users,
     count_premium_users,
     count_media,
+    count_chats,
     get_stats,
     activate_premium,
     remove_premium
@@ -66,8 +67,8 @@ def register_admin_handlers(app):
                 0
             )
 
-            premium_users = stats.get(
-                "premium_users",
+            chats = stats.get(
+                "chats",
                 0
             )
 
@@ -76,17 +77,55 @@ def register_admin_handlers(app):
                 0
             )
 
+            premium_users = stats.get(
+                "premium_users",
+                0
+            )
+
+            used_storage = stats.get(
+                "used_storage_text",
+                "0.00 MB"
+            )
+
+            free_storage = stats.get(
+                "free_storage_text",
+                "0.00 MB"
+            )
+
+            text = (
+                f"🎬 <b>Tᴏᴛᴀʟ Fɪʟᴇs Fʀᴏᴍ Bᴏᴛʜ DBs:</b> "
+                f"<b>{media:,}</b>\n\n"
+
+               "<b>⍟─────[ Bᴏᴛ Usᴇʀs ᴀɴᴅ Cʜᴀᴛs Cᴏᴜɴᴛ ]─────⍟</b>\n\n"
+
+               f"★ <b>Tᴏᴛᴀʟ Usᴇʀs:</b> "
+               f"<b>{users:,}</b>\n"
+
+               f"★ <b>Tᴏᴛᴀʟ Cʜᴀᴛs:</b> "
+               f"<b>{chats:,}</b>\n\n"
+
+               "<b>⍟─────[ Pʀɪᴍᴀʀʏ Dᴀᴛᴀʙᴀsᴇ Sᴛᴀᴛɪsᴛɪᴄs ]─────⍟</b>\n\n"
+
+               f"★ <b>Tᴏᴛᴀʟ Fɪʟᴇs:</b> "
+               f"<b>{media:,}</b>\n"
+
+               f"★ <b>Usᴇᴅ Sᴛᴏʀᴀɢᴇ:</b> "
+               f"<b>{used_storage}</b>\n"
+
+               f"★ <b>Fʀᴇᴇ Sᴛᴏʀᴀɢᴇ:</b> "
+               f"<b>{free_storage}</b>\n\n"
+
+               f"💎 <b>Pʀᴇᴍɪᴜᴍ Usᴇʀs:</b> "
+               f"<b>{premium_users:,}</b>\n\n"
+
+               "<b>Powered By: @Aero_Unity</b>\n\n"
+
+               "<b>⍟─────[ ʙᴏᴛ sᴛᴀᴛᴜ𝗌 ]─────⟟</b>"
+
+            )
+
             await message.reply_text(
-                "📊 <b>Bot Statistics</b>\n\n"
-
-                f"👥 Total users: "
-                f"<b>{users}</b>\n"
-
-                f"💎 Premium users: "
-                f"<b>{premium_users}</b>\n"
-
-                f"🎬 Indexed files: "
-                f"<b>{media}</b>"
+                text
             )
 
         except Exception as e:
@@ -97,7 +136,8 @@ def register_admin_handlers(app):
             )
 
             await message.reply_text(
-                "❌ Failed to get statistics."
+                "❌ <b>Could not get statistics.</b>\n\n"
+                f"<code>{e}</code>"
             )
 
 
