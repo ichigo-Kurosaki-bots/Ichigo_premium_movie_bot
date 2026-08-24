@@ -10,7 +10,8 @@ from config import (
     BOT_TOKEN,
     PORT,
     LOG_LEVEL,
-    DATABASE_CHANNEL_ID
+    DATABASE_CHANNEL_ID,
+    LOG_CHANNEL_ID
 )
 
 from database import (
@@ -258,6 +259,41 @@ async def main():
         "Bot ID: %s",
         me.id
     )
+    # ============================================================
+    # LOG CHANNEL TEST
+    # ============================================================
+
+    if LOG_CHANNEL_ID:
+
+        try:
+
+            await app.send_message(
+                chat_id=LOG_CHANNEL_ID,
+                text=(
+                    "✅ <b>PREMIUM MOVIE BOT STARTED</b>\n\n"
+                    f"🤖 <b>Bot:</b> @{me.username}\n"
+                    f"🆔 <b>Bot ID:</b> <code>{me.id}</code>\n\n"
+                    "📡 <b>Log channel connection:</b> OK\n\n"
+                    "⚡ <b>Powered By:</b> @Aero_Unity"
+                )
+            )
+
+            logger.info(
+                "Log channel test message sent successfully."
+            )
+
+        except Exception as e:
+
+            logger.exception(
+                "Could not send log channel test message: %s",
+                e
+            )
+  
+    else:
+
+        logger.warning(
+            "LOG_CHANNEL_ID is not configured."
+        )
 
     # --------------------------------------------------------
     # KEEP BOT RUNNING
