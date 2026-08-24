@@ -29,18 +29,6 @@ from utils.buttons import (
     help_buttons
 )
 
-
-# ============================================================
-# START IMAGE URL
-# ============================================================
-#
-# Add START_IMAGE in Render Environment Variables.
-#
-# Example:
-# START_IMAGE=https://example.com/naruto.jpg
-#
-# ============================================================
-
 START_IMAGE = os.getenv(
     "START_IMAGE",
     ""
@@ -168,9 +156,9 @@ def register_start_handlers(app):
                 first_name=first_name,
                 username=username
             )
-            # ====================================================
-            # START LOG — NEW USERS ONLY
-            # ====================================================
+            # ============================================================
+            # START LOG
+            # ============================================================
 
             try:
 
@@ -181,9 +169,17 @@ def register_start_handlers(app):
                     if username
                     else "Not Set"
                 )
+
+                if user.get("created_at"):
+
+                    log_title = "🚀 <b>USER STARTED BOT</b>"
+
+                else:
+
+                    log_title = "🚀 <b>USER STARTED BOT</b>"
  
                 log_text = (
-                    "🚀 <b>NEW USER STARTED BOT</b>\n\n"
+                    f"{log_title}\n\n"
 
                     f"👤 <b>Name:</b> "
                     f"{first_name}\n"
@@ -203,18 +199,30 @@ def register_start_handlers(app):
                     "⚡ <b>Powered By:</b> @Aero_Unity"
                 )
 
-                if LOG_CHANNEL_ID:
+                if not LOG_CHANNEL_ID:
+
+                    print(
+                        "LOG CHANNEL ERROR: "
+                        "LOG_CHANNEL_ID is not configured."
+                    )
+
+                else:
 
                     await client.send_message(
                         chat_id=LOG_CHANNEL_ID,
                         text=log_text
                     )
 
-            except Exception as e:
+                    print(
+                        f"START LOG SENT | "
+                        f"user_id={user_id} | "
+                        f"log_channel={LOG_CHANNEL_ID}"
+                    )
 
+            except Exception as e:
                 print(
                     f"START LOG ERROR: {e}"
-                )
+            )
 
         else:
 
