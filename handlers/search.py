@@ -382,6 +382,8 @@ def build_search_text(
     metadata
 ):
 
+    text = ""
+
     title = (
         metadata.get("title")
         or query
@@ -456,7 +458,6 @@ def build_search_text(
     )
 
     return text
-
 
 # ============================================================
 # FILE AUTO DELETE
