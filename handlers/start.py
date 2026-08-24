@@ -234,6 +234,45 @@ def register_start_handlers(app):
             )
 
         # ----------------------------------------------------
+        # START ANIMATION
+        # ----------------------------------------------------
+
+        try:
+
+            animation = await client.send_message(
+                chat_id=user_id,
+                text="Sʜᴀᴅᴏᴡ Oғ Mᴏɴᴀʀᴄʜ. . ."
+            )
+
+            await asyncio.sleep(0.5)
+
+            await animation.edit_text(
+                "🎭"
+            )
+
+            await asyncio.sleep(0.5)
+
+            await animation.edit_text(
+                "⚡"
+            )
+
+            await asyncio.sleep(0.5)
+
+            await animation.edit_text(
+                "Jɪɴᴡᴏᴏ Sᴜɴɢ..."
+            )
+
+            await asyncio.sleep(0.5)
+
+            await animation.delete()
+
+        except Exception as e:
+
+            print(
+                f"START ANIMATION ERROR: {e}"
+            )
+
+        # ----------------------------------------------------
         # REQUEST BALANCE
         # ----------------------------------------------------
 
