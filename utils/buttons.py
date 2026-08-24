@@ -11,27 +11,28 @@ from config import PREMIUM_PLANS
 # ============================================================
 
 def home_buttons():
+
     return InlineKeyboardMarkup(
         [
             [
                 InlineKeyboardButton(
-                    "🔎 Search Movies",
+                    "• Sᴇᴀʀᴄʜ Mᴏᴠɪᴇs •",
                     callback_data="search_help"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "💎 Premium Plans",
+                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
                     callback_data="premium_plans"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "👤 My Account",
+                    "• Mʏ Aᴄᴄᴏᴜɴᴛ •",
                     callback_data="my_account"
                 ),
                 InlineKeyboardButton(
-                    "📚 Help",
+                    "• ʜᴇʟᴘ •",
                     callback_data="help"
                 )
             ]
@@ -44,21 +45,22 @@ def home_buttons():
 # ============================================================
 
 def start_buttons():
+
     return InlineKeyboardMarkup(
         [
             [
                 InlineKeyboardButton(
-                    "➕ Add Me To Your Group",
+                    "• ᴀᴅᴅ ᴍᴇ ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ •",
                     url="https://t.me/PremiumMovieBot?startgroup=true"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "ℹ️ About",
+                    "• ᴀʙᴏᴜᴛ •",
                     callback_data="about"
                 ),
                 InlineKeyboardButton(
-                    "📢 Updates",
+                    "• ᴜᴘᴅᴀᴛᴇs •",
                     url="https://t.me/Aero_Unity"
                 )
             ]
@@ -67,12 +69,13 @@ def start_buttons():
 
 
 # ============================================================
-# PREMIUM PLAN BUTTONS
+# PREMIUM BUTTONS
 # ============================================================
 
 def premium_buttons():
 
     buttons = []
+
     row = []
 
     for amount, plan in PREMIUM_PLANS.items():
@@ -90,7 +93,9 @@ def premium_buttons():
         )
 
         if len(row) == 2:
+
             buttons.append(row)
+
             row = []
 
     if row:
@@ -99,17 +104,19 @@ def premium_buttons():
     buttons.append(
         [
             InlineKeyboardButton(
-                "⬅️ Back",
+                "• ʙᴀᴄᴋ •",
                 callback_data="home"
             )
         ]
     )
 
-    return InlineKeyboardMarkup(buttons)
+    return InlineKeyboardMarkup(
+        buttons
+    )
 
 
 # ============================================================
-# SELECTED PREMIUM PLAN
+# PLAN CONFIRMATION
 # ============================================================
 
 def plan_confirm_buttons(amount):
@@ -118,19 +125,19 @@ def plan_confirm_buttons(amount):
         [
             [
                 InlineKeyboardButton(
-                    "💳 Payment Instructions",
+                    "• Pᴀʏᴍᴇɴᴛ Iɴsᴛʀᴜᴄᴛɪᴏɴs •",
                     callback_data=f"pay_{amount}"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "⬅️ All Plans",
+                    "• Aʟʟ Pʟᴀɴs •",
                     callback_data="premium_plans"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "🏠 Home",
+                    "• ʜᴏᴍᴇ •",
                     callback_data="home"
                 )
             ]
@@ -139,7 +146,7 @@ def plan_confirm_buttons(amount):
 
 
 # ============================================================
-# ACCOUNT BUTTONS
+# ACCOUNT
 # ============================================================
 
 def account_buttons():
@@ -148,13 +155,13 @@ def account_buttons():
         [
             [
                 InlineKeyboardButton(
-                    "💎 Premium Plans",
+                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
                     callback_data="premium_plans"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "🏠 Home",
+                    "• ʜᴏᴍᴇ •",
                     callback_data="home"
                 )
             ]
@@ -163,7 +170,7 @@ def account_buttons():
 
 
 # ============================================================
-# HELP BUTTONS
+# HELP
 # ============================================================
 
 def help_buttons():
@@ -172,34 +179,18 @@ def help_buttons():
         [
             [
                 InlineKeyboardButton(
-                    "💎 Premium Plans",
+                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
                     callback_data="premium_plans"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "🏠 Home",
+                    "• ʜᴏᴍᴇ •",
                     callback_data="home"
                 )
             ]
         ]
     )
-
-
-# ============================================================
-# SEARCH RESULT BUTTONS
-#
-# Layout:
-#
-# 🎬 File 1
-# 🎬 File 2
-# 🎬 File 3
-#
-# 📤 SEND ALL     💎 PREMIUM
-#
-# ⬅️ Previous     Next ➡️
-#
-# ============================================================
 
 def search_result_buttons(
     results,
@@ -211,7 +202,7 @@ def search_result_buttons(
     buttons = []
 
     # --------------------------------------------------------
-    # FILE NAMES
+    # FILE BUTTONS
     # --------------------------------------------------------
 
     for item in results:
@@ -232,12 +223,16 @@ def search_result_buttons(
         title = str(title)
 
         if len(title) > 55:
-            title = title[:52] + "..."
+
+            title = (
+                title[:52]
+                + "..."
+            )
 
         buttons.append(
             [
                 InlineKeyboardButton(
-                    f"🎬 {title}",
+                    f"›› {title}",
                     callback_data=f"file_{message_id}"
                 )
             ]
@@ -252,13 +247,13 @@ def search_result_buttons(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    "📤 SEND ALL",
+                    "• sᴇɴᴅ ᴀʟʟ •",
                     callback_data=(
                         f"sendall_{session_id}_{page}"
                     )
                 ),
                 InlineKeyboardButton(
-                    "💎 PREMIUM",
+                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
                     callback_data="premium_plans"
                 )
             ]
@@ -274,7 +269,7 @@ def search_result_buttons(
 
         navigation.append(
             InlineKeyboardButton(
-                "⬅️ Previous",
+                "• ʙᴀᴄᴋ •",
                 callback_data=(
                     f"searchpage_{session_id}_{page - 1}"
                 )
@@ -285,7 +280,7 @@ def search_result_buttons(
 
         navigation.append(
             InlineKeyboardButton(
-                "Next ➡️",
+                "• ɴᴇxᴛ •",
                 callback_data=(
                     f"searchpage_{session_id}_{page + 1}"
                 )
@@ -295,13 +290,13 @@ def search_result_buttons(
     if navigation:
         buttons.append(navigation)
 
-    return InlineKeyboardMarkup(buttons)
+    return InlineKeyboardMarkup(
+        buttons
+    )
 
 
 # ============================================================
-# FILE SENT BUTTONS
-#
-# Shown below the "your requested file is here" message.
+# BUTTON ATTACHED DIRECTLY TO THE SENT FILE
 # ============================================================
 
 def file_sent_buttons():
@@ -310,7 +305,7 @@ def file_sent_buttons():
         [
             [
                 InlineKeyboardButton(
-                    "📢 Updates",
+                    "• ᴜᴘᴅᴀᴛᴇs •",
                     url="https://t.me/Aero_Unity"
                 )
             ]
@@ -319,7 +314,7 @@ def file_sent_buttons():
 
 
 # ============================================================
-# FILE CONFIRMATION BUTTONS
+# FILE BUTTONS
 # ============================================================
 
 def file_buttons():
@@ -328,7 +323,7 @@ def file_buttons():
         [
             [
                 InlineKeyboardButton(
-                    "📢 Updates",
+                    "• ᴜᴘᴅᴀᴛᴇs •",
                     url="https://t.me/Aero_Unity"
                 )
             ]
@@ -337,7 +332,7 @@ def file_buttons():
 
 
 # ============================================================
-# BACK BUTTON
+# BACK
 # ============================================================
 
 def back_button():
@@ -346,7 +341,7 @@ def back_button():
         [
             [
                 InlineKeyboardButton(
-                    "⬅️ Back",
+                    "• ʙᴀᴄᴋ •",
                     callback_data="home"
                 )
             ]
@@ -355,7 +350,7 @@ def back_button():
 
 
 # ============================================================
-# CANCEL BUTTON
+# CANCEL
 # ============================================================
 
 def cancel_button():
@@ -364,9 +359,9 @@ def cancel_button():
         [
             [
                 InlineKeyboardButton(
-                    "❌ Cancel",
+                    "• ᴄᴀɴᴄᴇʟ •",
                     callback_data="home"
                 )
             ]
         ]
-                )
+    )
