@@ -16,23 +16,23 @@ def home_buttons():
         [
             [
                 InlineKeyboardButton(
-                    "🔎 Search Movies",
+                    "• Sᴇᴀʀᴄʜ Mᴏᴠɪᴇs •",
                     callback_data="search_help"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "💎 Premium Plans",
+                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
                     callback_data="premium_plans"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "👤 My Account",
+                    "• Mʏ Aᴄᴄᴏᴜɴᴛ •",
                     callback_data="my_account"
                 ),
                 InlineKeyboardButton(
-                    "📚 Help",
+                    "• ʜᴇʟᴘ •",
                     callback_data="help"
                 )
             ]
@@ -82,7 +82,7 @@ def premium_buttons():
     buttons.append(
         [
             InlineKeyboardButton(
-                "⬅️ Back",
+                "• ʙᴀᴄᴋ •",
                 callback_data="home"
             )
         ]
@@ -103,19 +103,19 @@ def plan_confirm_buttons(amount):
         [
             [
                 InlineKeyboardButton(
-                    "💳 Payment Instructions",
+                    "• 💳 Pᴀʏᴍᴇɴᴛ Iɴsᴛʀᴜᴄᴛɪᴏɴs •",
                     callback_data=f"pay_{amount}"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "⬅️ All Plans",
+                    "• Aʟʟ Pʟᴀɴs •",
                     callback_data="premium_plans"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "🏠 Home",
+                    "• ʜᴏᴍᴇ •",
                     callback_data="home"
                 )
             ]
@@ -133,13 +133,13 @@ def account_buttons():
         [
             [
                 InlineKeyboardButton(
-                    "💎 Premium Plans",
+                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
                     callback_data="premium_plans"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "🏠 Home",
+                    "• ʜᴏᴍᴇ •",
                     callback_data="home"
                 )
             ]
@@ -157,13 +157,13 @@ def help_buttons():
         [
             [
                 InlineKeyboardButton(
-                    "💎 Premium Plans",
+                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
                     callback_data="premium_plans"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "🏠 Home",
+                    "• ʜᴏᴍᴇ •",
                     callback_data="home"
                 )
             ]
@@ -210,7 +210,7 @@ def search_result_buttons(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    f"🎬 {title}",
+                    f"• {title}",
                     callback_data=(
                         f"file_{message_id}"
                     )
@@ -227,7 +227,7 @@ def search_result_buttons(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    "📤 SEND ALL",
+                    "• sᴇɴᴅ ᴀʟʟ •",
                     callback_data=(
                         f"sendall_"
                         f"{session_id}_"
@@ -247,7 +247,7 @@ def search_result_buttons(
 
         navigation.append(
             InlineKeyboardButton(
-                "⬅️ Previous",
+                "• ʙᴀᴄᴋ •",
                 callback_data=(
                     f"searchpage_"
                     f"{session_id}_"
@@ -260,7 +260,7 @@ def search_result_buttons(
 
         navigation.append(
             InlineKeyboardButton(
-                "Next ➡️",
+                "• ɴᴇxᴛ •",
                 callback_data=(
                     f"searchpage_"
                     f"{session_id}_"
@@ -282,7 +282,7 @@ def search_result_buttons(
     buttons.append(
         [
             InlineKeyboardButton(
-                "💎 Premium Plans",
+                "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
                 callback_data="premium_plans"
             )
         ]
@@ -295,7 +295,7 @@ def search_result_buttons(
     buttons.append(
         [
             InlineKeyboardButton(
-                "🏠 Home",
+                "• ʜᴏᴍᴇ •",
                 callback_data="home"
             )
         ]
@@ -316,13 +316,13 @@ def file_buttons():
         [
             [
                 InlineKeyboardButton(
-                    "💎 Premium Plans",
+                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
                     callback_data="premium_plans"
                 )
             ],
             [
                 InlineKeyboardButton(
-                    "🏠 Home",
+                    "• ʜᴏᴍᴇ •",
                     callback_data="home"
                 )
             ]
@@ -340,7 +340,7 @@ def back_button():
         [
             [
                 InlineKeyboardButton(
-                    "⬅️ Back",
+                    "• ʙᴀᴄᴋ •",
                     callback_data="home"
                 )
             ]
@@ -358,7 +358,7 @@ def cancel_button():
         [
             [
                 InlineKeyboardButton(
-                    "❌ Cancel",
+                    "• ᴄᴀɴᴄᴇʟ •",
                     callback_data="home"
                 )
             ]
