@@ -1,4 +1,7 @@
+import asyncio
 import logging
+import os
+import re
 
 from pyrogram import filters
 
@@ -36,6 +39,357 @@ from utils.helpers import (
 
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# TMDB
+# ============================================================
+
+TMDB_API_KEY = os.getenv(
+    "TMDB_API_KEY",
+    ""
+)
+
+
+async def get_tmdb_metadata(query):
+
+    if not TMDB_API_KEY:
+
+        return {
+            "title": query,
+            "year": "",
+            "language": "",
+            "rating": "",
+            "genres": []
+        }
+
+    try:
+
+        clean_query = re.sub(
+            r"\bS\d{1,2}E\d{1,3}\b",
+            "",
+            query,
+            flags=re.IGNORECASE
+        )
+
+        clean_query = re.sub(
+            r"\b(480p|540p|576p|720p|1080p|2160p|4K|WEB[- ]?DL|WEB[- ]?Rip|BluRay|HDRip|HEVC|H\.?264|H\.?265)\b",
+            "",
+            clean_query,
+            flags=re.IGNORECASE
+        )
+
+        clean_query = re.sub(
+            r"\s+",
+            " ",
+            clean_query
+        ).strip()
+
+        if not clean_query:
+
+            clean_query = query
+
+        url = (
+            "https://api.themoviedb.org/3/search/multi"
+            f"?api_key={TMDB_API_KEY}"
+            f"&query={clean_query}"
+        )
+
+        import requests
+
+        response = await asyncio.to_thread(
+            requests.get,
+            url,
+            timeout=10
+        )
+
+        if response.status_code != 200:
+
+            logger.warning(
+                "TMDB returned HTTP %s",
+                response.status_code
+            )
+
+            return {
+                "title": clean_query,
+                "year": "",
+                "language": "",
+                "rating": "",
+                "genres": []
+            }
+
+        data = response.json()
+
+        results = data.get(
+            "results",
+            []
+        )
+
+        if not results:
+
+            return {
+                "title": clean_query,
+                "year": "",
+                "language": "",
+                "rating": "",
+                "genres": []
+            }
+
+        item = None
+
+        for result in results:
+
+            if result.get("media_type") in (
+                "movie",
+                "tv"
+            ):
+
+                item = result
+                break
+
+        if not item:
+
+            return {
+                "title": clean_query,
+                "year": "",
+                "language": "",
+                "rating": "",
+                "genres": []
+            }
+
+        media_type = item.get(
+            "media_type"
+        )
+
+        title = (
+            item.get("title")
+            if media_type == "movie"
+            else item.get("name")
+        ) or clean_query
+
+        release_date = (
+            item.get("release_date")
+            if media_type == "movie"
+            else item.get("first_air_date")
+        ) or ""
+
+        year = ""
+
+        if release_date:
+
+            year = release_date[:4]
+
+        language_code = (
+            item.get("original_language")
+            or ""
+        )
+
+        language_map = {
+
+            "en": "English",
+            "hi": "Hindi",
+            "ko": "Korean",
+            "ja": "Japanese",
+            "zh": "Chinese",
+            "ta": "Tamil",
+            "te": "Telugu",
+            "ml": "Malayalam",
+            "kn": "Kannada",
+            "es": "Spanish",
+            "fr": "French",
+            "de": "German",
+            "it": "Italian",
+            "pt": "Portuguese",
+            "ru": "Russian"
+        }
+
+        language = language_map.get(
+            language_code,
+            language_code.upper()
+            if language_code
+            else ""
+        )
+
+        rating = item.get(
+            "vote_average"
+        )
+
+        if rating:
+
+            rating = f"{float(rating):.1f}/10"
+
+        else:
+
+            rating = ""
+
+        genres = []
+
+        genre_ids = item.get(
+            "genre_ids",
+            []
+        )
+
+        genre_map = {
+
+            28: "Action",
+            12: "Adventure",
+            16: "Animation",
+            35: "Comedy",
+            80: "Crime",
+            99: "Documentary",
+            18: "Drama",
+            10751: "Family",
+            14: "Fantasy",
+            36: "History",
+            27: "Horror",
+            10402: "Music",
+            9648: "Mystery",
+            10749: "Romance",
+            878: "Sci-Fi",
+            10770: "TV Movie",
+            53: "Thriller",
+            10752: "War",
+            37: "Western",
+            10759: "Action & Adventure",
+            10762: "Kids",
+            10763: "News",
+            10764: "Reality",
+            10765: "Sci-Fi & Fantasy",
+            10766: "Soap",
+            10767: "Talk",
+            10768: "War & Politics"
+        }
+
+        for genre_id in genre_ids:
+
+            genre_name = genre_map.get(
+                genre_id
+            )
+
+            if genre_name:
+
+                genres.append(
+                    genre_name
+                )
+
+        return {
+
+            "title": title,
+
+            "year": year,
+
+            "language": language,
+
+            "rating": rating,
+
+            "genres": genres
+        }
+
+    except Exception as e:
+
+        logger.exception(
+            "TMDB metadata lookup failed: %s",
+            e
+        )
+
+        return {
+
+            "title": query,
+
+            "year": "",
+
+            "language": "",
+
+            "rating": "",
+
+            "genres": []
+        }
+
+
+# ============================================================
+# FORMAT SEARCH RESULT TEXT
+# ============================================================
+
+def build_search_text(
+    query,
+    results,
+    page,
+    metadata
+):
+
+    title = metadata.get(
+        "title"
+    ) or query
+
+    year = metadata.get(
+        "year"
+    )
+
+    language = metadata.get(
+        "language"
+    )
+
+    rating = metadata.get(
+        "rating"
+    )
+
+    genres = metadata.get(
+        "genres"
+    ) or []
+
+    text = (
+        "🔎 <b>Search Results</b>\n\n"
+    )
+
+    text += (
+        f"🎬 <b>{escape_html(title)}</b>\n"
+    )
+
+    if year:
+
+        text += (
+            f"📅 <b>Year:</b> "
+            f"{escape_html(str(year))}\n"
+        )
+
+    if language:
+
+        text += (
+            f"🗣 <b>Language:</b> "
+            f"{escape_html(str(language))}\n"
+        )
+
+    if rating:
+
+        text += (
+            f"⭐ <b>Rating:</b> "
+            f"{escape_html(str(rating))}\n"
+        )
+
+    if genres:
+
+        text += (
+            f"🎭 <b>Genres:</b> "
+            f"{escape_html(', '.join(genres))}\n"
+        )
+
+    text += "\n"
+
+    text += (
+        f"📦 <b>Results shown:</b> "
+        f"{len(results)}\n\n"
+    )
+
+    text += (
+        "👇 <b>Select the file you want:</b>\n\n"
+    )
+
+    text += (
+        "Powered by "
+        "<b>@Aero_Unity</b>"
+    )
+
+    return text
 
 
 # ============================================================
@@ -220,19 +574,26 @@ def register_search_handlers(app):
             return
 
         # ----------------------------------------------------
+        # TMDB METADATA
+        # ----------------------------------------------------
+
+        metadata = await get_tmdb_metadata(
+            query
+        )
+
+        # ----------------------------------------------------
         # SHOW RESULTS
         # ----------------------------------------------------
 
         await wait.edit_text(
-            "🔎 <b>Search Results</b>\n\n"
 
-            f"Query: "
-            f"<code>{escape_html(query)}</code>\n\n"
+            build_search_text(
+                query=query,
+                results=results,
+                page=0,
+                metadata=metadata
+            ),
 
-            f"🎬 Showing "
-            f"<b>{len(results)}</b> results.\n\n"
-
-            "👇 Select the file you want:",
             reply_markup=search_result_buttons(
                 results=results,
                 session_id=session_id,
@@ -244,10 +605,6 @@ def register_search_handlers(app):
 
     # ========================================================
     # SEARCH PAGINATION
-    #
-    # callback:
-    #
-    # searchpage_SESSION_ID_PAGE
     # ========================================================
 
     @app.on_callback_query(
@@ -260,15 +617,11 @@ def register_search_handlers(app):
         callback
     ):
 
-        user_id = (
-            callback.from_user.id
-        )
+        user_id = callback.from_user.id
 
         try:
 
-            parts = callback.data.split(
-                "_"
-            )
+            parts = callback.data.split("_")
 
             session_id = parts[1]
 
@@ -288,8 +641,134 @@ def register_search_handlers(app):
 
             return
 
+        session = await get_search_session(
+            session_id=session_id,
+            user_id=user_id
+        )
+
+        if not session:
+
+            await callback.answer(
+                "This search session has expired.",
+                show_alert=True
+            )
+
+            return
+
+        query = (
+            session.get(
+                "query",
+                ""
+            )
+        ).strip()
+
+        if not query:
+
+            await callback.answer(
+                "Search query not found.",
+                show_alert=True
+            )
+
+            return
+
+        try:
+
+            results, has_next = await search_movies(
+                query=query,
+                page=page
+            )
+
+        except Exception as e:
+
+            logger.exception(
+                "Pagination search failed: %s",
+                e
+            )
+
+            await callback.answer(
+                "Search failed.",
+                show_alert=True
+            )
+
+            return
+
+        if not results:
+
+            await callback.answer(
+                "No more results.",
+                show_alert=True
+            )
+
+            return
+
+        metadata = await get_tmdb_metadata(
+            query
+        )
+
+        await callback.message.edit_text(
+
+            build_search_text(
+                query=query,
+                results=results,
+                page=page,
+                metadata=metadata
+            ),
+
+            reply_markup=search_result_buttons(
+                results=results,
+                session_id=session_id,
+                page=page,
+                has_next=has_next
+            )
+        )
+
+        await callback.answer()
+
+
+    # ========================================================
+    # SEND ALL
+    #
+    # callback:
+    #
+    # sendall_SESSION_ID_PAGE
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^sendall_[a-fA-F0-9]+_\d+$"
+        )
+    )
+    async def send_all_callback(
+        client,
+        callback
+    ):
+
+        user_id = callback.from_user.id
+
+        try:
+
+            parts = callback.data.split("_")
+
+            session_id = parts[1]
+
+            page = int(
+                parts[2]
+            )
+
+        except (
+            ValueError,
+            IndexError
+        ):
+
+            await callback.answer(
+                "Invalid request.",
+                show_alert=True
+            )
+
+            return
+
         # ----------------------------------------------------
-        # GET SEARCH SESSION
+        # GET SESSION
         # ----------------------------------------------------
 
         session = await get_search_session(
@@ -323,7 +802,7 @@ def register_search_handlers(app):
             return
 
         # ----------------------------------------------------
-        # SEARCH REQUESTED PAGE
+        # SEARCH CURRENT PAGE
         # ----------------------------------------------------
 
         try:
@@ -336,7 +815,7 @@ def register_search_handlers(app):
         except Exception as e:
 
             logger.exception(
-                "Pagination search failed: %s",
+                "SEND ALL search failed: %s",
                 e
             )
 
@@ -347,83 +826,10 @@ def register_search_handlers(app):
 
             return
 
-        # ----------------------------------------------------
-        # NO RESULTS ON PAGE
-        # ----------------------------------------------------
-
         if not results:
 
             await callback.answer(
-                "No more results.",
-                show_alert=True
-            )
-
-            return
-
-        # ----------------------------------------------------
-        # UPDATE RESULTS
-        # ----------------------------------------------------
-
-        await callback.message.edit_text(
-            "🔎 <b>Search Results</b>\n\n"
-
-            f"Query: "
-            f"<code>{escape_html(query)}</code>\n\n"
-
-            f"📄 Page: <b>{page + 1}</b>\n"
-            f"🎬 Results: <b>{len(results)}</b>\n\n"
-
-            "👇 Select the file you want:",
-            reply_markup=search_result_buttons(
-                results=results,
-                session_id=session_id,
-                page=page,
-                has_next=has_next
-            )
-        )
-
-        await callback.answer()
-
-
-    # ========================================================
-    # FILE SELECTION
-    #
-    # callback:
-    #
-    # file_MESSAGE_ID
-    # ========================================================
-
-    @app.on_callback_query(
-        filters.regex(
-            r"^file_\d+$"
-        )
-    )
-    async def file_callback(
-        client,
-        callback
-    ):
-
-        user_id = (
-            callback.from_user.id
-        )
-
-        # ----------------------------------------------------
-        # GET MESSAGE ID
-        # ----------------------------------------------------
-
-        try:
-
-            message_id = int(
-                callback.data.split("_")[1]
-            )
-
-        except (
-            ValueError,
-            IndexError
-        ):
-
-            await callback.answer(
-                "Invalid file.",
+                "No files found.",
                 show_alert=True
             )
 
@@ -452,8 +858,188 @@ def register_search_handlers(app):
             )
 
         # ----------------------------------------------------
-        # CHECK REQUEST BALANCE
+        # CHECK BALANCE
         # ----------------------------------------------------
+
+        remaining = get_remaining_requests(
+            user
+        )
+
+        required = len(results)
+
+        if remaining < required:
+
+            await callback.answer(
+                f"SEND ALL needs {required} "
+                f"requests. You have {remaining}.",
+                show_alert=True
+            )
+
+            await callback.message.reply_text(
+                "💎 <b>Not enough requests</b>\n\n"
+
+                f"📦 Files to send: <b>{required}</b>\n"
+                f"🎟 Your remaining requests: "
+                f"<b>{remaining}</b>\n\n"
+
+                "Please activate Premium to get "
+                "more requests.",
+
+                reply_markup=premium_buttons()
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # ANSWER CALLBACK
+        # ----------------------------------------------------
+
+        await callback.answer(
+            "📤 Sending all files..."
+        )
+
+        # ----------------------------------------------------
+        # SEND FILES
+        # ----------------------------------------------------
+
+        sent_count = 0
+
+        failed_count = 0
+
+        for item in results:
+
+            message_id = item.get(
+                "message_id"
+            )
+
+            if not message_id:
+
+                failed_count += 1
+
+                continue
+
+            # ----------------------------------------------
+            # CONSUME ONE REQUEST
+            # ----------------------------------------------
+
+            consumed = await consume_request(
+                user_id
+            )
+
+            if not consumed:
+
+                failed_count += 1
+
+                break
+
+            try:
+
+                await client.copy_message(
+
+                    chat_id=user_id,
+
+                    from_chat_id=DATABASE_CHANNEL_ID,
+
+                    message_id=int(message_id)
+                )
+
+                sent_count += 1
+
+            except Exception as e:
+
+                logger.exception(
+                    "SEND ALL failed for message %s: %s",
+                    message_id,
+                    e
+                )
+
+                await restore_request(
+                    user_id
+                )
+
+                failed_count += 1
+
+        # ----------------------------------------------------
+        # UPDATED BALANCE
+        # ----------------------------------------------------
+
+        updated_user = await get_user(
+            user_id
+        )
+
+        remaining = get_remaining_requests(
+            updated_user
+        )
+
+        # ----------------------------------------------------
+        # RESULT MESSAGE
+        # ----------------------------------------------------
+
+        text = (
+            "📤 <b>SEND ALL completed</b>\n\n"
+            f"✅ Sent: <b>{sent_count}</b>\n"
+            f"❌ Failed: <b>{failed_count}</b>\n\n"
+            f"🎟 Remaining requests: "
+            f"<b>{remaining}</b>"
+        )
+
+        await client.send_message(
+            user_id,
+            text
+        )
+
+
+    # ========================================================
+    # FILE SELECTION
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^file_\d+$"
+        )
+    )
+    async def file_callback(
+        client,
+        callback
+    ):
+
+        user_id = callback.from_user.id
+
+        try:
+
+            message_id = int(
+                callback.data.split("_")[1]
+            )
+
+        except (
+            ValueError,
+            IndexError
+        ):
+
+            await callback.answer(
+                "Invalid file.",
+                show_alert=True
+            )
+
+            return
+
+        user = await get_user(
+            user_id
+        )
+
+        if not user:
+
+            user = await create_user(
+                user_id=user_id,
+                first_name=(
+                    callback.from_user.first_name
+                    or "User"
+                ),
+                username=(
+                    callback.from_user.username
+                    or ""
+                )
+            )
 
         if not can_use_movie(user):
 
@@ -469,14 +1055,11 @@ def register_search_handlers(app):
                 "have been used.\n\n"
 
                 "Choose a Premium plan to continue.",
+
                 reply_markup=premium_buttons()
             )
 
             return
-
-        # ----------------------------------------------------
-        # ATOMICALLY CONSUME ONE REQUEST
-        # ----------------------------------------------------
 
         consumed = await consume_request(
             user_id
@@ -492,26 +1075,20 @@ def register_search_handlers(app):
             await callback.message.reply_text(
                 "💎 <b>Premium Required</b>\n\n"
                 "Please activate a Premium plan.",
+
                 reply_markup=premium_buttons()
             )
 
             return
 
-        # ----------------------------------------------------
-        # ANSWER CALLBACK
-        # ----------------------------------------------------
-
         await callback.answer(
             "📤 Sending your file..."
         )
 
-        # ----------------------------------------------------
-        # SEND FILE FROM DATABASE CHANNEL
-        # ----------------------------------------------------
-
         try:
 
             await client.copy_message(
+
                 chat_id=user_id,
 
                 from_chat_id=DATABASE_CHANNEL_ID,
@@ -526,10 +1103,6 @@ def register_search_handlers(app):
                 e
             )
 
-            # ----------------------------------------------
-            # RESTORE REQUEST
-            # ----------------------------------------------
-
             await restore_request(
                 user_id
             )
@@ -543,10 +1116,6 @@ def register_search_handlers(app):
 
             return
 
-        # ----------------------------------------------------
-        # GET UPDATED USER BALANCE
-        # ----------------------------------------------------
-
         updated_user = await get_user(
             user_id
         )
@@ -555,11 +1124,8 @@ def register_search_handlers(app):
             updated_user
         )
 
-        # ----------------------------------------------------
-        # SUCCESS MESSAGE
-        # ----------------------------------------------------
-
         await client.send_message(
+
             user_id,
 
             "✅ <b>File sent successfully!</b>\n\n"
@@ -567,8 +1133,3 @@ def register_search_handlers(app):
             f"🎟 Remaining requests: "
             f"<b>{remaining}</b>"
         )
-
-
-# ============================================================
-# END
-# ============================================================
