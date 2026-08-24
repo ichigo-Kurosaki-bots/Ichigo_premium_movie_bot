@@ -263,31 +263,6 @@ async def main():
 
     await app.start()
 
-    # --------------------------------------------------------
-    # RESOLVE DATABASE CHANNEL PEER
-    # --------------------------------------------------------
-
-    try:
-
-        database_chat = await app.get_chat(
-            DATABASE_CHANNEL_ID
-        )
-
-        logger.info(
-            "Database channel resolved: %s | %s",
-            database_chat.id,
-            database_chat.title
-        )
-
-    except Exception as e:
-
-        logger.exception(
-            "Could not resolve database channel: %s",
-            e
-        )
-
-        raise
-
     me = await app.get_me()
 
     logger.info(
