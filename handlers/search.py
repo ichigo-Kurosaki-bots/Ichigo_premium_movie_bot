@@ -449,7 +449,7 @@ def build_search_text(
     )
 
     text += (
-        "<b>Pᴏᴡᴇʀᴇᴅ Bʏ: </b>"
+        "©️ <b>Pᴏᴡᴇʀᴇᴅ Bʏ: </b>"
         "<b>@Aero_Unity</b>\n\n"
     )
 
@@ -507,32 +507,67 @@ async def send_database_file(
 ):
 
     sent_message = await client.copy_message(
-
         chat_id=user_id,
-
         from_chat_id=DATABASE_CHANNEL_ID,
-
         message_id=int(message_id),
-
-        # IMPORTANT:
-        # Updates button is attached to the ACTUAL FILE.
         reply_markup=file_sent_buttons()
-    )
-
-    # --------------------------------------------------------
-    # DELETE THE ACTUAL FILE AFTER 5 MINUTES
-    # --------------------------------------------------------
-
-    asyncio.create_task(
-        delete_file_later(
-            client=client,
-            chat_id=user_id,
-            message_id=sent_message.id
-        )
     )
 
     return sent_message
 
+# ============================================================
+# DELETE FILES + WARNING AFTER 5 MINUTES
+# ============================================================
+
+async def delete_files_and_warning_later(
+    client,
+    chat_id,
+    message_ids,
+    warning_message_id
+):
+
+    try:
+
+        await asyncio.sleep(
+            FILE_DELETE_AFTER
+        )
+
+        # ----------------------------------------------------
+        # DELETE DELIVERED FILES
+        # ----------------------------------------------------
+
+        if message_ids:
+
+            await client.delete_messages(
+                chat_id=chat_id,
+                message_ids=message_ids
+            )
+
+        # ----------------------------------------------------
+        # DELETE WARNING MESSAGE
+        # ----------------------------------------------------
+
+        if warning_message_id:
+
+            await client.delete_messages(
+                chat_id=chat_id,
+                message_ids=warning_message_id
+            )
+
+        logger.info(
+            "Deleted %s delivered files + warning "
+            "from user %s after 5 minutes.",
+            len(message_ids),
+            chat_id
+        )
+
+    except Exception as e:
+
+        logger.warning(
+            "Could not delete files/warning for user %s: %s",
+            chat_id,
+            e
+        )
 
 # ============================================================
 # REGISTER SEARCH HANDLERS
@@ -1246,3 +1281,27 @@ def register_search_handlers(app):
             sent_message.id,
             remaining
         )
+
+        # --------------------------------------------------------
+        # WARNING MESSAGE
+        # --------------------------------------------------------
+
+        warning_message = await callback.message.reply_text(
+            "<blockquote><b><i>❗️❗️❗️IMPORTANT❗️️❗️❗️</i></b></blockquote>\n\n"
+            "<b>This Movie Files/Videos will be deleted in 5 mins message</b>"
+            "<i>(due to copyright issues)</i>\n\n"
+            "<b>Please forward this ALL Files/Videos to your Saved Messages and Start Download there</b>"
+        )
+        # --------------------------------------------------------
+        # DELETE FILE + WARNING AFTER 5 MINUTES
+        # --------------------------------------------------------
+
+        asyncio.create_task(
+            delete_files_and_warning_later(
+                client=client,
+                chat_id=user_id,
+                message_ids=[sent_message.id],
+                warning_message_id=warning_message.id
+            )
+        )
+ 
