@@ -89,19 +89,16 @@ def build_start_text(
 ):
 
     return (
-        f"👋 <b>Hey {first_name.upper()}</b>\n\n"
+        f"👋 <b>Hey {first_name.upper()} Mʏ Nᴀᴍᴇ Is Pʀᴇᴍɪᴜᴍ Mᴏᴠɪᴇ Bᴏᴛ</b>\n\n"
 
-        "<b>MY NAME IS PREMIUM MOVIE BOT 🎬</b>\n\n"
+        "<b>I ᴀᴍ A Pᴏᴡᴇʀғᴜʟ Mᴏᴠɪᴇ Sᴇᴀʀᴄʜ Bᴏᴛ.</b> "
+        "<b>ʏᴏᴜ ᴄᴀɴ ᴜsᴇ ᴍᴇ ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ</b>"
+        "<b>ɪ ᴡɪʟʟ ɢɪᴠᴇ ᴍᴏᴠɪᴇs ᴏʀ sᴇʀɪᴇs ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ ᴀɴᴅ ᴘᴍ !! 😍.</b>\n\n"
 
-        "<b>I AM A POWERFUL MOVIE SEARCH BOT.</b> "
-        "<b>YOU CAN USE ME IN YOUR GROUP TO </b>"
-        "<b>SEARCH MOVIES, SERIES AND MORE. 🤩</b>\n\n"
-
-        f"🆓 <b>FREE REQUESTS REMAINING:</b> "
+        f"🆓 <b>ғʀᴇᴇ ʀᴇǫᴜᴇsᴛs ʀᴇᴍᴀɪɴɪɴɢ:</b> "
         f"<b>{remaining}</b>\n\n"
-
-        "<b> ACTIVATE PREMIUM AFTER YOUR</b> "
-        "<b>FREE REQUESTS ARE FINISHED.</b>\n\n"
+        "<b>Aᴄᴛɪᴠᴀᴛᴇ Pʀᴇᴍɪᴜᴍ Aғᴛᴇʀ Yᴏᴜʀ</b> "
+        "<b>ғʀᴇᴇ ʀᴇǫᴜᴇsᴛs ᴀʀᴇ ғɪɴɪsʜᴇᴅ.</b>\n\n"
 
         "🌿<b>Mᴀɪɴᴛᴀɪɴᴇᴅ ʙʏ: @Mr_Mohammed_29</b>"
     )
@@ -318,34 +315,42 @@ def register_start_handlers(app):
     ):
 
         text = (
-            "ℹ️ <b>ABOUT PREMIUM MOVIE BOT</b>\n\n"
 
-            "🎬 <b>Premium Movie Bot</b>\n\n"
+            "<b>⍟───[ MY ᴅᴇᴛᴀɪʟꜱ ]───⍟</b>\n\n"
 
-            "🔎 Search for movies and series "
-            "from our database.\n\n"
+            "• <b>Pʀᴏɢʀᴀᴍᴇʀ: "
+            "<a href=\"https://t.me/Mr_Mohammed_29\">ᴍᴏʜᴀᴍᴍᴇᴅ</a></b>\n"
 
-            "📦 Select the file you want "
-            "from the search results.\n\n"
+            "• <b>ꜰᴏᴜɴᴅᴇʀ ᴏꜰ: "
+            "<a href=\"https://t.me/Aero_Unity\">ᴀᴇʀᴏ ᴜɴɪᴛʏ</a></b>\n"
 
-            "💎 Premium plans are available "
-            "for additional requests.\n\n"
+            "• <b>Lɪʙʀᴀʀʏ:</b> Pyʀᴏɢʀᴀᴍ 2.0\n"
 
-            "⚡ Fast Search • Easy To Use • "
-            "Powerful Database\n\n"
+            "• <b>Lᴀɴɢᴜᴀɢᴇ:</b> Pʏᴛʜᴏɴ 𝟹\n"
 
-            "🌿 <b>Powered by @Aero_Unity</b>"
+            "• <b>Dᴀᴛᴀʙᴀsᴇ:</b> ᴍᴏɴɢᴏ ᴅʙ\n"
+
+            "• <b>ᴄʜᴀɴɴᴇʟ: "
+            "<a href=\"https://t.me/Aero_Unity\">ᴀᴇʀᴏ ᴜɴɪᴛʏ</a></b>\n"
+
+            "• <b>ᴍʏ ꜱᴇʀᴠᴇʀ:"
+            "<a href=\"https://t.me/Mr_Mohammed_29\">ꜱᴇʀᴠᴇʀ</a></b>\n"
+   
+            "• <b>ʙᴜɪʟᴅ sᴛᴀᴛᴜs:</b> "
+            "ᴠ3 [sᴛᴀʙʟᴇ]\n\n"
         )
 
         try:
 
             await callback.message.edit_caption(
+
                 caption=text,
+
                 reply_markup=InlineKeyboardMarkup(
                     [
                         [
                             InlineKeyboardButton(
-                                "⬅️ Back",
+                                "• ʜᴏᴍᴇ •",
                                 callback_data="start_back"
                             )
                         ]
