@@ -1068,49 +1068,81 @@ def register_search_handlers(app):
 
         sent_count = 0
         failed_count = 0
+        
+        sent_message_ids = []
 
         for item in results:
 
-            message_id = item.get(
-                "message_id"
+           message_id = item.get(
+               "message_id"
+           )
+
+           if not message_id:
+               failed_count += 1
+               continue
+
+           consumed = await consume_request(
+               user_id
+           )
+
+           if not consumed:
+               failed_count += 1
+               break
+
+           try:
+
+               sent_message = await send_database_file(
+                   client=client,
+                   user_id=user_id,
+                   message_id=message_id
+               )
+
+               sent_message_ids.append(
+                   sent_message.id
+               )
+
+               sent_count += 1
+
+           except Exception as e:
+
+               logger.exception(
+                   "SEND ALL failed for message %s: %s",
+                   message_id,
+                   e
+               )
+
+               await restore_request(
+                   user_id
+               )
+
+               failed_count += 1
+
+        # --------------------------------------------------------
+        # SEND ALL WARNING
+        # --------------------------------------------------------
+
+        if sent_message_ids:
+
+            warning_message = await callback.message.reply_text(
+                "<blockquote><b><i>❗️❗️❗️IMPORTANT❗️️❗️❗️</i></b></blockquote>\n\n"
+                "<b>Total {sent_count} Files Sent Successfully</b>"
+                "<b>This Movie Files/Videos will be deleted in 5 mins message</b>"
+                "<i>(due to copyright issues)</i>\n\n"
+                "<b>Please forward this ALL Files/Videos to your Saved Messages and Start Download there</b>"
             )
-
-            if not message_id:
-                failed_count += 1
-                continue
-
-            consumed = await consume_request(
-                user_id
-            )
-
-            if not consumed:
-                failed_count += 1
-                break
-
-            try:
-
-                await send_database_file(
+            # ----------------------------------------------------
+            # DELETE ALL FILES + WARNING AFTER 5 MINUTES
+            # ----------------------------------------------------
+   
+            asyncio.create_task(
+                delete_files_and_warning_later(
                     client=client,
-                    user_id=user_id,
-                    message_id=message_id
+                    chat_id=user_id,
+                    message_ids=sent_message_ids,
+                    warning_message_id=warning_message.id
                 )
-
-                sent_count += 1
-
-            except Exception as e:
-
-                logger.exception(
-                    "SEND ALL failed for message %s: %s",
-                    message_id,
-                    e
-                )
-
-                await restore_request(
-                    user_id
-                )
-
-                failed_count += 1
-
+            )
+      
         logger.info(
             "SEND ALL finished | user=%s | sent=%s | failed=%s",
             user_id,
