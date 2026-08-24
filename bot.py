@@ -157,43 +157,43 @@ async def main():
         workers=4
     )
 
-        # ============================================================
-        # DATABASE CHANNEL AUTO INDEXER
-        # ============================================================
+    # ============================================================
+    # DATABASE CHANNEL AUTO INDEXER
+    # ============================================================
 
-        @app.on_message(
-            filters.channel
-            & filters.chat(DATABASE_CHANNEL_ID)
-        )
-        async def database_channel_post_handler(
-            client,
-            message
-        ):  
+    @app.on_message(
+        filters.channel
+        & filters.chat(DATABASE_CHANNEL_ID)
+    )
+    async def database_channel_post_handler(
+        client,
+        message
+    ):  
 
-            try:
+        try:
 
-                indexed = await handle_database_post(
-                    client,
-                    message
-                ) 
+            indexed = await handle_database_post(
+                client,
+                message 
+            ) 
 
-                if indexed:
+            if indexed:
 
-                    logger.info(
-                        "AUTO INDEXED | "
-                        "channel=%s | "
-                        "message_id=%s",
-                        message.chat.id,
-                        message.id
-                    )
-
-            except Exception as e:
-
-                logger.exception(
-                    "Auto-index failed | message_id=%s | error=%s",
-                    message.id,
-                    e
+                logger.info(
+                    "AUTO INDEXED | "
+                    "channel=%s | "
+                    "message_id=%s",
+                    message.chat.id,
+                    message.id
                 )
+
+        except Exception as e:
+
+            logger.exception(
+                "Auto-index failed | message_id=%s | error=%s",
+                message.id,
+                e
+            )
 
     # --------------------------------------------------------
     # REGISTER HANDLERS
