@@ -433,6 +433,56 @@ async def count_media():
         {}
     )
 
+# ============================================================
+# MEDIA STORAGE STATISTICS
+# ============================================================
+
+async def get_media_storage_stats():
+
+    pipeline = [
+        {
+            "$group": {
+                "_id": None,
+                "total_files": {
+                    "$sum": 1
+                },
+                "total_size": {
+                    "$sum": {
+                        "$ifNull": [
+                            "$file_size",
+                            0
+                        ]
+                    }
+                }
+            }
+        }
+    ]
+
+    result = await media_collection.aggregate(
+        pipeline
+    ).to_list(
+        length=1
+    )
+
+    if not result:
+        return {
+            "total_files": 0,
+            "total_size": 0
+        }
+
+    data = result[0]
+
+    return {
+        "total_files": data.get(
+            "total_files",
+            0
+        ),
+        "total_size": data.get(
+            "total_size",
+            0
+        )
+    }
+
 
 # ============================================================
 # SEARCH SESSIONS
