@@ -2,12 +2,12 @@ import asyncio
 import logging
 import os
 import re
+import time
+import urllib.parse
+import urllib.request
+import json
 
 from pyrogram import filters
-from pyrogram.types import (
-    InlineKeyboardButton,
-    InlineKeyboardMarkup
-)
 
 from config import (
     DATABASE_CHANNEL_ID
@@ -32,7 +32,8 @@ from search import search_movies
 
 from utils.buttons import (
     search_result_buttons,
-    premium_buttons
+    premium_buttons,
+    file_sent_buttons
 )
 
 from utils.helpers import (
@@ -47,151 +48,21 @@ logger = logging.getLogger(__name__)
 # SETTINGS
 # ============================================================
 
+FILE_DELETE_AFTER = 300
+
 TMDB_API_KEY = os.getenv(
     "TMDB_API_KEY",
     ""
 )
 
-UPDATES_URL = os.getenv(
-    "UPDATES_URL",
-    "https://t.me/Aero_Unity"
-)
-
-AUTO_DELETE_SECONDS = 300
-
 
 # ============================================================
-# UPDATES BUTTON
+# DEFAULT TMDB DATA
 # ============================================================
 
-def updates_button():
+def empty_tmdb_metadata(query):
 
-    return InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "📢 Updates",
-                    url=UPDATES_URL
-                )
-            ]
-        ]
-    )
-
-
-# ============================================================
-# AUTO DELETE
-# ============================================================
-
-async def delete_after_5_minutes(message):
-
-    try:
-
-        await asyncio.sleep(
-            AUTO_DELETE_SECONDS
-        )
-
-        await message.delete()
-
-        logger.info(
-            "Deleted message %s after 5 minutes",
-            message.id
-        )
-
-    except Exception as e:
-
-        logger.warning(
-            "Auto delete failed for message %s: %s",
-            getattr(message, "id", "unknown"),
-            e
-        )
-
-
-# ============================================================
-# SEND FILE + WARNING
-# ============================================================
-
-async def send_file_with_warning(
-    client,
-    user_id,
-    message_id
-):
-
-    try:
-
-        # ----------------------------------------------------
-        # SEND FILE
-        # ----------------------------------------------------
-
-        sent_file = await client.copy_message(
-
-            chat_id=user_id,
-
-            from_chat_id=DATABASE_CHANNEL_ID,
-
-            message_id=int(message_id)
-        )
-
-        # ----------------------------------------------------
-        # WARNING MESSAGE
-        # ----------------------------------------------------
-
-        warning = await client.send_message(
-
-            chat_id=user_id,
-
-            text=(
-                "👇 <b>Your requested file is here!</b>\n\n"
-
-                "⚠️ <b>This file will be deleted within "
-                "5 minutes.</b>\n\n"
-
-                "📥 Please save the file before it is "
-                "automatically deleted."
-            ),
-
-            reply_markup=updates_button()
-        )
-
-        # ----------------------------------------------------
-        # DELETE FILE AFTER 5 MINUTES
-        # ----------------------------------------------------
-
-        asyncio.create_task(
-            delete_after_5_minutes(
-                sent_file
-            )
-        )
-
-        # ----------------------------------------------------
-        # DELETE WARNING AFTER 5 MINUTES
-        # ----------------------------------------------------
-
-        asyncio.create_task(
-            delete_after_5_minutes(
-                warning
-            )
-        )
-
-        return True
-
-    except Exception as e:
-
-        logger.exception(
-            "File delivery failed for message %s: %s",
-            message_id,
-            e
-        )
-
-        return False
-
-
-# ============================================================
-# TMDB METADATA
-# ============================================================
-
-async def get_tmdb_metadata(query):
-
-    default = {
+    return {
         "title": query,
         "year": "",
         "language": "",
@@ -199,11 +70,24 @@ async def get_tmdb_metadata(query):
         "genres": []
     }
 
-    if not TMDB_API_KEY:
 
-        return default
+# ============================================================
+# TMDB METADATA
+#
+# Uses urllib instead of requests.
+# Therefore requests is NOT required.
+# ============================================================
+
+async def get_tmdb_metadata(query):
+
+    if not TMDB_API_KEY:
+        return empty_tmdb_metadata(query)
 
     try:
+
+        # ----------------------------------------------------
+        # CLEAN SEARCH QUERY
+        # ----------------------------------------------------
 
         clean_query = re.sub(
             r"\bS\d{1,2}E\d{1,3}\b",
@@ -213,7 +97,9 @@ async def get_tmdb_metadata(query):
         )
 
         clean_query = re.sub(
-            r"\b(480p|540p|576p|720p|1080p|2160p|4K|WEB[- ]?DL|WEB[- ]?Rip|BluRay|HDRip|HEVC|H\.?264|H\.?265)\b",
+            r"\b(480p|540p|576p|720p|1080p|2160p|4K|"
+            r"WEB[- ]?DL|WEB[- ]?Rip|BluRay|HDRip|HEVC|"
+            r"H\.?264|H\.?265)\b",
             "",
             clean_query,
             flags=re.IGNORECASE
@@ -226,36 +112,65 @@ async def get_tmdb_metadata(query):
         ).strip()
 
         if not clean_query:
-
             clean_query = query
 
-        import requests
+        # ----------------------------------------------------
+        # BUILD TMDB URL
+        # ----------------------------------------------------
 
-        response = await asyncio.to_thread(
-            requests.get,
-            "https://api.themoviedb.org/3/search/multi",
-            params={
-                "api_key": TMDB_API_KEY,
-                "query": clean_query
-            },
-            timeout=10
+        encoded_query = urllib.parse.quote(
+            clean_query
         )
 
-        if response.status_code != 200:
+        url = (
+            "https://api.themoviedb.org/3/search/multi"
+            f"?api_key={TMDB_API_KEY}"
+            f"&query={encoded_query}"
+        )
 
-            logger.warning(
-                "TMDB returned HTTP %s",
-                response.status_code
+        # ----------------------------------------------------
+        # REQUEST
+        # ----------------------------------------------------
+
+        def fetch():
+
+            request = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "PremiumMovieBot/1.0"
+                }
             )
 
-            return default
+            with urllib.request.urlopen(
+                request,
+                timeout=10
+            ) as response:
 
-        data = response.json()
+                return response.read().decode(
+                    "utf-8"
+                )
+
+        raw_data = await asyncio.to_thread(
+            fetch
+        )
+
+        data = json.loads(
+            raw_data
+        )
 
         results = data.get(
             "results",
             []
         )
+
+        if not results:
+            return empty_tmdb_metadata(
+                clean_query
+            )
+
+        # ----------------------------------------------------
+        # FIND MOVIE / TV
+        # ----------------------------------------------------
 
         item = None
 
@@ -269,16 +184,20 @@ async def get_tmdb_metadata(query):
             ):
 
                 item = result
-
                 break
 
         if not item:
-
-            return default
+            return empty_tmdb_metadata(
+                clean_query
+            )
 
         media_type = item.get(
             "media_type"
         )
+
+        # ----------------------------------------------------
+        # TITLE
+        # ----------------------------------------------------
 
         if media_type == "movie":
 
@@ -288,9 +207,7 @@ async def get_tmdb_metadata(query):
             )
 
             release_date = (
-                item.get(
-                    "release_date"
-                )
+                item.get("release_date")
                 or ""
             )
 
@@ -302,17 +219,29 @@ async def get_tmdb_metadata(query):
             )
 
             release_date = (
-                item.get(
-                    "first_air_date"
-                )
+                item.get("first_air_date")
                 or ""
             )
+
+        # ----------------------------------------------------
+        # YEAR
+        # ----------------------------------------------------
 
         year = ""
 
         if release_date:
-
             year = release_date[:4]
+
+        # ----------------------------------------------------
+        # LANGUAGE
+        # ----------------------------------------------------
+
+        language_code = (
+            item.get(
+                "original_language"
+            )
+            or ""
+        )
 
         language_map = {
 
@@ -330,15 +259,12 @@ async def get_tmdb_metadata(query):
             "de": "German",
             "it": "Italian",
             "pt": "Portuguese",
-            "ru": "Russian"
+            "ru": "Russian",
+            "ar": "Arabic",
+            "tr": "Turkish",
+            "th": "Thai",
+            "id": "Indonesian"
         }
-
-        language_code = (
-            item.get(
-                "original_language"
-            )
-            or ""
-        )
 
         language = language_map.get(
             language_code,
@@ -347,19 +273,31 @@ async def get_tmdb_metadata(query):
             else ""
         )
 
-        vote = item.get(
+        # ----------------------------------------------------
+        # RATING
+        # ----------------------------------------------------
+
+        rating_value = item.get(
             "vote_average"
         )
 
-        if vote:
+        rating = ""
 
-            rating = (
-                f"{float(vote):.1f}/10"
-            )
+        if rating_value:
 
-        else:
+            try:
 
-            rating = ""
+                rating = (
+                    f"{float(rating_value):.1f}/10"
+                )
+
+            except Exception:
+
+                rating = ""
+
+        # ----------------------------------------------------
+        # GENRES
+        # ----------------------------------------------------
 
         genre_map = {
 
@@ -404,7 +342,6 @@ async def get_tmdb_metadata(query):
             )
 
             if genre_name:
-
                 genres.append(
                     genre_name
                 )
@@ -424,21 +361,24 @@ async def get_tmdb_metadata(query):
 
     except Exception as e:
 
-        logger.exception(
+        logger.warning(
             "TMDB metadata lookup failed: %s",
             e
         )
 
-        return default
+        return empty_tmdb_metadata(
+            query
+        )
 
 
 # ============================================================
-# SEARCH RESULT TEXT
+# BUILD SEARCH RESULT TEXT
 # ============================================================
 
 def build_search_text(
     query,
     results,
+    elapsed,
     metadata
 ):
 
@@ -463,57 +403,134 @@ def build_search_text(
         "genres"
     ) or []
 
-    text = (
-        "🎬 <b>"
-        f"{escape_html(title)}"
-        "</b>\n"
+    text += (
+        f"🎬 <b>Tɪᴛʟᴇ:</b> "
+        f"{escape_html(title)}\n"
     )
 
     if year:
 
         text += (
-            "📅 <b>Year:</b> "
+            f"📅 <b>Yᴇᴀʀ:</b> "
             f"{escape_html(str(year))}\n"
         )
 
     if language:
 
         text += (
-            "🗣 <b>Language:</b> "
+            f"🗣 <b>Lᴀɴɢᴜᴀɢᴇ:</b> "
             f"{escape_html(str(language))}\n"
         )
 
     if rating:
 
         text += (
-            "⭐ <b>Rating:</b> "
+            f"⭐ <b>Rᴀᴛɪɴɢs:</b> "
             f"{escape_html(str(rating))}\n"
         )
 
     if genres:
 
         text += (
-            "🎭 <b>Genres:</b> "
+            f"🎭 <b>Gᴇɴʀᴇs:</b> "
             f"{escape_html(', '.join(genres))}\n"
         )
 
-    text += "\n"
-
     text += (
-        "📦 <b>Results shown:</b> "
-        f"{len(results)}\n\n"
+        f"📦 <b>Rᴇsᴜʟᴛs Sʜᴏᴡɴ:</b> "
+        f"{len(results)}\n"
     )
 
     text += (
-        "👇 <b>Select the file you want:</b>\n\n"
+        f"⏱ <b>Rᴇsᴜʟᴛs Sʜᴏᴡɴ Iɴ:</b> "
+        f"{elapsed:.2f}s\n"
     )
 
     text += (
-        "Powered by "
-        "<b>@Aero_Unity</b>"
+        "<b>Pᴏᴡᴇʀᴇᴅ Bʏ: </b>"
+        "<b>@Aero_Unity</b>\n\n"
+    )
+
+    text += (
+        "👇 <b>Hᴇʀᴇ Yᴏᴜʀ Rᴇǫᴜᴇsᴛᴇᴅ Fɪʟᴇs</b>"
     )
 
     return text
+
+
+# ============================================================
+# FILE AUTO DELETE
+# ============================================================
+
+async def delete_file_later(
+    client,
+    chat_id,
+    message_id
+):
+
+    try:
+
+        await asyncio.sleep(
+            FILE_DELETE_AFTER
+        )
+
+        await client.delete_messages(
+            chat_id=chat_id,
+            message_ids=message_id
+        )
+
+        logger.info(
+            "Deleted delivered file %s "
+            "from user %s after 5 minutes.",
+            message_id,
+            chat_id
+        )
+
+    except Exception as e:
+
+        logger.warning(
+            "Could not delete delivered file %s: %s",
+            message_id,
+            e
+        )
+
+
+# ============================================================
+# SEND FILE
+# ============================================================
+
+async def send_database_file(
+    client,
+    user_id,
+    message_id
+):
+
+    sent_message = await client.copy_message(
+
+        chat_id=user_id,
+
+        from_chat_id=DATABASE_CHANNEL_ID,
+
+        message_id=int(message_id),
+
+        # IMPORTANT:
+        # Updates button is attached to the ACTUAL FILE.
+        reply_markup=file_sent_buttons()
+    )
+
+    # --------------------------------------------------------
+    # DELETE THE ACTUAL FILE AFTER 5 MINUTES
+    # --------------------------------------------------------
+
+    asyncio.create_task(
+        delete_file_later(
+            client=client,
+            chat_id=user_id,
+            message_id=sent_message.id
+        )
+    )
+
+    return sent_message
 
 
 # ============================================================
@@ -555,13 +572,7 @@ def register_search_handlers(app):
         message
     ):
 
-        if not message.from_user:
-
-            return
-
-        user_id = (
-            message.from_user.id
-        )
+        user_id = message.from_user.id
 
         query = (
             message.text
@@ -569,11 +580,10 @@ def register_search_handlers(app):
         ).strip()
 
         if not query:
-
             return
 
         # ----------------------------------------------------
-        # GET / CREATE USER
+        # USER
         # ----------------------------------------------------
 
         user = await get_user(
@@ -583,14 +593,11 @@ def register_search_handlers(app):
         if not user:
 
             user = await create_user(
-
                 user_id=user_id,
-
                 first_name=(
                     message.from_user.first_name
                     or "User"
                 ),
-
                 username=(
                     message.from_user.username
                     or ""
@@ -600,14 +607,11 @@ def register_search_handlers(app):
         else:
 
             await update_user(
-
                 user_id=user_id,
-
                 first_name=(
                     message.from_user.first_name
                     or ""
                 ),
-
                 username=(
                     message.from_user.username
                     or ""
@@ -619,7 +623,7 @@ def register_search_handlers(app):
             )
 
         # ----------------------------------------------------
-        # CHECK REQUEST LIMIT
+        # BALANCE
         # ----------------------------------------------------
 
         if not can_use_movie(user):
@@ -630,7 +634,7 @@ def register_search_handlers(app):
                 "has been reached.</b>\n\n"
 
                 "💎 Please activate a Premium plan "
-                "to continue.",
+                "to continue receiving files.",
 
                 reply_markup=premium_buttons()
             )
@@ -642,8 +646,10 @@ def register_search_handlers(app):
         # ----------------------------------------------------
 
         wait = await message.reply_text(
-            "🔎 <b>Searching...</b>"
+            "<b><i>Sᴇᴀʀᴄʜɪɴɢ...</i></b>"
         )
+
+        search_started = time.perf_counter()
 
         # ----------------------------------------------------
         # SEARCH DATABASE
@@ -652,9 +658,7 @@ def register_search_handlers(app):
         try:
 
             results, has_next = await search_movies(
-
                 query=query,
-
                 page=0
             )
 
@@ -666,12 +670,16 @@ def register_search_handlers(app):
             )
 
             await wait.edit_text(
-
                 "❌ <b>Search failed.</b>\n\n"
                 "Please try again."
             )
 
             return
+
+        elapsed = (
+            time.perf_counter()
+            - search_started
+        )
 
         # ----------------------------------------------------
         # NO RESULTS
@@ -683,24 +691,21 @@ def register_search_handlers(app):
 
                 "😕 <b>No results found.</b>\n\n"
 
-                "🔎 Search:\n"
+                f"🔎 Search:\n"
                 f"<code>{escape_html(query)}</code>\n\n"
-
-                "Try another movie or series name."
+                "Check The Spelling On Google and Try Again"
             )
 
             return
 
         # ----------------------------------------------------
-        # CREATE SEARCH SESSION
+        # SESSION
         # ----------------------------------------------------
 
         try:
 
             session_id = await create_search_session(
-
                 user_id=user_id,
-
                 query=query
             )
 
@@ -712,7 +717,6 @@ def register_search_handlers(app):
             )
 
             await wait.edit_text(
-
                 "❌ <b>Could not create search session.</b>\n"
                 "Please try again."
             )
@@ -728,40 +732,25 @@ def register_search_handlers(app):
         )
 
         # ----------------------------------------------------
-        # SHOW RESULTS
+        # RESULT MESSAGE
         # ----------------------------------------------------
 
-        try:
+        await wait.edit_text(
 
-            await wait.edit_text(
+            build_search_text(
+                query=query,
+                results=results,
+                elapsed=elapsed,
+                metadata=metadata
+            ),
 
-                build_search_text(
-
-                    query=query,
-
-                    results=results,
-
-                    metadata=metadata
-                ),
-
-                reply_markup=search_result_buttons(
-
-                    results=results,
-
-                    session_id=session_id,
-
-                    page=0,
-
-                    has_next=has_next
-                )
+            reply_markup=search_result_buttons(
+                results=results,
+                session_id=session_id,
+                page=0,
+                has_next=has_next
             )
-
-        except Exception as e:
-
-            logger.exception(
-                "Could not display search results: %s",
-                e
-            )
+        )
 
 
     # ========================================================
@@ -778,15 +767,11 @@ def register_search_handlers(app):
         callback
     ):
 
-        user_id = (
-            callback.from_user.id
-        )
+        user_id = callback.from_user.id
 
         try:
 
-            parts = callback.data.split(
-                "_"
-            )
+            parts = callback.data.split("_")
 
             session_id = parts[1]
 
@@ -807,18 +792,155 @@ def register_search_handlers(app):
             return
 
         session = await get_search_session(
-
             session_id=session_id,
-
             user_id=user_id
         )
 
         if not session:
 
             await callback.answer(
-
                 "This search session has expired.",
+                show_alert=True
+            )
 
+            return
+
+        query = (
+            session.get(
+                "query",
+                ""
+            )
+        ).strip()
+
+        if not query:
+
+            await callback.answer(
+                "Search query not found.",
+                show_alert=True
+            )
+
+            return
+
+        page_started = time.perf_counter()
+
+        try:
+
+            results, has_next = await search_movies(
+                query=query,
+                page=page
+            )
+
+        except Exception as e:
+
+            logger.exception(
+                "Pagination search failed: %s",
+                e
+            )
+
+            await callback.answer(
+                "Search failed.",
+                show_alert=True
+            )
+
+            return
+
+        elapsed = (
+            time.perf_counter()
+            - page_started
+        )
+
+        if not results:
+
+            await callback.answer(
+                "No more results.",
+                show_alert=True
+            )
+
+            return
+
+        metadata = await get_tmdb_metadata(
+            query
+        )
+
+        try:
+
+            await callback.message.edit_text(
+
+                build_search_text(
+                    query=query,
+                    results=results,
+                    elapsed=elapsed,
+                    metadata=metadata
+                ),
+
+                reply_markup=search_result_buttons(
+                    results=results,
+                    session_id=session_id,
+                    page=page,
+                    has_next=has_next
+                )
+            )
+
+        except Exception as e:
+
+            # Prevent MESSAGE_NOT_MODIFIED
+            if "MESSAGE_NOT_MODIFIED" not in str(e):
+
+                logger.exception(
+                    "Could not update search page: %s",
+                    e
+                )
+
+        await callback.answer()
+
+
+    # ========================================================
+    # SEND ALL
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^sendall_[a-fA-F0-9]+_\d+$"
+        )
+    )
+    async def send_all_callback(
+        client,
+        callback
+    ):
+
+        user_id = callback.from_user.id
+
+        try:
+
+            parts = callback.data.split("_")
+
+            session_id = parts[1]
+
+            page = int(
+                parts[2]
+            )
+
+        except (
+            ValueError,
+            IndexError
+        ):
+
+            await callback.answer(
+                "Invalid request.",
+                show_alert=True
+            )
+
+            return
+
+        session = await get_search_session(
+            session_id=session_id,
+            user_id=user_id
+        )
+
+        if not session:
+
+            await callback.answer(
+                "This search session has expired.",
                 show_alert=True
             )
 
@@ -843,166 +965,7 @@ def register_search_handlers(app):
         try:
 
             results, has_next = await search_movies(
-
                 query=query,
-
-                page=page
-            )
-
-        except Exception as e:
-
-            logger.exception(
-                "Pagination search failed: %s",
-                e
-            )
-
-            await callback.answer(
-                "Search failed.",
-                show_alert=True
-            )
-
-            return
-
-        if not results:
-
-            await callback.answer(
-                "No more results.",
-                show_alert=True
-            )
-
-            return
-
-        metadata = await get_tmdb_metadata(
-            query
-        )
-
-        try:
-
-            await callback.message.edit_text(
-
-                build_search_text(
-
-                    query=query,
-
-                    results=results,
-
-                    metadata=metadata
-                ),
-
-                reply_markup=search_result_buttons(
-
-                    results=results,
-
-                    session_id=session_id,
-
-                    page=page,
-
-                    has_next=has_next
-                )
-            )
-
-        except Exception as e:
-
-            if "MESSAGE_NOT_MODIFIED" not in str(e):
-
-                logger.exception(
-                    "Pagination display failed: %s",
-                    e
-                )
-
-        await callback.answer()
-
-
-    # ========================================================
-    # SEND ALL
-    # ========================================================
-
-    @app.on_callback_query(
-        filters.regex(
-            r"^sendall_[a-fA-F0-9]+_\d+$"
-        )
-    )
-    async def send_all_callback(
-        client,
-        callback
-    ):
-
-        user_id = (
-            callback.from_user.id
-        )
-
-        try:
-
-            parts = callback.data.split(
-                "_"
-            )
-
-            session_id = parts[1]
-
-            page = int(
-                parts[2]
-            )
-
-        except (
-            ValueError,
-            IndexError
-        ):
-
-            await callback.answer(
-                "Invalid request.",
-                show_alert=True
-            )
-
-            return
-
-        # ----------------------------------------------------
-        # GET SESSION
-        # ----------------------------------------------------
-
-        session = await get_search_session(
-
-            session_id=session_id,
-
-            user_id=user_id
-        )
-
-        if not session:
-
-            await callback.answer(
-
-                "This search session has expired.",
-
-                show_alert=True
-            )
-
-            return
-
-        query = (
-            session.get(
-                "query",
-                ""
-            )
-        ).strip()
-
-        if not query:
-
-            await callback.answer(
-                "Search query not found.",
-                show_alert=True
-            )
-
-            return
-
-        # ----------------------------------------------------
-        # GET RESULTS
-        # ----------------------------------------------------
-
-        try:
-
-            results, _ = await search_movies(
-
-                query=query,
-
                 page=page
             )
 
@@ -1029,10 +992,6 @@ def register_search_handlers(app):
 
             return
 
-        # ----------------------------------------------------
-        # USER
-        # ----------------------------------------------------
-
         user = await get_user(
             user_id
         )
@@ -1040,66 +999,38 @@ def register_search_handlers(app):
         if not user:
 
             user = await create_user(
-
                 user_id=user_id,
-
                 first_name=(
                     callback.from_user.first_name
                     or "User"
                 ),
-
                 username=(
                     callback.from_user.username
                     or ""
                 )
             )
 
-        # ----------------------------------------------------
-        # CHECK BALANCE
-        # ----------------------------------------------------
-
         remaining = get_remaining_requests(
             user
         )
 
-        required = len(
-            results
-        )
+        required = len(results)
 
         if remaining < required:
 
             await callback.answer(
-
                 f"SEND ALL needs {required} "
                 f"requests. You have {remaining}.",
-
                 show_alert=True
-            )
-
-            await callback.message.reply_text(
-
-                "💎 <b>Not enough requests</b>\n\n"
-
-                f"📦 Files: <b>{required}</b>\n"
-                f"🎟 Remaining: <b>{remaining}</b>\n\n"
-
-                "Please activate Premium.",
-
-                reply_markup=premium_buttons()
             )
 
             return
 
         await callback.answer(
-            "📤 Sending files..."
+            "›› sᴇɴᴅɪɴɢ ғɪʟᴇs.."
         )
 
-        # ----------------------------------------------------
-        # SEND FILES
-        # ----------------------------------------------------
-
-        sent_files = []
-
+        sent_count = 0
         failed_count = 0
 
         for item in results:
@@ -1109,9 +1040,7 @@ def register_search_handlers(app):
             )
 
             if not message_id:
-
                 failed_count += 1
-
                 continue
 
             consumed = await consume_request(
@@ -1119,27 +1048,26 @@ def register_search_handlers(app):
             )
 
             if not consumed:
-
                 failed_count += 1
-
                 break
 
-            success = await send_file_with_warning(
+            try:
 
-                client=client,
-
-                user_id=user_id,
-
-                message_id=message_id
-            )
-
-            if success:
-
-                sent_files.append(
-                    message_id
+                await send_database_file(
+                    client=client,
+                    user_id=user_id,
+                    message_id=message_id
                 )
 
-            else:
+                sent_count += 1
+
+            except Exception as e:
+
+                logger.exception(
+                    "SEND ALL failed for message %s: %s",
+                    message_id,
+                    e
+                )
 
                 await restore_request(
                     user_id
@@ -1147,24 +1075,12 @@ def register_search_handlers(app):
 
                 failed_count += 1
 
-        # ----------------------------------------------------
-        # DO NOT SEND "SEND ALL COMPLETED"
-        # ----------------------------------------------------
-
-        if sent_files:
-
-            return
-
-        if failed_count:
-
-            await client.send_message(
-
-                user_id,
-
-                "❌ <b>Unable to send the requested files.</b>\n\n"
-                "Your requests have been restored for "
-                "the files that could not be delivered."
-            )
+        logger.info(
+            "SEND ALL finished | user=%s | sent=%s | failed=%s",
+            user_id,
+            sent_count,
+            failed_count
+        )
 
 
     # ========================================================
@@ -1181,21 +1097,12 @@ def register_search_handlers(app):
         callback
     ):
 
-        user_id = (
-            callback.from_user.id
-        )
-
-        # ----------------------------------------------------
-        # MESSAGE ID
-        # ----------------------------------------------------
+        user_id = callback.from_user.id
 
         try:
 
             message_id = int(
-
-                callback.data.split(
-                    "_"
-                )[1]
+                callback.data.split("_")[1]
             )
 
         except (
@@ -1204,17 +1111,11 @@ def register_search_handlers(app):
         ):
 
             await callback.answer(
-
                 "Invalid file.",
-
                 show_alert=True
             )
 
             return
-
-        # ----------------------------------------------------
-        # USER
-        # ----------------------------------------------------
 
         user = await get_user(
             user_id
@@ -1223,14 +1124,11 @@ def register_search_handlers(app):
         if not user:
 
             user = await create_user(
-
                 user_id=user_id,
-
                 first_name=(
                     callback.from_user.first_name
                     or "User"
                 ),
-
                 username=(
                     callback.from_user.username
                     or ""
@@ -1238,15 +1136,13 @@ def register_search_handlers(app):
             )
 
         # ----------------------------------------------------
-        # CHECK LIMIT
+        # CHECK BALANCE
         # ----------------------------------------------------
 
         if not can_use_movie(user):
 
             await callback.answer(
-
                 "Your request limit is finished.",
-
                 show_alert=True
             )
 
@@ -1255,7 +1151,9 @@ def register_search_handlers(app):
                 "💎 <b>Premium Required</b>\n\n"
 
                 "Your available movie requests "
-                "have been used.",
+                "have been used.\n\n"
+
+                "Choose a Premium plan to continue.",
 
                 reply_markup=premium_buttons()
             )
@@ -1273,9 +1171,7 @@ def register_search_handlers(app):
         if not consumed:
 
             await callback.answer(
-
                 "No requests remaining.",
-
                 show_alert=True
             )
 
@@ -1290,23 +1186,30 @@ def register_search_handlers(app):
             return
 
         await callback.answer(
-            "📤 Sending your file..."
+            "›› sᴇɴᴅɪɴɢ ғɪʟᴇs..."
         )
 
         # ----------------------------------------------------
-        # SEND FILE
+        # SEND ACTUAL FILE
         # ----------------------------------------------------
 
-        success = await send_file_with_warning(
+        try:
 
-            client=client,
+            sent_message = await send_database_file(
 
-            user_id=user_id,
+                client=client,
 
-            message_id=message_id
-        )
+                user_id=user_id,
 
-        if not success:
+                message_id=message_id
+            )
+
+        except Exception as e:
+
+            logger.exception(
+                "File delivery failed: %s",
+                e
+            )
 
             await restore_request(
                 user_id
@@ -1316,7 +1219,29 @@ def register_search_handlers(app):
 
                 "❌ <b>File delivery failed.</b>\n\n"
 
-                "Your movie request has been restored."
+                "Your movie request has been restored.\n"
+                "Please try again."
             )
 
             return
+
+        # ----------------------------------------------------
+        # GET BALANCE
+        # ----------------------------------------------------
+
+        updated_user = await get_user(
+            user_id
+        )
+
+        remaining = get_remaining_requests(
+            updated_user
+        )
+
+        logger.info(
+            "File sent | user=%s | source_message=%s | "
+            "sent_message=%s | remaining=%s",
+            user_id,
+            message_id,
+            sent_message.id,
+            remaining
+        )
