@@ -1,12 +1,15 @@
 import os
-
+from datetime import datetime
 from pyrogram import filters
 from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup
 )
 
-from config import FREE_REQUESTS
+from config import (
+    FREE_REQUESTS,
+    LOG_CHANNEL_ID
+)
 
 from database import (
     get_user,
@@ -165,6 +168,53 @@ def register_start_handlers(app):
                 first_name=first_name,
                 username=username
             )
+            # ====================================================
+            # START LOG — NEW USERS ONLY
+            # ====================================================
+
+            try:
+
+                now = datetime.now()
+
+                username_text = (
+                    f"@{username}"
+                    if username
+                    else "Not Set"
+                )
+ 
+                log_text = (
+                    "🚀 <b>NEW USER STARTED BOT</b>\n\n"
+
+                    f"👤 <b>Name:</b> "
+                    f"{first_name}\n"
+
+                    f"🆔 <b>User ID:</b> "
+                    f"<code>{user_id}</code>\n"
+
+                    f"🔹 <b>Username:</b> "
+                    f"{username_text}\n\n"
+
+                    f"📅 <b>Date:</b> "
+                    f"{now.strftime('%d-%m-%Y')}\n"
+
+                    f"⏰ <b>Time:</b> "
+                    f"{now.strftime('%I:%M:%S %p')}\n\n"
+
+                    "⚡ <b>Powered By:</b> @Aero_Unity"
+                )
+
+                if LOG_CHANNEL_ID:
+
+                    await client.send_message(
+                        chat_id=LOG_CHANNEL_ID,
+                        text=log_text
+                    )
+
+            except Exception as e:
+
+                print(
+                    f"START LOG ERROR: {e}"
+                )
 
         else:
 
