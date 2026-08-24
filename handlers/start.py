@@ -80,13 +80,12 @@ def register_start_handlers(app):
 
         text = (
             f"👋 <b>Welcome, {first_name}!</b>\n\n"
-            "🎬 <b>Premium Movie Bot</b>\n\n"
-            "Send the name of a movie or series "
-            "to search the database.\n\n"
-            f"🆓 Free requests remaining: "
+            "<b>Iᴍ Pʀᴇᴍɪᴜᴍ Mᴏᴠɪᴇ Bᴏᴛ</b>\n\n"
+            "<b>Sᴇɴᴅ ᴛʜᴇ ɴᴀᴍᴇ ᴏғ ᴀ ᴍᴏᴠɪᴇ ᴏʀ sᴇʀɪᴇs</b>"
+            f"🆓 ғʀᴇᴇ ʀᴇǫᴜᴇsᴛs ʀᴇᴍᴀɪɴɪɴɢ : "
             f"<b>{remaining}</b>\n\n"
-            "💎 After your free requests are finished, "
-            "activate Premium to continue."
+            "Aғᴛᴇʀ ʏᴏᴜʀ ғʀᴇᴇ ʀᴇǫᴜᴇsᴛs ᴀʀᴇ ғɪɴɪsʜᴇᴅ, "
+            "ᴀᴄᴛɪᴠᴀᴛᴇ ᴘʀᴇᴍɪᴜᴍ ᴛᴏ ᴄᴏɴᴛɪɴᴜᴇ"
         )
 
         await message.reply_text(
@@ -133,10 +132,9 @@ def register_start_handlers(app):
         )
 
         text = (
-            "🏠 <b>Premium Movie Bot</b>\n\n"
-            f"🎟 Requests remaining: "
+            "<b>Pʀᴇᴍɪᴜᴍ Mᴏᴠɪᴇ Bᴏᴛ</b>\n\n"
+            f"🎟 ғʀᴇᴇ ʀᴇǫᴜᴇsᴛs ʀᴇᴍᴀɪɴɪɴɢ: "
             f"<b>{remaining}</b>\n\n"
-            "🔎 Send a movie name to search."
         )
 
         await callback.message.edit_text(
