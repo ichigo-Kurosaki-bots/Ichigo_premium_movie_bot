@@ -247,19 +247,19 @@ def register_start_handlers(app):
             await asyncio.sleep(0.5)
 
             await animation.edit_text(
-                "🎭"
+                "卍解 Bᴀɴᴋᴀɪ"
             )
 
             await asyncio.sleep(0.5)
 
             await animation.edit_text(
-                "⚡"
+                "Tᴇɴsᴀ Zᴀɴɢᴇᴛsᴜ"
             )
 
             await asyncio.sleep(0.5)
 
             await animation.edit_text(
-                "Jɪɴᴡᴏᴏ Sᴜɴɢ..."
+                "JIᴄʜɪɢᴏ Kᴜʀᴏsᴀᴋɪ..."
             )
 
             await asyncio.sleep(0.5)
