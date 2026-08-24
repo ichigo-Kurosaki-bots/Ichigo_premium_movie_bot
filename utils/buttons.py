@@ -64,6 +64,7 @@ def premium_buttons():
         )
 
         if len(row) == 2:
+
             buttons.append(row)
             row = []
 
@@ -79,7 +80,9 @@ def premium_buttons():
         ]
     )
 
-    return InlineKeyboardMarkup(buttons)
+    return InlineKeyboardMarkup(
+        buttons
+    )
 
 
 # ============================================================
@@ -161,24 +164,6 @@ def help_buttons():
 
 
 # ============================================================
-# UPDATES BUTTON
-# ============================================================
-
-def updates_button():
-
-    return InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "📢 Join Updates Channel",
-                    url="https://t.me/Aero_Unity"
-                )
-            ]
-        ]
-    )
-
-
-# ============================================================
 # SEARCH RESULT BUTTONS
 # ============================================================
 
@@ -208,12 +193,13 @@ def search_result_buttons(
         )
 
         if len(title) > 55:
+
             title = title[:52] + "..."
 
         buttons.append(
             [
                 InlineKeyboardButton(
-                    f"🎬 {title}",
+                    f"• {title}",
                     callback_data=f"file_{message_id}"
                 )
             ]
@@ -252,9 +238,7 @@ def search_result_buttons(
             InlineKeyboardButton(
                 "⬅️ Previous",
                 callback_data=(
-                    f"searchpage_"
-                    f"{session_id}_"
-                    f"{page - 1}"
+                    f"searchpage_{session_id}_{page - 1}"
                 )
             )
         )
@@ -265,21 +249,42 @@ def search_result_buttons(
             InlineKeyboardButton(
                 "Next ➡️",
                 callback_data=(
-                    f"searchpage_"
-                    f"{session_id}_"
-                    f"{page + 1}"
+                    f"searchpage_{session_id}_{page + 1}"
                 )
             )
         )
 
     if navigation:
-        buttons.append(navigation)
 
-    return InlineKeyboardMarkup(buttons)
+        buttons.append(
+            navigation
+        )
+
+    return InlineKeyboardMarkup(
+        buttons
+    )
 
 
 # ============================================================
-# FILE BUTTONS
+# SENT FILE BUTTON
+# ============================================================
+
+def file_sent_buttons():
+
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "📢 UPDATES",
+                    url="https://t.me/Anime_UpdatesAU"
+                )
+            ]
+        ]
+    )
+
+
+# ============================================================
+# FILE CONFIRMATION BUTTONS
 # ============================================================
 
 def file_buttons():
@@ -288,8 +293,8 @@ def file_buttons():
         [
             [
                 InlineKeyboardButton(
-                    "📢 Join Updates Channel",
-                    url="https://t.me/Aero_Unity"
+                    "📢 UPDATES",
+                    url="https://t.me/Anime_UpdatesAU"
                 )
             ]
         ]
