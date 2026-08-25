@@ -10,8 +10,7 @@ from config import (
     BOT_TOKEN,
     PORT,
     LOG_LEVEL,
-    DATABASE_CHANNEL_ID,
-    LOG_CHANNEL
+    DATABASE_CHANNEL_ID
 )
 
 from database import (
@@ -273,11 +272,6 @@ async def main():
         # --------------------------------------------------------
 
         logger.info(
-            "CONFIG CHECK | LOG_CHANNEL=%r",
-            LOG_CHANNEL
-        )
-
-        logger.info(
             "CONFIG CHECK | DATABASE_CHANNEL_ID=%r",
             DATABASE_CHANNEL_ID
         )
@@ -287,7 +281,7 @@ async def main():
         # --------------------------------------------------------
 
         try:
-
+            
             database_chat = await app.get_chat(
                 DATABASE_CHANNEL_ID
             )
@@ -307,70 +301,6 @@ async def main():
                 DATABASE_CHANNEL_ID,
                 e
             )
-
-        # --------------------------------------------------------
-        # LOG CHANNEL TEST
-        # --------------------------------------------------------
-
-        if not LOG_CHANNEL:
-
-            logger.warning(
-                "LOG_CHANNEL is not configured."
-            )
-
-        else:
-   
-            try:
-  
-                log_channel_id = int(
-                    LOG_CHANNEL
-                )
-
-                logger.info(
-                    "Trying to connect to LOG_CHANNEL=%s",
-                    log_channel_id
-                )
-
-                log_chat = await app.get_chat(
-                    log_channel_id
-                )
-
-                logger.info(
-                    "LOG CHANNEL CONNECTED | "
-                    "ID=%s | TITLE=%s | USERNAME=%s | TYPE=%s",
-                    log_chat.id,
-                    log_chat.title,
-                    log_chat.username,
-                    log_chat.type
-                )
-
-                await app.send_message(
-                    chat_id=log_chat.id,
-                    text=(
-                        "✅ <b>PREMIUM MOVIE BOT STARTED</b>\n\n"
-
-                        f"🤖 <b>Bot:</b> @{me.username}\n"
-
-                        f"🆔 <b>Bot ID:</b> "
-                        f"<code>{me.id}</code>\n\n"
-
-                        "📡 <b>Log channel connection:</b> "
-                        "<b>OK</b>\n\n"
-   
-                        "⚡ <b>Powered By:</b> @Aero_Unity"
-                    )
-                )
-
-                logger.info(
-                    "LOG CHANNEL TEST MESSAGE SENT SUCCESSFULLY."
-                )
-
-            except Exception as e:
-
-                logger.exception(
-                    "LOG CHANNEL ERROR: %s",
-                    e
-                )
 
         # --------------------------------------------------------
         # KEEP BOT RUNNING
