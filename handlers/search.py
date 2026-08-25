@@ -72,14 +72,6 @@ def empty_tmdb_metadata(query):
         "genres": []
     }
 
-
-# ============================================================
-# TMDB METADATA
-#
-# Uses urllib instead of requests.
-# Therefore requests is NOT required.
-# ============================================================
-
 async def get_tmdb_metadata(query):
 
     if not TMDB_API_KEY:
@@ -644,6 +636,8 @@ def register_search_handlers(app):
         client,
         message
     ):
+        if not message.from_user:
+            return
 
         user_id = message.from_user.id
 
