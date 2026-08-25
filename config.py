@@ -36,7 +36,7 @@ if OWNER_ID:
     ADMIN_IDS.add(OWNER_ID)
 
 
-LOG_CHANNEL_ID = int(os.getenv("LOG_CHANNEL_ID", "0"))
+LOG_CHANNEL = os.getenv("LOG_CHANNEL")
 
 # ============================================================
 # STORAGE
