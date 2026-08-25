@@ -244,6 +244,34 @@ async def main():
 
     await app.start()
 
+    logger.info("Telegram client started successfully.")
+
+    me = await app.get_me()
+
+    logger.info(
+        "Telegram bot connected."
+    )
+
+    logger.info(
+        "Bot username: @%s",
+        me.username
+    )
+
+    logger.info(
+        "Bot ID: %s",
+        me.id
+    )
+   
+    logger.info(
+        "CONFIG CHECK | LOG_CHANNEL=%r",
+        LOG_CHANNEL
+    )
+
+    logger.info(
+        "CONFIG CHECK | DATABASE_CHANNEL_ID=%r",
+        DATABASE_CHANNEL_ID
+    )
+
     try:
 
         database_chat = await app.get_chat(
@@ -365,10 +393,6 @@ async def main():
 
 if __name__ == "__main__":
 
-    # --------------------------------------------------------
-    # START RENDER WEB SERVER
-    # --------------------------------------------------------
-
     web_thread = threading.Thread(
         target=run_web_server,
         daemon=True
@@ -394,7 +418,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
 
         logger.info(
-            "Bot stopped by user."
+            "Bot stopped, because bot is dead."
         )
 
     except Exception as e:
