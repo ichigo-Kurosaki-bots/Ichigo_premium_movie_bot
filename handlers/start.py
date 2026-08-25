@@ -9,7 +9,7 @@ from pyrogram.types import (
 
 from config import (
     FREE_REQUESTS,
-    LOG_CHANNEL_ID
+    LOG_CHANNEL
 )
 
 from database import (
@@ -197,24 +197,24 @@ def register_start_handlers(app):
                     "⚡ <b>Powered By:</b> @Aero_Unity"
                 )
 
-                if not LOG_CHANNEL_ID:
+                if not LOG_CHANNEL:
 
                     print(
                         "LOG CHANNEL ERROR: "
-                        "LOG_CHANNEL_ID is not configured."
+                        "LOG_CHANNEL is not configured."
                     )
 
                 else:
 
                     await client.send_message(
-                        chat_id=LOG_CHANNEL_ID,
+                        chat_id=int(LOG_CHANNEL),
                         text=log_text
                     )
 
                     print(
                         f"START LOG SENT | "
                         f"user_id={user_id} | "
-                        f"log_channel={LOG_CHANNEL_ID}"
+                        f"log_channel={LOG_CHANNEL}"
                     )
 
             except Exception as e:
