@@ -1123,12 +1123,14 @@ def register_search_handlers(app):
 
         if sent_message_ids:
 
-            warning_message = await callback.message.reply_text(
-                "<blockquote><b><i>❗️❗️❗️IMPORTANT❗️️❗️❗️</i></b></blockquote>\n\n"
-                "<b>Total {sent_count} Files Sent Successfully</b>"
-                "<b>This Movie Files/Videos will be deleted in 5 mins message</b>"
-                "<i>(due to copyright issues)</i>\n\n"
-                "<b>Please forward this ALL Files/Videos to your Saved Messages and Start Download there</b>"
+            warning_message = await client.send_message(
+                chat_id=user_id,
+                text=(
+                    "<blockquote><b><i>❗️❗️❗️ IMPORTANT ❗️❗️❗️</i></b></blockquote>\n\n"
+                    "<b>This Movie File/Video will be deleted in 5 minutes.</b>\n"
+                    "<i>(due to copyright issues)</i>\n\n"
+                    "<b>Please forward this file to your Saved Messages and download it there.</b>"
+                )
             )
             # ----------------------------------------------------
             # DELETE ALL FILES + WARNING AFTER 5 MINUTES
@@ -1318,12 +1320,17 @@ def register_search_handlers(app):
         # WARNING MESSAGE
         # --------------------------------------------------------
 
-        warning_message = await callback.message.reply_text(
-            "<blockquote><b><i>❗️❗️❗️IMPORTANT❗️️❗️❗️</i></b></blockquote>\n\n"
-            "<b>This Movie Files/Videos will be deleted in 5 mins message</b>"
-            "<i>(due to copyright issues)</i>\n\n"
-            "<b>Please forward this ALL Files/Videos to your Saved Messages and Start Download there</b>"
+        warning_message = await client.send_message(
+            chat_id=user_id,
+            text=(
+                "<blockquote><b><i>❗️❗️❗️ IMPORTANT ❗️❗️❗️</i></b></blockquote>\n\n"
+                f"<b>Total {sent_count} Files Sent Successfully.</b>\n\n"
+                "<b>These Movie Files/Videos will be deleted in 5 minutes.</b>\n"
+                "<i>(due to copyright issues)</i>\n\n"
+                "<b>Please forward ALL Files/Videos to your Saved Messages and download them there.</b>"
+            )
         )
+        
         # --------------------------------------------------------
         # DELETE FILE + WARNING AFTER 5 MINUTES
         # --------------------------------------------------------
