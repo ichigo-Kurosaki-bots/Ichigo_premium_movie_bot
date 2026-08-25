@@ -11,7 +11,7 @@ from config import (
     PORT,
     LOG_LEVEL,
     DATABASE_CHANNEL_ID,
-    LOG_CHANNEL_ID
+    LOG_CHANNEL
 )
 
 from database import (
@@ -286,13 +286,13 @@ async def main():
     # LOG CHANNEL TEST
     # ============================================================
 
-    if LOG_CHANNEL_ID:
+    if LOG_CHANNEL:
 
         try:
 
             # First resolve the channel
             log_chat = await app.get_chat(
-                LOG_CHANNEL_ID
+                LOG_CHANNEL
             )
 
             logger.info(
@@ -337,7 +337,7 @@ async def main():
     else:
 
         logger.warning(
-            "LOG_CHANNEL_ID is not configured."
+            "LOG_CHANNEL is not configured."
         )
 
     # --------------------------------------------------------
