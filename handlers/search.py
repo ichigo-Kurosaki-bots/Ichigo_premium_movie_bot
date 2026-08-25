@@ -508,10 +508,45 @@ async def send_database_file(
     message_id
 ):
 
+    # ----------------------------------------------------
+    # RESOLVE DATABASE CHANNEL
+    # ----------------------------------------------------
+
+    try:
+
+        database_chat = await client.get_chat(
+            DATABASE_CHANNEL_ID
+        )
+
+        logger.info(
+            "Database channel resolved | "
+            "id=%s | title=%s | username=%s",
+            database_chat.id,
+            database_chat.title,
+            database_chat.username
+        )
+
+    except Exception as e:
+
+        logger.exception(
+            "Could not resolve database channel %s: %s",
+            DATABASE_CHANNEL_ID,
+            e
+        )
+
+        raise
+
+    # ----------------------------------------------------
+    # COPY FILE TO USER
+    # ----------------------------------------------------
+
     sent_message = await client.copy_message(
         chat_id=user_id,
-        from_chat_id=DATABASE_CHANNEL_ID,
+
+        from_chat_id=database_chat.id,
+
         message_id=int(message_id),
+
         reply_markup=file_sent_buttons()
     )
 
@@ -733,12 +768,12 @@ def register_search_handlers(app):
             admin_url = f"tg://user?id={OWNER_ID}"
 
             not_found_text = (
-                "<b><code>{escape_html(query)}</code></b>"
+                f"<code>{escape_html(query)}</code></b>"
                 "<b>Tʜɪs Mᴏᴠɪᴇ Nᴏᴛ Fᴏᴜɴᴅ Iɴ My Dᴀᴛᴀʙᴀsᴇ</b>\n\n"
                 "<b>Pʟᴇᴀsᴇ Cʜᴇᴄᴋ Yᴏᴜʀ Sᴘᴇʟʟɪɴɢ Oɴ Gᴏᴏɢʟᴇ & "
                 "Tʀʏ Aɢᴀɪɴ</b>\n\n"
-                "<b>○ 𝖭𝗈𝗍𝖾 1 :</b> <i>𝖣𝗈𝗇'𝗍 𝖲𝖾𝗇𝖽 𝖠𝗇𝗒 𝖪𝗂𝗇𝖽 𝖮𝖿 𝖯𝗁𝗈𝗍𝗈𝗌, 𝖵𝗂𝖽𝖾𝗈𝗌, 𝖣𝗈𝖼𝗎𝗆𝖾𝗇𝗍𝗌, 𝖴𝗋𝖫𝗌 𝖤𝗍𝖼.</i>\n"
-                "<b>○ 𝖭𝗈𝗍𝖾 2 :</b> <i>𝖣𝗈𝗇'𝗍 𝖴𝗌𝖾 ➠ ':(!,./)</i>"
+                "<b>○ 𝖭𝗈𝗍𝖾 1 :</b>𝖣𝗈𝗇'𝗍 𝖲𝖾𝗇𝖽 𝖠𝗇𝗒 𝖪𝗂𝗇𝖽 𝖮𝖿 𝖯𝗁𝗈𝗍𝗈𝗌, 𝖵𝗂𝖽𝖾𝗈𝗌, 𝖣𝗈𝖼𝗎𝗆𝖾𝗇𝗍𝗌, 𝖴𝗋𝖫𝗌 𝖤𝗍𝖼.\n"
+                "<b>○ 𝖭𝗈𝗍𝖾 2 :</b>𝖣𝗈𝗇'𝗍 𝖴𝗌𝖾 ➠ ':(!,./)"
             )
             # --------------------------------------------------------
             # BUTTONS
@@ -1358,7 +1393,6 @@ def register_search_handlers(app):
             chat_id=user_id,
             text=(
                 "<blockquote><b><i>❗️❗️❗️ IMPORTANT ❗️❗️❗️</i></b></blockquote>\n\n"
-                f"<b>Total {sent_count} Files Sent Successfully.</b>\n\n"
                 "<b>These Movie Files/Videos will be deleted in 5 minutes.</b>\n"
                 "<i>(due to copyright issues)</i>\n\n"
                 "<b>Please forward ALL Files/Videos to your Saved Messages and download them there.</b>"
