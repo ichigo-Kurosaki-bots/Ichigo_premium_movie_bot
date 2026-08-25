@@ -768,13 +768,22 @@ def register_search_handlers(app):
             admin_url = f"tg://user?id={OWNER_ID}"
 
             not_found_text = (
-                f"<code>{escape_html(query)}</code></b>"
-                "<b>Tʜɪs Mᴏᴠɪᴇ Nᴏᴛ Fᴏᴜɴᴅ Iɴ My Dᴀᴛᴀʙᴀsᴇ</b>\n\n"
-                "<b>Pʟᴇᴀsᴇ Cʜᴇᴄᴋ Yᴏᴜʀ Sᴘᴇʟʟɪɴɢ Oɴ Gᴏᴏɢʟᴇ & "
-                "Tʀʏ Aɢᴀɪɴ</b>\n\n"
-                "<b>○ 𝖭𝗈𝗍𝖾 1 :</b>𝖣𝗈𝗇'𝗍 𝖲𝖾𝗇𝖽 𝖠𝗇𝗒 𝖪𝗂𝗇𝖽 𝖮𝖿 𝖯𝗁𝗈𝗍𝗈𝗌, 𝖵𝗂𝖽𝖾𝗈𝗌, 𝖣𝗈𝖼𝗎𝗆𝖾𝗇𝗍𝗌, 𝖴𝗋𝖫𝗌 𝖤𝗍𝖼.\n"
-                "<b>○ 𝖭𝗈𝗍𝖾 2 :</b>𝖣𝗈𝗇'𝗍 𝖴𝗌𝖾 ➠ ':(!,./)"
+               f"<b>Your Sᴇᴀʀᴄʜ:</b> "
+               f"<code>{escape_html(query)}</code>\n\n"
+
+               "<b>Tʜɪs Mᴏᴠɪᴇ Nᴏᴛ Fᴏᴜɴᴅ Iɴ Mʏ Dᴀᴛᴀʙᴀsᴇ</b>\n\n"
+
+               "<b>Pʟᴇᴀsᴇ Cʜᴇᴄᴋ Yᴏᴜʀ Sᴘᴇʟʟɪɴɢ Oɴ Gᴏᴏɢʟᴇ & "
+               "Tʀʏ Aɢᴀɪɴ</b>\n\n"
+
+               "<b>○ 𝖭𝗈𝗍𝖾 1 :</b> "
+               "𝖣𝗈𝗇'𝗍 𝖲𝖾𝗇𝖽 𝖠𝗇𝗒 𝖪𝗂𝗇𝖽 𝖮𝖿 𝖯𝗁𝗈𝗍𝗈𝗌, "
+               "𝖵𝗂𝖽𝖾𝗈𝗌, 𝖣𝗈𝖼𝗎𝗆𝖾𝗇𝗍𝗌, 𝖴𝗋𝗅𝗌 𝖤𝗍𝖼.\n"
+
+               "<b>○ 𝖭𝗈𝗍𝖾 2 :</b> "
+               "𝖣𝗈𝗇'𝗍 𝖴𝗌𝖾 ➠ ':(!,./)'"
             )
+
             # --------------------------------------------------------
             # BUTTONS
             # --------------------------------------------------------
@@ -792,14 +801,14 @@ def register_search_handlers(app):
                             "• Cʜᴇᴄᴋ Sᴘᴇʟʟɪɴɢ Oɴ Gᴏᴏɢʟᴇ •",
                             url=google_url
                         )
-                    ]
+                    ]     
                 ]
             )
 
             await wait.edit_text(
                 not_found_text,
                 reply_markup=buttons
-            )
+            ) 
 
             return
 
