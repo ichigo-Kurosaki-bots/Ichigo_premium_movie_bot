@@ -259,6 +259,7 @@ async def main():
         "Bot ID: %s",
         me.id
     )
+    
     # ============================================================
     # LOG CHANNEL TEST
     # ============================================================
@@ -267,13 +268,35 @@ async def main():
 
         try:
 
+            # First resolve the channel
+            log_chat = await app.get_chat(
+                LOG_CHANNEL_ID
+            )
+
+            logger.info(
+                "LOG CHANNEL FOUND | "
+                "ID=%s | "
+                "TITLE=%s | "
+                "TYPE=%s",
+                log_chat.id,
+                log_chat.title,
+                log_chat.type
+            )
+
+            # Send test message
             await app.send_message(
-                chat_id=LOG_CHANNEL_ID,
+                chat_id=log_chat.id,
                 text=(
                     "✅ <b>PREMIUM MOVIE BOT STARTED</b>\n\n"
+
                     f"🤖 <b>Bot:</b> @{me.username}\n"
-                    f"🆔 <b>Bot ID:</b> <code>{me.id}</code>\n\n"
-                    "📡 <b>Log channel connection:</b> OK\n\n"
+
+                    f"🆔 <b>Bot ID:</b> "
+                    f"<code>{me.id}</code>\n\n"
+
+                    "📡 <b>Log channel connection:</b> "
+                    "<b>OK</b>\n\n"
+
                     "⚡ <b>Powered By:</b> @Aero_Unity"
                 )
             )
@@ -285,10 +308,10 @@ async def main():
         except Exception as e:
 
             logger.exception(
-                "Could not send log channel test message: %s",
+                "LOG CHANNEL ERROR: %s",
                 e
             )
-  
+
     else:
 
         logger.warning(
