@@ -8,9 +8,11 @@ import urllib.request
 import json
 
 from pyrogram import filters
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from config import (
-    DATABASE_CHANNEL_ID
+    DATABASE_CHANNEL_ID,
+    OWNER_ID
 )
 
 from database import (
@@ -682,7 +684,7 @@ def register_search_handlers(app):
         # ----------------------------------------------------
 
         wait = await message.reply_text(
-            "<b><i>Sᴇᴀʀᴄʜɪɴɢ...</i></b>"
+            f"🔎<b><i>Sᴇᴀʀᴄʜɪɴɢ {escape_html(query)}...</i></b>"
         )
 
         search_started = time.perf_counter()
@@ -723,13 +725,45 @@ def register_search_handlers(app):
 
         if not results:
 
+            google_url = (
+                "https://www.google.com/search?q="
+                + urllib.parse.quote(query)
+            )
+
+            admin_url = f"tg://user?id={OWNER_ID}"
+
+            not_found_text = (
+                "<b><code>{escape_html(query)}</code></b>"
+                "<b>Tʜɪs Mᴏᴠɪᴇ Nᴏᴛ Fᴏᴜɴᴅ Iɴ My Dᴀᴛᴀʙᴀsᴇ</b>\n\n"
+                "<b>Pʟᴇᴀsᴇ Cʜᴇᴄᴋ Yᴏᴜʀ Sᴘᴇʟʟɪɴɢ Oɴ Gᴏᴏɢʟᴇ & "
+                "Tʀʏ Aɢᴀɪɴ</b>\n\n"
+                "<b>○ 𝖭𝗈𝗍𝖾 1 :</b> <i>𝖣𝗈𝗇'𝗍 𝖲𝖾𝗇𝖽 𝖠𝗇𝗒 𝖪𝗂𝗇𝖽 𝖮𝖿 𝖯𝗁𝗈𝗍𝗈𝗌, 𝖵𝗂𝖽𝖾𝗈𝗌, 𝖣𝗈𝖼𝗎𝗆𝖾𝗇𝗍𝗌, 𝖴𝗋𝖫𝗌 𝖤𝗍𝖼.</i>\n"
+                "<b>○ 𝖭𝗈𝗍𝖾 2 :</b> <i>𝖣𝗈𝗇'𝗍 𝖴𝗌𝖾 ➠ ':(!,./)</i>"
+            )
+            # --------------------------------------------------------
+            # BUTTONS
+            # --------------------------------------------------------
+
+            buttons = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "• Rᴇǫᴜᴇsᴛ Tᴏ Oᴡɴᴇʀ •",
+                            url=admin_url
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "• Cʜᴇᴄᴋ Sᴘᴇʟʟɪɴɢ Oɴ Gᴏᴏɢʟᴇ •",
+                            url=google_url
+                        )
+                    ]
+                ]
+            )
+
             await wait.edit_text(
-
-                "😕 <b>No results found.</b>\n\n"
-
-                f"🔎 Search:\n"
-                f"<code>{escape_html(query)}</code>\n\n"
-                "Check The Spelling On Google and Try Again"
+                not_found_text,
+                reply_markup=buttons
             )
 
             return
