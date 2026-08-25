@@ -244,6 +244,28 @@ async def main():
 
     await app.start()
 
+    try:
+
+        database_chat = await app.get_chat(
+            DATABASE_CHANNEL_ID
+        )
+
+        logger.info(
+            "DATABASE CHANNEL CONNECTED | "
+            "ID=%s | TITLE=%s | USERNAME=%s",
+            database_chat.id,
+            database_chat.title,
+            database_chat.username
+        )
+
+    except Exception as e:
+
+        logger.exception(
+            "DATABASE CHANNEL ERROR | ID=%s | ERROR=%s",
+            DATABASE_CHANNEL_ID,
+            e
+        )
+        
     me = await app.get_me()
 
     logger.info(
