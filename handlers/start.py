@@ -143,9 +143,7 @@ def register_start_handlers(app):
         # GET / CREATE USER
         # ----------------------------------------------------
 
-        user = await get_user(
-            user_id
-        )
+        user = await get_user(user_id)
 
         if not user:
 
@@ -154,10 +152,8 @@ def register_start_handlers(app):
                 first_name=first_name,
                 username=username
             )
-            # ============================================================
-            # START LOG
-            # ============================================================
 
+            # START LOG
             try:
 
                 now = datetime.now()
@@ -168,43 +164,25 @@ def register_start_handlers(app):
                     else "Not Set"
                 )
 
-                if user.get("created_at"):
-
-                    log_title = "🚀 <b>USER STARTED BOT</b>"
-
-                else:
-
-                    log_title = "🚀 <b>USER STARTED BOT</b>"
- 
                 log_text = (
-                    f"{log_title}\n\n"
-
-                    f"👤 <b>Name:</b> "
-                    f"{first_name}\n"
-
-                    f"🆔 <b>User ID:</b> "
-                    f"<code>{user_id}</code>\n"
-
-                    f"🔹 <b>Username:</b> "
-                    f"{username_text}\n\n"
-
-                    f"📅 <b>Date:</b> "
-                    f"{now.strftime('%d-%m-%Y')}\n"
-
-                    f"⏰ <b>Time:</b> "
-                    f"{now.strftime('%I:%M:%S %p')}\n\n"
-
+                    "🚀 <b>USER STARTED BOT</b>\n\n"
+                    f"👤 <b>Name:</b> {first_name}\n"
+                    f"🆔 <b>User ID:</b> <code>{user_id}</code>\n"
+                    f"🔹 <b>Username:</b> {username_text}\n\n"
+                    f"📅 <b>Date:</b> {now.strftime('%d-%m-%Y')}\n"
+                    f"⏰ <b>Time:</b> {now.strftime('%I:%M:%S %p')}\n\n"
                     "⚡ <b>Powered By:</b> @Aero_Unity"
                 )
-
+  
                 if not LOG_CHANNEL:
 
-                    print(
-                        "LOG CHANNEL ERROR: "
-                        "LOG_CHANNEL is not configured."
-                    )
+                    print("❌ LOG_CHANNEL is empty.")
 
                 else:
+
+                    print(
+                        f"📡 Sending start log to: {LOG_CHANNEL}"
+                    )
 
                     await client.send_message(
                         chat_id=int(LOG_CHANNEL),
@@ -212,15 +190,14 @@ def register_start_handlers(app):
                     )
 
                     print(
-                        f"START LOG SENT | "
-                        f"user_id={user_id} | "
-                        f"log_channel={LOG_CHANNEL}"
+                        "✅ START LOG SENT SUCCESSFULLY"
                     )
 
             except Exception as e:
+
                 print(
-                    f"START LOG ERROR: {e}"
-            )
+                    f"❌ START LOG ERROR: {e}"
+                )
 
         else:
 
@@ -230,9 +207,7 @@ def register_start_handlers(app):
                 username=username
             )
 
-            user = await get_user(
-                user_id
-            )
+            user = await get_user(user_id)
 
         # ----------------------------------------------------
         # START ANIMATION
