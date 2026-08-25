@@ -8,8 +8,7 @@ from pyrogram.types import (
 )
 
 from config import (
-    FREE_REQUESTS,
-    LOG_CHANNEL
+    FREE_REQUESTS
 )
 
 from database import (
@@ -152,52 +151,6 @@ def register_start_handlers(app):
                 first_name=first_name,
                 username=username
             )
-
-            # START LOG
-            try:
-
-                now = datetime.now()
-
-                username_text = (
-                    f"@{username}"
-                    if username
-                    else "Not Set"
-                )
-
-                log_text = (
-                    "🚀 <b>USER STARTED BOT</b>\n\n"
-                    f"👤 <b>Name:</b> {first_name}\n"
-                    f"🆔 <b>User ID:</b> <code>{user_id}</code>\n"
-                    f"🔹 <b>Username:</b> {username_text}\n\n"
-                    f"📅 <b>Date:</b> {now.strftime('%d-%m-%Y')}\n"
-                    f"⏰ <b>Time:</b> {now.strftime('%I:%M:%S %p')}\n\n"
-                    "⚡ <b>Powered By:</b> @Aero_Unity"
-                )
-  
-                if not LOG_CHANNEL:
-
-                    print("❌ LOG_CHANNEL is empty.")
-
-                else:
-
-                    print(
-                        f"📡 Sending start log to: {LOG_CHANNEL}"
-                    )
-
-                    await client.send_message(
-                        chat_id=int(LOG_CHANNEL),
-                        text=log_text
-                    )
-
-                    print(
-                        "✅ START LOG SENT SUCCESSFULLY"
-                    )
-
-            except Exception as e:
-
-                print(
-                    f"❌ START LOG ERROR: {e}"
-                )
 
         else:
 
