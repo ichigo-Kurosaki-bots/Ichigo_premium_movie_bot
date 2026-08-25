@@ -21,9 +21,6 @@ DATABASE_CHANNEL_ID = int(os.getenv("DATABASE_CHANNEL_ID", "0"))
 
 OWNER_ID = int(os.getenv("OWNER_ID", "0"))
 
-# Optional additional admins.
-# Example:
-# ADMIN_IDS=123456789,987654321
 ADMIN_IDS = set()
 
 for admin_id in os.getenv("ADMIN_IDS", "").split(","):
@@ -34,9 +31,6 @@ for admin_id in os.getenv("ADMIN_IDS", "").split(","):
 
 if OWNER_ID:
     ADMIN_IDS.add(OWNER_ID)
-
-
-LOG_CHANNEL = os.getenv("LOG_CHANNEL")
 
 # ============================================================
 # STORAGE
