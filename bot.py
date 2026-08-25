@@ -238,153 +238,157 @@ async def main():
             message.text
         )
 
-    # --------------------------------------------------------
-    # START TELEGRAM CLIENT
-    # --------------------------------------------------------
+        # --------------------------------------------------------
+        # START TELEGRAM CLIENT
+        # --------------------------------------------------------
 
-    await app.start()
+        await app.start()
 
-    logger.info("Telegram client started successfully.")
+        logger.info(
+            "Telegram client started successfully."
+        )
 
-    me = await app.get_me()
+        # --------------------------------------------------------
+        # BOT INFORMATION
+        # --------------------------------------------------------
 
-    logger.info(
-        "Telegram bot connected."
-    )
+        me = await app.get_me()
 
-    logger.info(
-        "Bot username: @%s",
-        me.username
-    )
+        logger.info(
+            "Telegram bot connected."
+        )
 
-    logger.info(
-        "Bot ID: %s",
-        me.id
-    )
-   
-    logger.info(
-        "CONFIG CHECK | LOG_CHANNEL=%r",
-        LOG_CHANNEL
-    )
+        logger.info(
+            "Bot username: @%s",
+            me.username
+        )
 
-    logger.info(
-        "CONFIG CHECK | DATABASE_CHANNEL_ID=%r",
-        DATABASE_CHANNEL_ID
-    )
+        logger.info(
+            "Bot ID: %s",
+            me.id
+        )
 
-    try:
+        # --------------------------------------------------------
+        # CONFIG CHECK
+        # --------------------------------------------------------
 
-        database_chat = await app.get_chat(
+        logger.info(
+            "CONFIG CHECK | LOG_CHANNEL=%r",
+            LOG_CHANNEL
+        )
+
+        logger.info(
+            "CONFIG CHECK | DATABASE_CHANNEL_ID=%r",
             DATABASE_CHANNEL_ID
         )
 
-        logger.info(
-            "DATABASE CHANNEL CONNECTED | "
-            "ID=%s | TITLE=%s | USERNAME=%s",
-            database_chat.id,
-            database_chat.title,
-            database_chat.username
-        )
-
-    except Exception as e:
-
-        logger.exception(
-            "DATABASE CHANNEL ERROR | ID=%s | ERROR=%s",
-            DATABASE_CHANNEL_ID,
-            e
-        )
-        
-    me = await app.get_me()
-
-    logger.info(
-        "Telegram bot connected."
-    )
-
-    logger.info(
-        "Bot username: @%s",
-        me.username
-    )
-
-    logger.info(
-        "Bot ID: %s",
-        me.id
-    )
-    
-    # ============================================================
-    # LOG CHANNEL TEST
-    # ============================================================
-
-    if LOG_CHANNEL:
+        # --------------------------------------------------------
+        # DATABASE CHANNEL TEST
+        # --------------------------------------------------------
 
         try:
 
-            # First resolve the channel
-            log_chat = await app.get_chat(
-                LOG_CHANNEL
+            database_chat = await app.get_chat(
+                DATABASE_CHANNEL_ID
             )
 
             logger.info(
-                "LOG CHANNEL FOUND | "
-                "ID=%s | "
-                "TITLE=%s | "
-                "TYPE=%s",
-                log_chat.id,
-                log_chat.title,
-                log_chat.type
+                "DATABASE CHANNEL CONNECTED | "
+                "ID=%s | TITLE=%s | USERNAME=%s",
+                database_chat.id,
+                database_chat.title,
+                database_chat.username
             )
-
-            # Send test message
-            await app.send_message(
-                chat_id=log_chat.id,
-                text=(
-                    "✅ <b>PREMIUM MOVIE BOT STARTED</b>\n\n"
-
-                    f"🤖 <b>Bot:</b> @{me.username}\n"
-
-                    f"🆔 <b>Bot ID:</b> "
-                    f"<code>{me.id}</code>\n\n"
-
-                    "📡 <b>Log channel connection:</b> "
-                    "<b>OK</b>\n\n"
-
-                    "⚡ <b>Powered By:</b> @Aero_Unity"
-                )
-            )
-
-            logger.info(
-                "Log channel test message sent successfully."
-            )
-
+    
         except Exception as e:
 
             logger.exception(
-                "LOG CHANNEL ERROR: %s",
+                "DATABASE CHANNEL ERROR | ID=%s | ERROR=%s",
+                DATABASE_CHANNEL_ID,
                 e
             )
 
-    else:
+        # --------------------------------------------------------
+        # LOG CHANNEL TEST
+        # --------------------------------------------------------
 
-        logger.warning(
-            "LOG_CHANNEL is not configured."
-        )
+        if not LOG_CHANNEL:
 
-    # --------------------------------------------------------
-    # KEEP BOT RUNNING
-    # --------------------------------------------------------
+            logger.warning(
+                "LOG_CHANNEL is not configured."
+            )
 
-    try:
+        else:
+   
+            try:
+  
+                log_channel_id = int(
+                    LOG_CHANNEL
+                )
 
-        await asyncio.Event().wait()
+                logger.info(
+                    "Trying to connect to LOG_CHANNEL=%s",
+                    log_channel_id
+                )
 
-    finally:
+                log_chat = await app.get_chat(
+                    log_channel_id
+                )
 
-        logger.info(
-            "Stopping bot..."
-        )
+                logger.info(
+                    "LOG CHANNEL CONNECTED | "
+                    "ID=%s | TITLE=%s | USERNAME=%s | TYPE=%s",
+                    log_chat.id,
+                    log_chat.title,
+                    log_chat.username,
+                    log_chat.type
+                )
 
-        await app.stop()
+                await app.send_message(
+                    chat_id=log_chat.id,
+                    text=(
+                        "✅ <b>PREMIUM MOVIE BOT STARTED</b>\n\n"
 
-        await close_database()
+                        f"🤖 <b>Bot:</b> @{me.username}\n"
+
+                        f"🆔 <b>Bot ID:</b> "
+                        f"<code>{me.id}</code>\n\n"
+
+                        "📡 <b>Log channel connection:</b> "
+                        "<b>OK</b>\n\n"
+   
+                        "⚡ <b>Powered By:</b> @Aero_Unity"
+                    )
+                )
+
+                logger.info(
+                    "LOG CHANNEL TEST MESSAGE SENT SUCCESSFULLY."
+                )
+
+            except Exception as e:
+
+                logger.exception(
+                    "LOG CHANNEL ERROR: %s",
+                    e
+                )
+
+        # --------------------------------------------------------
+        # KEEP BOT RUNNING
+        # --------------------------------------------------------
+
+        try:
+
+            await asyncio.Event().wait()
+
+        finally:
+
+            logger.info(
+                "Stopping bot because bot is dead.."
+            )
+
+            await app.stop()
+
+            await close_database()
 
 
 # ============================================================
