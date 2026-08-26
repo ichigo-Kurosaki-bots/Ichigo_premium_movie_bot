@@ -34,6 +34,10 @@ from handlers.admin import (
     register_admin_handlers
 )
 
+from handlers.fsub import (
+    register_fsub_handlers
+)
+
 from indexer import (
     handle_database_post
 )
@@ -202,6 +206,7 @@ async def main():
     # --------------------------------------------------------
     # REGISTER HANDLERS
     # --------------------------------------------------------
+    register_fsub_handlers(app)
 
     register_start_handlers(app)
 
