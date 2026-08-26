@@ -140,7 +140,8 @@ async def main():
     logger.info(
         "MongoDB initialized."
     )
-    logger.info("Test 1")
+
+    logger.info("TEST 1")
 
     # --------------------------------------------------------
     # PYROGRAM CLIENT
@@ -160,9 +161,9 @@ async def main():
 
     logger.info("TEST 2")
 
-    # ============================================================
+    # ========================================================
     # DATABASE CHANNEL AUTO INDEXER
-    # ============================================================
+    # ========================================================
 
     @app.on_message(
         filters.channel
@@ -171,14 +172,14 @@ async def main():
     async def database_channel_post_handler(
         client,
         message
-    ):  
+    ):
 
         try:
 
             indexed = await handle_database_post(
                 client,
-                message 
-            ) 
+                message
+            )
 
             if indexed:
 
@@ -248,90 +249,90 @@ async def main():
             message.text
         )
 
-        # --------------------------------------------------------
-        # START TELEGRAM CLIENT
-        # --------------------------------------------------------
-        logger.info("TEST 7")
-        
-        await app.start()
+    # --------------------------------------------------------
+    # START TELEGRAM CLIENT
+    # --------------------------------------------------------
 
-        logger.info(
-            "Telegram client started successfully."
-        )
+    logger.info("TEST 7")
 
-        # --------------------------------------------------------
-        # BOT INFORMATION
-        # --------------------------------------------------------
+    await app.start()
 
-        me = await app.get_me()
+    logger.info(
+        "Telegram client started successfully."
+    )
 
-        logger.info(
-            "Telegram bot connected."
-        )
+    # --------------------------------------------------------
+    # BOT INFORMATION
+    # --------------------------------------------------------
 
-        logger.info(
-            "Bot username: @%s",
-            me.username
-        )
+    me = await app.get_me()
 
-        logger.info(
-            "Bot ID: %s",
-            me.id
-        )
+    logger.info(
+        "Telegram bot connected."
+    )
 
-        # --------------------------------------------------------
-        # CONFIG CHECK
-        # --------------------------------------------------------
+    logger.info(
+        "Bot username: @%s",
+        me.username
+    )
 
-        logger.info(
-            "CONFIG CHECK | DATABASE_CHANNEL_ID=%r",
+    logger.info(
+        "Bot ID: %s",
+        me.id
+    )
+
+    # --------------------------------------------------------
+    # CONFIG CHECK
+    # --------------------------------------------------------
+
+    logger.info(
+        "CONFIG CHECK | DATABASE_CHANNEL_ID=%r",
+        DATABASE_CHANNEL_ID
+    )
+
+    # --------------------------------------------------------
+    # DATABASE CHANNEL TEST
+    # --------------------------------------------------------
+
+    try:
+
+        database_chat = await app.get_chat(
             DATABASE_CHANNEL_ID
         )
 
-        # --------------------------------------------------------
-        # DATABASE CHANNEL TEST
-        # --------------------------------------------------------
+        logger.info(
+            "DATABASE CHANNEL CONNECTED | "
+            "ID=%s | TITLE=%s | USERNAME=%s",
+            database_chat.id,
+            database_chat.title,
+            database_chat.username
+        )
 
-        try:
-            
-            database_chat = await app.get_chat(
-                DATABASE_CHANNEL_ID
-            )
+    except Exception as e:
 
-            logger.info(
-                "DATABASE CHANNEL CONNECTED | "
-                "ID=%s | TITLE=%s | USERNAME=%s",
-                database_chat.id,
-                database_chat.title,
-                database_chat.username
-            )
-    
-        except Exception as e:
+        logger.exception(
+            "DATABASE CHANNEL ERROR | ID=%s | ERROR=%s",
+            DATABASE_CHANNEL_ID,
+            e
+        )
 
-            logger.exception(
-                "DATABASE CHANNEL ERROR | ID=%s | ERROR=%s",
-                DATABASE_CHANNEL_ID,
-                e
-            )
+    # --------------------------------------------------------
+    # KEEP BOT RUNNING
+    # --------------------------------------------------------
 
-        # --------------------------------------------------------
-        # KEEP BOT RUNNING
-        # --------------------------------------------------------
+    try:
 
-        try:
+        await asyncio.Event().wait()
 
-            await asyncio.Event().wait()
+    finally:
 
-        finally:
+        logger.info(
+            "Stopping bot because bot is dead.."
+        )
 
-            logger.info(
-                "Stopping bot because bot is dead.."
-            )
+        await app.stop()
 
-            await app.stop()
-
-            await close_database()
-
+        await close_database()
 
 # ============================================================
 # START
