@@ -3,9 +3,9 @@ import asyncio
 import os
 import time
 import psutil
+from html import escape
 
 from pyrogram import filters
-from indexer import start_indexer
 from config import OWNER_ID, ADMIN_IDS
 
 from database import (
@@ -340,14 +340,6 @@ def register_admin_handlers(app):
             text
         )
 
-
-    # ========================================================
-    # /premiumuser USER_ID
-    #
-    # Same purpose as /user, but convenient for checking
-    # a user's Premium status.
-    # ========================================================
-
     @app.on_message(
         filters.command("premiumuser")
         & admin_only
@@ -637,63 +629,6 @@ def register_admin_handlers(app):
             )
 
     # ========================================================
-    # /index
-    # ========================================================
-
-    @app.on_message(
-        filters.command("index")
-        & admin_only
-    )
-    async def index_handler(
-        client,
-        message
-    ):
-
-        status = await message.reply_text(
-            "📚 <b>Starting database indexing...</b>\n\n"
-            "⏳ Please wait."
-        )
-
-        try:
-            result = await start_indexer(
-                client,
-                force=False
-            )
-
-            if result.get("success"):
-
-                await status.edit_text(
-                    "✅ <b>Indexing Completed</b>\n\n"
-
-                    f"📥 Scanned: "
-                    f"<b>{result.get('scanned', 0)}</b>\n"
-
-                    f"🎬 Indexed: "
-                    f"<b>{result.get('indexed', 0)}</b>"
-                )
-
-            else:
-  
-                await status.edit_text(
-                    "❌ <b>Indexing Failed</b>\n\n"
-
-                    f"{result.get('message', 'Unknown error')}"
-                )
-
-        except Exception as e:
-
-            logger.exception(
-                "Index command error: %s",
-                e
-            )
-
-            await status.edit_text(
-                "❌ <b>Indexer Error</b>\n\n"
-                f"<code>{e}</code>"
-            )  
-
-
-    # ========================================================
     # /indexstatus
     # ========================================================
 
@@ -882,11 +817,6 @@ def register_admin_handlers(app):
 
             await message.reply_text(
                 "❌ <b>Reply to a message to broadcast it.</b>\n\n"
-
-                "Example:\n"
-                "1️⃣ Send your broadcast message\n"
-                "2️⃣ Reply to that message\n"
-                "3️⃣ Send <code>/broadcast</code>"
             )
 
             return
@@ -934,11 +864,58 @@ def register_admin_handlers(app):
 
             try:
 
-                await client.copy_message(
-                    chat_id=user_id,
-                    from_chat_id=message.chat.id,
-                    message_id=message.reply_to_message.id
-                )
+                source = message.reply_to_message
+
+                # ------------------------------------------------
+                # TEXT MESSAGE
+                # ------------------------------------------------
+
+                if source.text:
+
+                    quoted_text = (
+                        "<blockquote>"
+                        + escape(source.text)
+                        + "</blockquote>"
+                    )
+
+                    await client.send_message(
+                        chat_id=user_id,
+                        text=quoted_text
+                    )
+
+                # ------------------------------------------------
+                # MEDIA WITH CAPTION
+                # ------------------------------------------------
+
+                else:
+
+                    copied_message = await client.copy_message(
+                        chat_id=user_id,
+                        from_chat_id=message.chat.id,
+                        message_id=source.id
+                    )
+
+                    if source.caption:
+
+                        quoted_caption = (
+                            "<blockquote>"
+                            + escape(source.caption)
+                            + "</blockquote>"
+                        )
+
+                        try:
+
+                            await copied_message.edit_caption(
+                                caption=quoted_caption
+                            )
+
+                        except Exception as e:
+
+                            logger.warning(
+                                "Could not add quote to caption for %s: %s",
+                                user_id,
+                                e
+                            )
 
                 success += 1
 
@@ -963,24 +940,12 @@ def register_admin_handlers(app):
                     await status.edit_text(
                         "📢 <b>Broadcasting...</b>\n\n"
 
-                        f"👥 Total users: <b>{total}</b>\n"
-                        f"✅ Sent: <b>{success}</b>\n"
-                        f"❌ Failed: <b>{failed}</b>\n"
-                        f"📊 Progress: "
-                        f"<b>{success + failed}/{total}</b>"
+                        f"<b>👥 Total users: {total}</b>\n"
+                        f"<b>✅ Sent: {success}</b>\n"
+                        f"<b>❌ Failed: {failed}</b>\n"
+                        f"<b>📊 Progress: "
+                        f"{success + failed}/{total}</b>"
                     )
 
                 except Exception:
                     pass
-
-        # ----------------------------------------------------
-        # FINAL RESULT
-        # ----------------------------------------------------
-
-        await status.edit_text(
-            "📢 <b>Broadcast Completed</b>\n\n"
-
-            f"👥 Total users: <b>{total}</b>\n"
-            f"✅ Successfully sent: <b>{success}</b>\n"
-            f"❌ Failed: <b>{failed}</b>"
-        )
