@@ -759,7 +759,7 @@ def register_search_handlers(app):
                 + urllib.parse.quote(query)
             )
 
-            admin_url = f"tg://user?id={OWNER_ID}"
+            admin_url = "https://t.me/Mr_Mohammed_29"
 
             not_found_text = (
                f"<b>Your Sᴇᴀʀᴄʜ:</b> "
