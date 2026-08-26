@@ -847,3 +847,83 @@ async def get_all_user_ids():
         for user in users
         if user.get("user_id") is not None
     ]
+
+# ============================================================
+# FORCE SUBSCRIBE
+# ============================================================
+
+async def get_fsub_channels():
+
+    document = await settings_collection.find_one(
+        {
+            "_id": "fsub"
+        }
+    )
+
+    if not document:
+        return []
+
+    return document.get(
+        "channels",
+        []
+    )
+
+
+async def add_fsub_channel(
+    channel_data
+):
+
+    if not channel_data:
+        return False
+
+    chat_id = channel_data.get(
+        "chat_id"
+    )
+
+    if chat_id is None:
+        return False
+
+    existing = await settings_collection.find_one(
+        {
+            "_id": "fsub",
+            "channels.chat_id": chat_id
+        }
+    )
+
+    if existing:
+
+        return False
+
+    await settings_collection.update_one(
+        {
+            "_id": "fsub"
+        },
+        {
+            "$push": {
+                "channels": channel_data
+            }
+        },
+        upsert=True
+    )
+
+    return True
+
+
+async def remove_fsub_channel(
+    chat_id
+):
+
+    result = await settings_collection.update_one(
+        {
+            "_id": "fsub"
+        },
+        {
+            "$pull": {
+                "channels": {
+                    "chat_id": chat_id
+                }
+            }
+        }
+    )
+
+    return result.modified_count > 0
