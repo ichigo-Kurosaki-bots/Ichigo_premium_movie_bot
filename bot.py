@@ -140,6 +140,7 @@ async def main():
     logger.info(
         "MongoDB initialized."
     )
+    logger.info("Test 1")
 
     # --------------------------------------------------------
     # PYROGRAM CLIENT
@@ -156,6 +157,8 @@ async def main():
 
         workers=4
     )
+
+    logger.info("TEST 2")
 
     # ============================================================
     # DATABASE CHANNEL AUTO INDEXER
@@ -201,11 +204,19 @@ async def main():
 
     register_start_handlers(app)
 
+    logger.info("TEST 3")
+
     register_premium_handlers(app)
+
+    logger.info("TEST 4")
 
     register_search_handlers(app)
 
+    logger.info("TEST 5")
+
     register_admin_handlers(app)
+
+    logger.info("TEST 6")
 
     # --------------------------------------------------------
     # DEBUG UPDATE HANDLER
@@ -240,7 +251,8 @@ async def main():
         # --------------------------------------------------------
         # START TELEGRAM CLIENT
         # --------------------------------------------------------
-
+        logger.info("TEST 7")
+        
         await app.start()
 
         logger.info(
