@@ -4,6 +4,10 @@ import os
 import time
 import psutil
 from html import escape
+from pyrogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup
+)
 
 from pyrogram import filters
 from config import OWNER_ID, ADMIN_IDS
@@ -19,7 +23,8 @@ from database import (
     get_media_storage_stats,
     activate_premium,
     remove_premium, 
-    get_indexer_state
+    get_indexer_state,
+    get_trending_searches
 )
 
 from premium import get_plan_by_amount
@@ -49,6 +54,173 @@ admin_only = filters.create(
 # ============================================================
 
 def register_admin_handlers(app):
+
+    # ========================================================
+    # /alive
+    # ========================================================
+
+    @app.on_message(
+        filters.command("alive")
+    )
+    async def alive_handler(
+        client,
+        message
+    ):
+
+        alive_image = os.getenv(
+            "ALIVE_IMAGE",
+            ""
+        )
+
+        text = (
+            "Yᴏᴜ ᴀʀᴇ ᴠᴇʀʏ ʟᴜᴄᴋʏ 🤞 "
+            "I ᴀᴍ ᴀʟɪᴠᴇ ❤️\n\n"
+
+            "Pʀᴇss /start ᴛᴏ ᴜsᴇ ᴍᴇ!"
+        )
+
+        sent = None
+
+        try:
+
+            if alive_image:
+
+                sent = await message.reply_photo(
+                    photo=alive_image,
+                    caption=text
+                )
+
+            else:
+
+                sent = await message.reply_text(
+                    text
+                )
+
+            # ------------------------------------------------
+            # DELETE AFTER 30 SECONDS
+            # ------------------------------------------------
+
+            await asyncio.sleep(30)
+
+            try:
+                await sent.delete()
+            except Exception:
+                pass
+
+        except Exception as e:
+
+            logger.warning(
+                "Alive command failed: %s",
+                e
+            )
+
+    # ========================================================
+    # /trendlist
+    # ========================================================
+
+    @app.on_message(
+        filters.command("trendlist")
+    )
+    async def trendlist_handler(
+        client,
+        message
+    ):
+
+        try:
+
+            trends = await get_trending_searches(
+                limit=29
+            )
+
+            if not trends:
+
+                await message.reply_text(
+                    "📊 <b>Nᴏ Tʀᴇɴᴅɪɴɢ Sᴇᴀʀᴄʜᴇs Yᴇᴛ.</b>\n\n"
+                    "Sᴇᴀʀᴄᴇs Wɪʟʟ Aᴘᴘᴇᴀʀ Hᴇʀᴇ Wʜᴇɴ U sᴇʀs Sᴇᴀʀᴄʜ."
+                )
+
+                return
+
+            lines = []
+
+            for index, item in enumerate(
+                trends,
+                start=1
+            ):
+
+                query = item[0]
+
+                lines.append(
+                    f"{index}. {query}"
+                )
+
+            text = (
+                "Tᴏᴘ 29 Tʀᴀɴᴅɪɴɢ ᴏғ ᴛʜᴇ Dᴀʏ 👇:\n\n"
+                + "\n".join(lines)
+                + "\n\n"
+                "⚡️ 𝑨𝒍𝒍 𝒕𝒉𝒆 𝒓𝒆𝒔𝒖𝒍𝒕𝒔 𝒂𝒃𝒐𝒗𝒆 𝒄𝒐𝒎𝒆 "
+                "𝒇𝒓𝒐𝒎 𝒘𝒉𝒂𝒕 𝒖𝒔𝒆𝒓𝒔 𝒉𝒂𝒗𝒆 𝒔𝒆𝒂𝒓𝒄𝒉𝒆𝒅 𝒇𝒐𝒓. "
+                "𝑻𝒉𝒆𝒚'𝒓𝒆 𝒔𝒉𝒐𝒘𝒏 𝒕𝒐 𝒚𝒐𝒖 𝒆𝒙𝒂𝒄𝒕𝒍𝒚 𝒂𝒔 𝒕𝒉𝒆𝒚 𝒘𝒆𝒓𝒆 "
+                "𝒔𝒆𝒂𝒓𝒄𝒉𝒆𝒅, 𝒘𝒊𝒕𝒉𝒐𝒖𝒕 𝒂𝒏𝒚 𝒄𝒉𝒂𝒏𝒈𝒆𝒔 𝒃𝒚 𝒕𝒉𝒆 𝒐𝒘𝒏𝒆𝒓."
+            )
+
+            buttons = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "• Cʟᴏsᴇ •",
+                            callback_data="close_trendlist"
+                        )
+                    ]
+                ]
+            )
+
+            await message.reply_text(
+                text,
+                reply_markup=buttons
+            )
+
+        except Exception as e:
+
+            logger.exception(
+                "Trendlist error: %s",
+                e
+            )
+
+            await message.reply_text(
+                "❌ <b>Could not load trending searches.</b>"
+            )
+
+
+    # ========================================================
+    # CLOSE TRENDLIST
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(r"^close_trendlist$")
+    )
+    async def close_trendlist_callback(
+        client,
+        callback
+    ):
+
+        try:
+
+            await callback.message.delete()
+
+        except Exception:
+
+            try:
+                await callback.answer(
+                    "Unable to close this message.",
+                    show_alert=True
+                )
+                return
+
+            except Exception:
+                pass
+
+        await callback.answer()
 
     # ========================================================
     # /stats
