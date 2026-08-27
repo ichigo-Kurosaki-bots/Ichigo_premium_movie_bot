@@ -927,3 +927,68 @@ async def remove_fsub_channel(
     )
 
     return result.modified_count > 0
+
+# ============================================================
+# TRENDING SEARCHES
+# ============================================================
+
+async def record_search(query):
+    """
+    Record a user's search query for /trendlist.
+    """
+
+    if not query:
+        return False
+
+    query = str(query).strip()
+
+    if not query:
+        return False
+
+    await settings_collection.update_one(
+        {
+            "_id": "search_trends"
+        },
+        {
+            "$inc": {
+                f"queries.{query}": 1
+            },
+            "$set": {
+                "updated_at": datetime.utcnow()
+            }
+        },
+        upsert=True
+    )
+
+    return True
+
+
+async def get_trending_searches(limit=29):
+    """
+    Return the most searched queries.
+    """
+
+    document = await settings_collection.find_one(
+        {
+            "_id": "search_trends"
+        }
+    )
+
+    if not document:
+        return []
+
+    queries = document.get(
+        "queries",
+        {}
+    )
+
+    if not queries:
+        return []
+
+    sorted_queries = sorted(
+        queries.items(),
+        key=lambda item: item[1],
+        reverse=True
+    )
+
+    return sorted_queries[:limit]
