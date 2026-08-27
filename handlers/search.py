@@ -22,7 +22,8 @@ from database import (
     consume_request,
     restore_request,
     create_search_session,
-    get_search_session
+    get_search_session,
+    record_search
 )
 
 from premium import (
@@ -648,6 +649,19 @@ def register_search_handlers(app):
 
         if not query:
             return
+
+        # ----------------------------------------------------
+        # RECORD SEARCH FOR TRENDLIST
+        # ----------------------------------------------------
+
+        try:
+            await record_search(query)
+        except Exception as e:
+            logger.warning(
+                "Could not record search '%s': %s",
+                query,
+                e
+            )
 
         # ----------------------------------------------------
         # USER
