@@ -18,6 +18,10 @@ from database import (
     close_database
 )
 
+from handlers.font import (
+    register_font_handlers
+)
+
 from handlers.start import (
     register_start_handlers
 )
@@ -220,9 +224,13 @@ async def main():
 
     logger.info("TEST 5")
 
-    register_admin_handlers(app)
+    register_font_handlers(app)
 
     logger.info("TEST 6")
+
+    register_admin_handlers(app)
+
+    logger.info("TEST 7")
 
     # --------------------------------------------------------
     # DEBUG UPDATE HANDLER
@@ -258,7 +266,7 @@ async def main():
     # START TELEGRAM CLIENT
     # --------------------------------------------------------
 
-    logger.info("TEST 7")
+    logger.info("TEST 8")
 
     await app.start()
 
