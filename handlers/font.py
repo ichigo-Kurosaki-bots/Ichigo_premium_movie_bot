@@ -1,8 +1,7 @@
 from pyrogram import filters
 from pyrogram.types import (
     InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    CopyTextButton
+    InlineKeyboardMarkup
 )
 
 
@@ -432,9 +431,7 @@ def copy_keyboard(
         [
             InlineKeyboardButton(
                 "☝️ Click To Copy",
-                copy_text=CopyTextButton(
-                    text=result
-                )
+                callback_data="font_copy"
             )
         ]
     ]
