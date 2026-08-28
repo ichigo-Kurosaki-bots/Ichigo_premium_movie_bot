@@ -224,7 +224,7 @@ def register_token_handlers(app):
         # PM ONLY
         # ----------------------------------------------------
 
-        if callback.message.chat.type != "private":
+        if callback.message.chat.id != callback.from_user.id:
 
             await callback.answer(
                 "❌ This can only be used in Bot PM.",
@@ -336,7 +336,7 @@ def register_token_handlers(app):
         callback
     ):
 
-        if callback.message.chat.type != "private":
+        if callback.message.chat.id != callback.from_user.id:
 
             await callback.answer(
                 "❌ This can only be used in Bot PM.",
@@ -367,7 +367,7 @@ def register_token_handlers(app):
         callback
     ):
 
-        if callback.message.chat.type != "private":
+        if callback.message.chat.id != callback.from_user.id:
 
             await callback.answer(
                 "❌ This can only be used in Bot PM.",
@@ -477,7 +477,7 @@ def register_token_handlers(app):
         callback
     ):
 
-        if callback.message.chat.type != "private":
+        if callback.message.chat.id != callback.from_user.id:
 
             await callback.answer(
                 "❌ This can only be used in Bot PM.",
@@ -545,7 +545,7 @@ def register_token_handlers(app):
         callback
     ):
 
-        if callback.message.chat.type != "private":
+        if callback.message.chat.id != callback.from_user.id:
 
             await callback.answer(
                 "❌ This can only be used in Bot PM.",
