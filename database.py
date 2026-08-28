@@ -186,6 +186,11 @@ async def create_user(
                 "premium_requests": 0,
                 "remaining_requests": FREE_REQUESTS,
                 "total_requests_used": 0,
+
+                # TOKEN SYSTEM
+                "tokens": 0,
+                "last_token_claim": None,
+
                 "created_at": now
             }
         },
@@ -230,6 +235,225 @@ async def update_user(
             "$set": update
         }
     )
+
+# ============================================================
+# TOKEN SYSTEM
+# ============================================================
+
+async def get_token_balance(user_id):
+
+    user = await users_collection.find_one(
+        {
+            "user_id": user_id
+        },
+        {
+            "_id": 0,
+            "tokens": 1
+        }
+    )
+
+    if not user:
+        return 0
+
+    return int(
+        user.get(
+            "tokens",
+            0
+        ) or 0
+    )
+
+
+# ============================================================
+# DAILY TOKEN CLAIM
+# ============================================================
+
+async def claim_daily_tokens(user_id):
+
+    now = datetime.utcnow()
+
+    user = await users_collection.find_one(
+        {
+            "user_id": user_id
+        }
+    )
+
+    if not user:
+
+        return {
+            "success": False,
+            "reason": "user_not_found",
+            "tokens": 0
+        }
+
+    last_claim = user.get(
+        "last_token_claim"
+    )
+
+    # --------------------------------------------------------
+    # CHECK IF ALREADY CLAIMED TODAY
+    # --------------------------------------------------------
+
+    if last_claim:
+
+        if last_claim.date() == now.date():
+
+            return {
+                "success": False,
+                "reason": "already_claimed",
+                "tokens": int(
+                    user.get(
+                        "tokens",
+                        0
+                    ) or 0
+                )
+            }
+
+    # --------------------------------------------------------
+    # GIVE 5 TOKENS
+    # --------------------------------------------------------
+
+    result = await users_collection.find_one_and_update(
+
+        {
+            "user_id": user_id,
+
+            "$or": [
+                {
+                    "last_token_claim": None
+                },
+                {
+                    "last_token_claim": {
+                        "$exists": False
+                    }
+                },
+                {
+                    "last_token_claim": {
+                        "$lt": datetime(
+                            now.year,
+                            now.month,
+                            now.day
+                        )
+                    }
+                }
+            ]
+        },
+
+        {
+            "$inc": {
+                "tokens": 5
+            },
+
+            "$set": {
+                "last_token_claim": now,
+                "updated_at": now
+            }
+        },
+
+        return_document=ReturnDocument.AFTER
+    )
+
+    if not result:
+
+        # Check current balance so the UI can still show it.
+        current = await get_token_balance(
+            user_id
+        )
+
+        return {
+            "success": False,
+            "reason": "already_claimed",
+            "tokens": current
+        }
+
+    return {
+        "success": True,
+        "reason": "claimed",
+        "tokens": int(
+            result.get(
+                "tokens",
+                0
+            ) or 0
+        )
+    }
+
+
+# ============================================================
+# REDEEM 100 TOKENS FOR STARTER PREMIUM
+# ============================================================
+
+async def redeem_tokens_for_premium(
+    user_id
+):
+
+    now = datetime.utcnow()
+
+    result = await users_collection.find_one_and_update(
+
+        {
+            "user_id": user_id,
+
+            "tokens": {
+                "$gte": 100
+            }
+        },
+
+        {
+            "$inc": {
+                "tokens": -100
+            },
+
+            "$set": {
+                "premium": True,
+                "plan": "Starter",
+                "paid_amount": 0,
+                "premium_requests": 20,
+                "remaining_requests": 20,
+                "updated_at": now
+            }
+        },
+
+        return_document=ReturnDocument.AFTER
+    )
+
+    if not result:
+
+        current = await users_collection.find_one(
+            {
+                "user_id": user_id
+            }
+        )
+
+        if not current:
+
+            return {
+                "success": False,
+                "reason": "user_not_found",
+                "tokens": 0
+            }
+
+        return {
+            "success": False,
+            "reason": "insufficient_tokens",
+            "tokens": int(
+                current.get(
+                    "tokens",
+                    0
+                ) or 0
+            )
+        }
+
+    return {
+        "success": True,
+        "reason": "redeemed",
+        "tokens": int(
+            result.get(
+                "tokens",
+                0
+            ) or 0
+        ),
+        "plan": "Starter",
+        "requests": 20
+    }
 
 # ============================================================
 # CHAT STATISTICS
