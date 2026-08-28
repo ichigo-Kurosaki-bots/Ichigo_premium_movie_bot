@@ -1,4 +1,8 @@
 from pyrogram import filters
+from pyrogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup
+)
 
 from config import (
     OWNER_ID,
@@ -9,6 +13,7 @@ from config import (
 from database import (
     get_user,
     create_user,
+    update_user,
     activate_premium,
     remove_premium
 )
@@ -16,7 +21,8 @@ from database import (
 from premium import (
     get_plan_by_amount,
     get_user_plan_text,
-    format_plans
+    format_plans,
+    get_remaining_requests
 )
 
 from utils.buttons import (
@@ -73,16 +79,32 @@ def register_premium_handlers(app):
     # ========================================================
 
     @app.on_message(
-        filters.command(
-            "myplan"
-        )
+        filters.command("myplan")
     )
     async def myplan_command(
         client,
         message
     ):
 
+        # ----------------------------------------------------
+        # USER INFORMATION
+        # ----------------------------------------------------
+
         user_id = message.from_user.id
+
+        first_name = (
+            message.from_user.first_name
+            or "User"
+        )
+
+        username = (
+            message.from_user.username
+            or ""
+        )
+
+        # ----------------------------------------------------
+        # GET / CREATE USER
+        # ----------------------------------------------------
 
         user = await get_user(
             user_id
@@ -92,19 +114,177 @@ def register_premium_handlers(app):
 
             user = await create_user(
                 user_id=user_id,
-                first_name=(
-                    message.from_user.first_name
-                    or "User"
-                ),
-                username=(
-                    message.from_user.username
-                    or ""
-                )
+                first_name=first_name,
+                username=username
             )
 
+        else:
+
+            # Keep the latest Telegram information
+            await update_user(
+                user_id=user_id,
+                first_name=first_name,
+                username=username
+            )
+
+            user = await get_user(
+                user_id
+            )
+
+        # ----------------------------------------------------
+        # PLAN INFORMATION
+        # ----------------------------------------------------
+
+        is_premium = bool(
+            user.get(
+                "premium",
+                False
+            )
+        )
+
+        if is_premium:
+
+            status = "PREMIUM USER"
+
+            plan_name = (
+                user.get(
+                    "plan"
+                )
+                or "Premium"
+            )
+
+            paid_amount = user.get(
+                "paid_amount",
+                0
+            )
+
+        else:
+
+            status = "FREE USER"
+
+            plan_name = "Free"
+
+            paid_amount = 0
+
+        # ----------------------------------------------------
+        # REQUEST BALANCE
+        # ----------------------------------------------------
+
+        remaining = get_remaining_requests(
+            user
+        )
+
+        if is_premium:
+
+            total_requests = user.get(
+                "premium_requests",
+                0
+            )
+
+        else:
+
+            total_requests = user.get(
+                "remaining_requests",
+                0
+            )
+
+        # ----------------------------------------------------
+        # BUILD MESSAGE
+        # ----------------------------------------------------
+
+        text = (
+            "⌛ <b>Pʟᴀɴ Iɴғᴏʀᴍᴀᴛɪᴏɴ :</b>\n\n"
+
+            f"• 👤 <b>Uѕᴇʀ :</b> "
+            f"{first_name}\n"
+
+            f"• 🆔 <b>Uѕᴇʀ ID :</b> "
+            f"<code>{user_id}</code>\n"
+
+            f"• 📊 <b>Sᴛᴀᴛᴜѕ :</b> "
+            f"<b>{status}</b>\n"
+        )
+
+        # ----------------------------------------------------
+        # PREMIUM INFORMATION
+        # ----------------------------------------------------
+
+        if is_premium:
+
+            text += (
+                f"• 📦 <b>Pʟᴀɴ :</b> "
+                f"<b>{plan_name}</b>\n"
+
+                f"• 💰 <b>Pᴀɪᴅ :</b> "
+                f"<b>₹{paid_amount}</b>\n"
+
+                f"• 🎬 <b>Tᴏᴛᴀʟ Rᴇǫᴜᴇѕᴛѕ :</b> "
+                f"<b>{total_requests}</b>\n"
+
+                f"• 🎟 <b>Rᴇᴍᴀɪɴɪɴɢ :</b> "
+                f"<b>{remaining}</b>\n\n"
+
+                "<i>✅ Your Premium plan is currently active.</i>"
+            )
+
+        else:
+
+            text += (
+                f"• 🎬 <b>Fʀᴇᴇ Rᴇǫᴜᴇѕᴛѕ Lᴇғᴛ :</b> "
+                f"<b>{remaining}</b>\n\n"
+
+                "<i>You don't have any active Premium plan.</i>"
+            )
+
+        # ----------------------------------------------------
+        # BUTTONS
+        # ----------------------------------------------------
+
+        if is_premium:
+
+            buttons = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
+                            callback_data="premium_plans"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "• ʜᴏᴍᴇ •",
+                            callback_data="home"
+                        )
+                    ]
+                ]
+            )
+
+        else:
+
+            buttons = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "• Uᴘɢʀᴀᴅᴇ Tᴏ Pʀᴇᴍɪᴜᴍ •",
+                            callback_data="premium_plans"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "• ʜᴏᴍᴇ •",
+                            callback_data="home"
+                        )
+                    ]
+                ]
+            )
+
+        # ----------------------------------------------------
+        # SEND PLAN INFORMATION
+        # ----------------------------------------------------
+
         await message.reply_text(
-            get_user_plan_text(user),
-            reply_markup=account_buttons()
+            text,
+            reply_markup=buttons
         )
 
 
