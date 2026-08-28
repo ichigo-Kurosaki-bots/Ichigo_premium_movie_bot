@@ -34,6 +34,10 @@ from handlers.search import (
     register_search_handlers
 )
 
+from handlers.tokens import (
+    register_token_handlers
+)
+
 from handlers.admin import (
     register_admin_handlers
 )
@@ -223,6 +227,8 @@ async def main():
     register_search_handlers(app)
 
     logger.info("TEST 5")
+
+    register_token_handlers(app)
 
     register_font_handlers(app)
 
