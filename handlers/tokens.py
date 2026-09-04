@@ -1,3 +1,5 @@
+import asyncio
+
 from pyrogram import filters
 from pyrogram.types import (
     InlineKeyboardButton,
@@ -110,7 +112,7 @@ def build_token_text(
         "⌛ <b>Hᴏᴡ ᴛᴏ Eᴀʀɴ?</b>\n"
 
         "• Cʟᴀɪᴍ ʏᴏᴜʀ <b>Daily Reward</b> below!\n"
-        "• Eᴀʀɴ <b>5 tokens</b> every day.\n"
+        "• Eᴀʀɴ <b>50 tokens</b> every day.\n"
         "• Uѕᴇ tokens to unlock Premium.\n\n"
 
         "💎 <b>100 Tᴏᴋᴇɴѕ</b> = "
@@ -207,7 +209,153 @@ def register_token_handlers(app):
 
 
     # ========================================================
-    # DAILY CLAIM
+    # /gentoken
+    #
+    # DAILY TOKEN CLAIM WITH ANIMATION
+    # ========================================================
+
+    @app.on_message(
+        filters.command("gentoken")
+        & filters.private
+    )
+    async def gentoken_command(
+        client,
+        message
+    ):
+
+        user_id = message.from_user.id
+
+        # ----------------------------------------------------
+        # GET / CREATE USER
+        # ----------------------------------------------------
+
+        user = await get_user(
+            user_id
+        )
+
+        if not user:
+
+            user = await create_user(
+                user_id=user_id,
+                first_name=(
+                    message.from_user.first_name
+                    or "User"
+                ),
+                username=(
+                    message.from_user.username
+                    or ""
+                )
+            )
+
+        # ----------------------------------------------------
+        # PREVIOUS BALANCE
+        # ----------------------------------------------------
+
+        previous_tokens = await get_token_balance(
+            user_id
+        )
+
+        # ----------------------------------------------------
+        # ANIMATION
+        # ----------------------------------------------------
+
+        animation = await message.reply_text(
+            "⚡️"
+        )
+
+        await asyncio.sleep(0.5)
+
+        await animation.edit_text(
+            "🎊"
+        )
+
+        await asyncio.sleep(0.5)
+
+        await animation.edit_text(
+            "ᴀᴅᴅɪɴɢ..."
+        )
+
+        await asyncio.sleep(0.5)
+
+        # ----------------------------------------------------
+        # CLAIM
+        # ----------------------------------------------------
+
+        result = await claim_daily_tokens(
+            user_id
+        )
+
+        # ----------------------------------------------------
+        # ALREADY CLAIMED
+        # ----------------------------------------------------
+
+        if result.get("reason") == "already_claimed":
+
+            balance = result.get(
+                "tokens",
+                previous_tokens
+            )
+
+            await animation.edit_text(
+                "✦ <b>𝗖𝗥𝗘𝗗𝗜𝗧𝗦 𝗔𝗟𝗥𝗘𝗔𝗗𝗬 𝗖𝗟𝗔𝗜𝗠𝗘𝗗!</b>\n\n"
+
+                f"◍ ᴛᴏᴋᴇɴs: {balance}\n\n"
+
+                "⧗ ᴜsᴇ /tokens ᴛᴏ ᴄʜᴇᴄᴋ "
+                "ʏᴏᴜʀ ᴅᴀɪʟʏ ᴛᴏᴋᴇɴ ʙᴀʟᴀɴᴄᴇ."
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # FAILED
+        # ----------------------------------------------------
+
+        if not result.get("success"):
+
+            await animation.edit_text(
+                "❌ <b>Fᴀɪʟᴇᴅ ᴛᴏ ᴄʟᴀɪᴍ ᴛᴏᴋᴇɴs.</b>\n\n"
+                "Please try again later."
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # NEW BALANCE
+        # ----------------------------------------------------
+
+        total_tokens = result.get(
+            "tokens",
+            previous_tokens
+        )
+
+        new_tokens = (
+            total_tokens
+            - previous_tokens
+        )
+
+        # ----------------------------------------------------
+        # SUCCESS MESSAGE
+        # ----------------------------------------------------
+
+        await animation.edit_text(
+
+            "✦ <b>𝗖𝗥𝗘𝗗𝗜𝗧𝗦 𝗖𝗟𝗔𝗜𝗠𝗘𝗗!</b>\n\n"
+
+            f"◍ ᴘʀᴇᴠ ᴛᴏᴋᴇɴs: {previous_tokens}\n"
+            f"◍ ɴᴇᴡ ᴛᴏᴋᴇɴs ᴀᴅᴅᴇᴅ: {new_tokens}\n"
+            f"◍ ᴛᴏᴛᴀʟ ᴛᴏᴋᴇɴs: {total_tokens}\n\n"
+
+            "⧗ ᴜsᴇ /tokens ᴛᴏ ᴄʜᴇᴄᴋ "
+            "ʏᴏᴜʀ ᴅᴀɪʟʏ ᴛᴏᴋᴇɴ ʙᴀʟᴀɴᴄᴇ.\n"
+
+            "≡ ᴜsᴇ /premium ᴛᴏ ᴜᴘɢʀᴀᴅᴇ "
+            "ғᴏʀ ᴜɴʟɪᴍɪᴛᴇᴅ movie search"
+        )
+
+
+    # ========================================================
+    # DAILY CLAIM BUTTON
     # ========================================================
 
     @app.on_callback_query(
@@ -219,10 +367,6 @@ def register_token_handlers(app):
         client,
         callback
     ):
-
-        # ----------------------------------------------------
-        # PM ONLY
-        # ----------------------------------------------------
 
         if callback.message.chat.id != callback.from_user.id:
 
@@ -253,8 +397,9 @@ def register_token_handlers(app):
             )
 
             await callback.answer(
-                f"🎁 Yᴏᴜ ʜᴀᴠᴇ ᴀʟʀᴇᴀᴅʏ ᴄʟᴀɪᴍᴇᴅ ᴛᴏᴅᴀʏ's ʀᴇᴡᴀʀᴅ. Cᴏᴍᴇ ʙᴀᴄᴋ ᴛᴏᴍᴏʀʀᴏᴡ!\n"
-                f"Balance: {balance} tokens",
+                f"🎁 Yᴏᴜ ʜᴀᴠᴇ ᴀʟʀᴇᴀᴅʏ ᴄʟᴀɪᴍᴇᴅ ᴛᴏᴅᴀʏ's ʀᴇᴡᴀʀᴅ.\n"
+                f"Cᴏᴍᴇ ʙᴀᴄᴋ ᴛᴏᴍᴏʀʀᴏᴡ!\n\n"
+                f"Bᴀʟᴀɴᴄᴇ: {balance} tokens",
                 show_alert=True
             )
 
@@ -315,15 +460,13 @@ def register_token_handlers(app):
         )
 
         await callback.answer(
-            "🎉 +5 Tᴏᴋᴇɴs Aᴅᴅᴇᴅ!",
+            "🎉 +50 Tᴏᴋᴇɴs Aᴅᴅᴇᴅ!",
             show_alert=True
         )
 
 
     # ========================================================
     # PREMIUM BUTTON
-    #
-    # Opens existing Premium Plans
     # ========================================================
 
     @app.on_callback_query(
@@ -443,13 +586,13 @@ def register_token_handlers(app):
                 [
                     [
                         InlineKeyboardButton(
-                            "💎 Pʀᴇᴍɪᴜᴍ Pʟᴀɴѕ",
+                            "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴѕ •",
                             callback_data="token_premium"
                         )
                     ],
                     [
                         InlineKeyboardButton(
-                            "❌ Cʟᴏѕᴇ",
+                            "• Cʟᴏѕᴇ •",
                             callback_data="token_close"
                         )
                     ]
