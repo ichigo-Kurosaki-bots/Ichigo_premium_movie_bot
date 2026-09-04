@@ -4,6 +4,8 @@ from pyrogram.types import (
     InlineKeyboardMarkup
 )
 
+import html
+
 
 # ============================================================
 # FONT TABLES
@@ -11,6 +13,15 @@ from pyrogram.types import (
 
 LOWER = "abcdefghijklmnopqrstuvwxyz"
 UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
+# ============================================================
+# ORIGINAL TEXT CACHE
+# ============================================================
+
+# Stores the original text for each generated font message.
+# This prevents fonts from stacking when another font is clicked.
+FONT_TEXT_CACHE = {}
 
 
 # ============================================================
@@ -31,7 +42,7 @@ FONT_MAPS = {
 
     "bold_italic": (
         "𝙖𝙗𝙘𝙙𝙚𝙛𝙜𝙝𝙞𝙟𝙠𝙡𝙢𝙣𝙤𝙥𝙦𝙧𝙨𝙩𝙪𝙫𝙬𝙭𝙮𝙯",
-        "𝙰𝙱𝙲𝙳𝙴𝙵𝙶𝙷𝙸𝙹𝙺𝙻𝙼𝙽𝙾𝙿𝚀𝚁𝚂𝚃𝚄𝚅𝚆𝚇𝚈𝚉"
+        "𝘼𝘽𝘾𝘿𝘌𝙵𝙂𝙃𝙄𝙅𝙆𝙇𝙈𝙉𝙊𝙋𝙌𝙍𝙎𝙏𝙐𝙑𝙒𝙓𝙔𝙕"
     ),
 
     "mono": (
@@ -93,11 +104,12 @@ def unicode_font(text, font):
 def small_caps(text):
 
     table = str.maketrans(
-        "abcdefghijklmnopqrstuvwxyz",
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ"
         "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ"
     )
 
-    return text.lower().translate(table)
+    return text.translate(table)
 
 
 def bubble(text):
@@ -161,6 +173,8 @@ def ray(text):
 
     return "".join(
         char + "\u0336"
+        if char != " "
+        else char
         for char in text
     )
 
@@ -178,6 +192,21 @@ def arrows(text):
 def reverse(text):
 
     return text[::-1]
+
+
+def clouds(text):
+
+    return "☁ " + text + " ☁"
+
+
+def happy(text):
+
+    return "☺ " + text + " ☺"
+
+
+def sad(text):
+
+    return "☹ " + text + " ☹"
 
 
 # ============================================================
@@ -249,8 +278,9 @@ FONTS = [
 ]
 
 
-# 21 buttons on page 1
-# 18 buttons on page 2
+# ============================================================
+# SETTINGS
+# ============================================================
 
 PER_PAGE = 21
 
@@ -310,15 +340,15 @@ def apply_font(text, style):
 
     if style == "clouds":
 
-        return "☁ " + text + " ☁"
+        return clouds(text)
 
     if style == "happy":
 
-        return "☺ " + text + " ☺"
+        return happy(text)
 
     if style == "sad":
 
-        return "☹ " + text + " ☹"
+        return sad(text)
 
     return text
 
@@ -436,10 +466,6 @@ def copy_keyboard(
         ]
     ]
 
-    # --------------------------------------------------------
-    # FONT BUTTONS
-    # --------------------------------------------------------
-
     keyboard = font_keyboard(
         page,
         result
@@ -451,6 +477,22 @@ def copy_keyboard(
 
     return InlineKeyboardMarkup(
         buttons
+    )
+
+
+# ============================================================
+# RESULT TEXT
+# ============================================================
+
+def build_result_text(result):
+
+    safe_result = html.escape(
+        str(result)
+    )
+
+    return (
+        f"<code>{safe_result}</code>\n\n"
+        "☝️ <b>Click To Copy</b>"
     )
 
 
@@ -495,23 +537,35 @@ def register_font_handlers(app):
 
             return
 
-        # Save original text in message metadata
-        # using callback data is not large enough,
-        # so put it inside the displayed message.
+        # ----------------------------------------------------
+        # ORIGINAL TEXT
+        # ----------------------------------------------------
+
         result = text
 
-        await message.reply_text(
-            f"<code>{result}</code>\n\n"
-            "☝️ <b>Click To Copy</b>",
+        # ----------------------------------------------------
+        # SEND RESULT
+        # ----------------------------------------------------
+
+        sent = await message.reply_text(
+            build_result_text(result),
             reply_markup=copy_keyboard(
                 result,
                 0
             )
         )
 
+        # ----------------------------------------------------
+        # SAVE ORIGINAL TEXT
+        # ----------------------------------------------------
+
+        FONT_TEXT_CACHE[
+            (sent.chat.id, sent.id)
+        ] = text
+
 
     # ========================================================
-    # FONT STYLE
+    # FONT STYLE CALLBACK
     # ========================================================
 
     @app.on_callback_query(
@@ -523,6 +577,10 @@ def register_font_handlers(app):
         client,
         callback
     ):
+
+        # ----------------------------------------------------
+        # VALIDATE FONT INDEX
+        # ----------------------------------------------------
 
         try:
 
@@ -546,14 +604,64 @@ def register_font_handlers(app):
             return
 
         # ----------------------------------------------------
-        # GET CURRENT TEXT
+        # GET MESSAGE
         # ----------------------------------------------------
 
         message = callback.message
 
-        current_text = message.text
+        if not message:
 
-        if not current_text:
+            await callback.answer(
+                "Message not found.",
+                show_alert=True
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # GET ORIGINAL TEXT FROM CACHE
+        # ----------------------------------------------------
+
+        original = FONT_TEXT_CACHE.get(
+            (message.chat.id, message.id)
+        )
+
+        # ----------------------------------------------------
+        # FALLBACK FOR OLD MESSAGES
+        # ----------------------------------------------------
+
+        if original is None:
+
+            current_text = (
+                message.text or
+                message.caption or
+                ""
+            )
+
+            if "\n\n" in current_text:
+
+                original = current_text.split(
+                    "\n\n",
+                    1
+                )[0]
+
+            else:
+
+                original = current_text
+
+            original = original.replace(
+                "<code>",
+                ""
+            ).replace(
+                "</code>",
+                ""
+            )
+
+        # ----------------------------------------------------
+        # VALIDATE ORIGINAL TEXT
+        # ----------------------------------------------------
+
+        if not original:
 
             await callback.answer(
                 "Text not found.",
@@ -563,56 +671,7 @@ def register_font_handlers(app):
             return
 
         # ----------------------------------------------------
-        # EXTRACT ORIGINAL TEXT
-        # ----------------------------------------------------
-
-        original = current_text.split(
-            "\n\n",
-            1
-        )[0]
-
-        # Remove HTML formatting
-        original = original.replace(
-            "<code>",
-            ""
-        ).replace(
-            "</code>",
-            ""
-        )
-
-        # ----------------------------------------------------
-        # IMPORTANT:
-        # Store original text separately.
-        #
-        # If we convert the already-converted text,
-        # fonts will stack together.
-        # ----------------------------------------------------
-
-        if message.reply_markup:
-
-            try:
-
-                copy_button = (
-                    message.reply_markup.inline_keyboard[0][0]
-                )
-
-                if (
-                    hasattr(
-                        copy_button,
-                        "copy_text"
-                    )
-                    and copy_button.copy_text
-                ):
-
-                    original = (
-                        copy_button.copy_text.text
-                    )
-
-            except Exception:
-                pass
-
-        # ----------------------------------------------------
-        # APPLY FONT
+        # APPLY FONT TO ORIGINAL TEXT
         # ----------------------------------------------------
 
         result = apply_font(
@@ -633,17 +692,33 @@ def register_font_handlers(app):
         try:
 
             await message.edit_text(
-                f"<code>{result}</code>\n\n"
-                "☝️ <b>Click To Copy</b>",
+                build_result_text(result),
                 reply_markup=copy_keyboard(
                     result,
                     page
                 )
             )
 
-        except Exception:
+        except Exception as e:
 
-            pass
+            await callback.answer(
+                "Unable to apply font.",
+                show_alert=True
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # KEEP ORIGINAL TEXT IN CACHE
+        # ----------------------------------------------------
+
+        FONT_TEXT_CACHE[
+            (message.chat.id, message.id)
+        ] = original
+
+        # ----------------------------------------------------
+        # CALLBACK SUCCESS
+        # ----------------------------------------------------
 
         await callback.answer(
             f"{name} applied!"
@@ -675,53 +750,79 @@ def register_font_handlers(app):
             ) // PER_PAGE
 
             if page < 0:
+
                 page = 0
 
             if page > max_page:
+
                 page = max_page
 
             message = callback.message
 
-            current_text = (
-                message.text or ""
-            )
+            if not message:
 
-            original = current_text.split(
-                "\n\n",
-                1
-            )[0]
-
-            original = original.replace(
-                "<code>",
-                ""
-            ).replace(
-                "</code>",
-                ""
-            )
-
-            # Get currently copied text
-            # so clicking Next doesn't destroy it.
-            try:
-
-                copy_button = (
-                    message.reply_markup
-                    .inline_keyboard[0][0]
+                await callback.answer(
+                    "Message not found.",
+                    show_alert=True
                 )
 
-                if (
-                    hasattr(
-                        copy_button,
-                        "copy_text"
-                    )
-                    and copy_button.copy_text
-                ):
+                return
 
-                    original = (
-                        copy_button.copy_text.text
-                    )
+            # ------------------------------------------------
+            # GET ORIGINAL TEXT
+            # ------------------------------------------------
 
-            except Exception:
-                pass
+            original = FONT_TEXT_CACHE.get(
+                (message.chat.id, message.id)
+            )
+
+            # ------------------------------------------------
+            # FALLBACK
+            # ------------------------------------------------
+
+            if original is None:
+
+                current_text = (
+                    message.text or
+                    message.caption or
+                    ""
+                )
+
+                if "\n\n" in current_text:
+
+                    original = current_text.split(
+                        "\n\n",
+                        1
+                    )[0]
+
+                else:
+
+                    original = current_text
+
+                original = original.replace(
+                    "<code>",
+                    ""
+                ).replace(
+                    "</code>",
+                    ""
+                )
+
+            # ------------------------------------------------
+            # VALIDATE
+            # ------------------------------------------------
+
+            if not original:
+
+                await callback.answer(
+                    "Text not found.",
+                    show_alert=True
+                )
+
+                return
+
+            # ------------------------------------------------
+            # UPDATE ONLY KEYBOARD
+            # ------------------------------------------------
 
             await message.edit_reply_markup(
                 reply_markup=copy_keyboard(
@@ -729,6 +830,14 @@ def register_font_handlers(app):
                     page
                 )
             )
+
+            # ------------------------------------------------
+            # KEEP ORIGINAL TEXT
+            # ------------------------------------------------
+
+            FONT_TEXT_CACHE[
+                (message.chat.id, message.id)
+            ] = original
 
             await callback.answer()
 
@@ -738,3 +847,126 @@ def register_font_handlers(app):
                 "Unable to change page.",
                 show_alert=True
             )
+
+
+    # ========================================================
+    # COPY BUTTON
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^font_copy$"
+        )
+    )
+    async def font_copy_callback(
+        client,
+        callback
+    ):
+
+        try:
+
+            message = callback.message
+
+            if not message:
+
+                await callback.answer(
+                    "Message not found.",
+                    show_alert=True
+                )
+
+                return
+
+            # ------------------------------------------------
+            # GET ORIGINAL TEXT
+            # ------------------------------------------------
+
+            original = FONT_TEXT_CACHE.get(
+                (message.chat.id, message.id)
+            )
+
+            # ------------------------------------------------
+            # FALLBACK
+            # ------------------------------------------------
+
+            if original is None:
+
+                current_text = (
+                    message.text or
+                    message.caption or
+                    ""
+                )
+
+                if "\n\n" in current_text:
+
+                    current_text = current_text.split(
+                        "\n\n",
+                        1
+                    )[0]
+
+                original = current_text.replace(
+                    "<code>",
+                    ""
+                ).replace(
+                    "</code>",
+                    ""
+                )
+
+            if not original:
+
+                await callback.answer(
+                    "Text not found.",
+                    show_alert=True
+                )
+
+                return
+
+            # ------------------------------------------------
+            # DETERMINE CURRENT FONT RESULT
+            # ------------------------------------------------
+
+            current_text = (
+                message.text or
+                message.caption or
+                ""
+            )
+
+            if "\n\n" in current_text:
+
+                result = current_text.split(
+                    "\n\n",
+                    1
+                )[0]
+
+            else:
+
+                result = original
+
+            result = result.replace(
+                "<code>",
+                ""
+            ).replace(
+                "</code>",
+                ""
+            )
+
+            # ------------------------------------------------
+            # SEND COPYABLE TEXT
+            #
+            # This keeps compatibility with Pyrogram versions
+            # where CopyTextButton is unavailable.
+            # ------------------------------------------------
+
+            await callback.message.reply_text(
+                f"<code>{html.escape(result)}</code>"
+            )
+
+            await callback.answer(
+                "Text sent below. Tap and copy it."
+            )
+
+        except Exception:
+
+            await callback.answer(
+                "Unable to copy text.",
+                show_alert=True
+    )
