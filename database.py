@@ -1158,7 +1158,9 @@ async def remove_fsub_channel(
 
 async def record_search(query):
     """
-    Record a user's search query for /trendlist.
+    Record only real user search queries for /trendlist.
+
+    Telegram commands starting with "/" are ignored.
     """
 
     if not query:
@@ -1168,6 +1170,17 @@ async def record_search(query):
 
     if not query:
         return False
+
+    # --------------------------------------------------------
+    # NEVER RECORD TELEGRAM COMMANDS
+    # --------------------------------------------------------
+
+    if query.startswith("/"):
+        return False
+
+    # --------------------------------------------------------
+    # RECORD REAL SEARCH
+    # --------------------------------------------------------
 
     await settings_collection.update_one(
         {
@@ -1189,7 +1202,9 @@ async def record_search(query):
 
 async def get_trending_searches(limit=29):
     """
-    Return the most searched queries.
+    Return the most searched real queries.
+
+    Command-like entries starting with "/" are ignored.
     """
 
     document = await settings_collection.find_one(
@@ -1209,8 +1224,22 @@ async def get_trending_searches(limit=29):
     if not queries:
         return []
 
+    # --------------------------------------------------------
+    # REMOVE COMMANDS FROM TRENDING RESULTS
+    # --------------------------------------------------------
+
+    valid_queries = {
+        query: count
+        for query, count in queries.items()
+        if str(query).strip()
+        and not str(query).strip().startswith("/")
+    }
+
+    if not valid_queries:
+        return []
+
     sorted_queries = sorted(
-        queries.items(),
+        valid_queries.items(),
         key=lambda item: item[1],
         reverse=True
     )
