@@ -43,14 +43,25 @@ def register_group_welcome_handlers(app):
             chat_id = chat.id
             group_name = chat.title or "this group"
 
+            # IMPORTANT:
+            # Convert Pyrogram ChatType enum to a normal string
+            chat_type = str(chat.type.value)
+
             # ------------------------------------------------
             # SAVE GROUP TO MONGODB
             # ------------------------------------------------
 
             await register_chat(
                 chat_id=chat_id,
-                chat_type=chat.type,
+                chat_type=chat_type,
                 title=group_name
+            )
+
+            print(
+                f"GROUP REGISTERED | "
+                f"TITLE={group_name} | "
+                f"ID={chat_id} | "
+                f"TYPE={chat_type}"
             )
 
             # ------------------------------------------------
@@ -80,8 +91,8 @@ def register_group_welcome_handlers(app):
             # ------------------------------------------------
 
             text = (
-                f"<b>Thankyou For Adding Me In</b> "
-                f"<b>{group_name}</b> ❣️\n\n"
+                f"<b>Thankyou For Adding Me In "
+                f"{group_name}</b> ❣️\n\n"
                 "<b>If you have any questions & doubts</b>\n"
                 "<b>about using me contact support.</b>"
             )
@@ -118,13 +129,6 @@ def register_group_welcome_handlers(app):
             await message.reply_text(
                 text,
                 reply_markup=buttons
-            )
-
-            print(
-                f"GROUP REGISTERED: "
-                f"{group_name} | "
-                f"ID={chat_id} | "
-                f"TYPE={chat.type}"
             )
 
         except Exception as e:
