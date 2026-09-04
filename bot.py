@@ -50,6 +50,10 @@ from handlers.channel import (
     register_channel_handlers
 )
 
+from handlers.group_welcome import (
+    register_group_welcome_handlers
+)
+
 from indexer import (
     handle_database_post
 )
@@ -235,6 +239,8 @@ async def main():
     register_token_handlers(app)
 
     register_channel_handlers(app)
+
+    register_group_welcome_handlers(app)
 
     register_font_handlers(app)
 
