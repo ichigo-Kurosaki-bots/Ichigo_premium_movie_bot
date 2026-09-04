@@ -340,7 +340,7 @@ async def claim_daily_tokens(user_id):
 
         {
             "$inc": {
-                "tokens": 5
+                "tokens": 50
             },
 
             "$set": {
