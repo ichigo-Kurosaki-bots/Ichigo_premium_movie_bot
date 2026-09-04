@@ -5,6 +5,7 @@ from pyrogram.types import (
 )
 
 from config import UPDATES_CHANNEL
+from database import register_chat
 
 
 # ============================================================
@@ -13,16 +14,10 @@ from config import UPDATES_CHANNEL
 
 def register_group_welcome_handlers(app):
 
-    @app.on_message(
-        filters.new_chat_members
-    )
-    async def bot_added_to_group(
-        client,
-        message
-    ):
+    @app.on_message(filters.new_chat_members)
+    async def bot_added_to_group(client, message):
 
         try:
-
             # ------------------------------------------------
             # CHECK WHETHER THE BOT WAS ADDED
             # ------------------------------------------------
@@ -32,9 +27,7 @@ def register_group_welcome_handlers(app):
             bot_added = False
 
             for member in message.new_chat_members:
-
                 if member.id == me.id:
-
                     bot_added = True
                     break
 
@@ -47,9 +40,17 @@ def register_group_welcome_handlers(app):
 
             chat = message.chat
 
-            group_name = (
-                chat.title
-                or "this group"
+            chat_id = chat.id
+            group_name = chat.title or "this group"
+
+            # ------------------------------------------------
+            # SAVE GROUP TO MONGODB
+            # ------------------------------------------------
+
+            await register_chat(
+                chat_id=chat_id,
+                chat_type=chat.type,
+                title=group_name
             )
 
             # ------------------------------------------------
@@ -59,19 +60,17 @@ def register_group_welcome_handlers(app):
             support_url = "https://t.me/Coders_Grp"
             updates_url = "https://t.me/Aero_Unity"
 
-            # If UPDATES_CHANNEL is configured,
-            # use it automatically.
             if UPDATES_CHANNEL:
 
                 updates_username = (
-                    UPDATES_CHANNEL
+                    str(UPDATES_CHANNEL)
                     .replace("https://t.me/", "")
+                    .replace("http://t.me/", "")
                     .replace("@", "")
                     .strip("/")
                 )
 
                 if updates_username:
-
                     updates_url = (
                         f"https://t.me/{updates_username}"
                     )
@@ -81,8 +80,8 @@ def register_group_welcome_handlers(app):
             # ------------------------------------------------
 
             text = (
-                f"<b>Thankyou For Adding Me In</b>"
-                f"{group_name} ❣️\n\n"
+                f"<b>Thankyou For Adding Me In</b> "
+                f"<b>{group_name}</b> ❣️\n\n"
                 "<b>If you have any questions & doubts</b>\n"
                 "<b>about using me contact support.</b>"
             )
@@ -119,6 +118,13 @@ def register_group_welcome_handlers(app):
             await message.reply_text(
                 text,
                 reply_markup=buttons
+            )
+
+            print(
+                f"GROUP REGISTERED: "
+                f"{group_name} | "
+                f"ID={chat_id} | "
+                f"TYPE={chat.type}"
             )
 
         except Exception as e:
