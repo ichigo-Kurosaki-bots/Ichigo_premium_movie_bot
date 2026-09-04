@@ -1,166 +1,112 @@
 from pyrogram import filters
-from pyrogram.types import InlineKeyboardMarkup
-
 from config import ADMIN_IDS
-from database import chats_collection
+import database
 
-
-# ============================================================
-# REGISTER CHANNEL HANDLER
-# ============================================================
 
 def register_channel_handlers(app):
 
-    # ========================================================
-    # /channel
-    # GET LIST OF TOTAL CONNECTED GROUPS
-    # ========================================================
-
     @app.on_message(
-        filters.command("channel")
-        & filters.user(list(ADMIN_IDS))
+        filters.command("channel") & filters.user(list(ADMIN_IDS))
     )
-    async def channel_command(
-        client,
-        message
-    ):
+    async def channel_command(client, message):
 
         try:
-
-            # ------------------------------------------------
-            # GET CONNECTED GROUPS FROM DATABASE
-            # ------------------------------------------------
+            # Make sure database is initialized
+            if database.chats_collection is None:
+                await message.reply_text(
+                    "❌ <b>Database is not initialized.</b>\n\n"
+                    "Please restart the bot and try again."
+                )
+                return
 
             groups = []
 
-            async for chat in chats_collection.find({}):
+            # Get all saved chats
+            async for chat in database.chats_collection.find({}):
 
                 chat_id = chat.get("chat_id")
 
                 if not chat_id:
                     continue
 
+                # IMPORTANT:
+                # database.py saves this as "chat_type"
                 chat_type = str(
-                    chat.get("type", "")
+                    chat.get("chat_type", "")
                 ).lower()
 
-                # Accept group / supergroup
-                if chat_type in (
-                    "group",
-                    "supergroup"
-                ):
+                # Only groups and supergroups
+                if chat_type in ("group", "supergroup"):
                     groups.append(chat)
 
-            # ------------------------------------------------
-            # NO GROUPS
-            # ------------------------------------------------
-
+            # No groups found
             if not groups:
-
                 await message.reply_text(
                     "📋 <b>TOTAL CONNECTED GROUPS</b>\n\n"
                     "📊 <b>Total:</b> 0\n\n"
                     "❌ No connected groups found."
                 )
-
                 return
 
-            # ------------------------------------------------
-            # SORT GROUPS
-            # ------------------------------------------------
-
+            # Sort groups alphabetically
             groups.sort(
                 key=lambda x: str(
-                    x.get("title")
-                    or x.get("name")
-                    or ""
+                    x.get("title") or x.get("name") or ""
                 ).lower()
             )
-
-            # ------------------------------------------------
-            # BUILD LIST
-            # ------------------------------------------------
 
             text = (
                 "📋 <b>TOTAL CONNECTED GROUPS</b>\n\n"
                 f"📊 <b>Total:</b> {len(groups)}\n\n"
             )
 
-            for number, chat in enumerate(
-                groups,
-                start=1
-            ):
+            # Build group list
+            for number, chat in enumerate(groups, start=1):
 
-                chat_id = chat.get(
-                    "chat_id"
-                )
-
+                chat_id = chat.get("chat_id")
                 title = (
                     chat.get("title")
                     or chat.get("name")
                     or "Unknown Group"
                 )
 
-                username = chat.get(
-                    "username"
-                )
+                username = chat.get("username")
 
                 if username:
-
                     text += (
                         f"<b>{number}. {title}</b>\n"
                         f"👤 @{username}\n"
                         f"🆔 <code>{chat_id}</code>\n\n"
                     )
-
                 else:
-
                     text += (
                         f"<b>{number}. {title}</b>\n"
                         f"🆔 <code>{chat_id}</code>\n\n"
                     )
 
-            # ------------------------------------------------
-            # TELEGRAM MESSAGE LIMIT
-            # ------------------------------------------------
-
+            # Telegram message limit protection
             chunks = []
 
             while len(text) > 4000:
 
-                split_at = text.rfind(
-                    "\n\n",
-                    0,
-                    4000
-                )
+                split_at = text.rfind("\n\n", 0, 4000)
 
                 if split_at == -1:
                     split_at = 4000
 
-                chunks.append(
-                    text[:split_at]
-                )
-
-                text = text[
-                    split_at:
-                ].lstrip()
+                chunks.append(text[:split_at])
+                text = text[split_at:].lstrip()
 
             if text:
                 chunks.append(text)
 
-            # ------------------------------------------------
-            # SEND GROUP LIST
-            # ------------------------------------------------
-
+            # Send all chunks
             for chunk in chunks:
-
-                await message.reply_text(
-                    chunk
-                )
+                await message.reply_text(chunk)
 
         except Exception as e:
 
             await message.reply_text(
                 "❌ <b>Failed to get connected groups.</b>\n\n"
-                f"<code>{e}</code>"
+                f"<code>{str(e)}</code>"
             )
