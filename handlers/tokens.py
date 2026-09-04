@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 
 from pyrogram import filters
 from pyrogram.types import (
@@ -248,6 +249,41 @@ def register_token_handlers(app):
             )
 
         # ----------------------------------------------------
+        # CHECK IF ALREADY CLAIMED TODAY
+        #
+        # IMPORTANT:
+        # Do this BEFORE animation.
+        # ----------------------------------------------------
+
+        now = datetime.utcnow()
+
+        today = datetime(
+            now.year,
+            now.month,
+            now.day
+        )
+
+        last_claim = user.get(
+            "last_token_claim"
+        )
+
+        if last_claim:
+
+            # ------------------------------------------------
+            # ALREADY CLAIMED
+            # ------------------------------------------------
+
+            if last_claim >= today:
+
+                await message.reply_text(
+                    "❌ ʜᴀ, ʏᴏᴜ ʜᴀᴠᴇ ᴀʟʀᴇᴀᴅʏ ᴄʟᴀɪᴍᴇᴅ "
+                    "ʏᴏᴜʀ ғʀᴇᴇ ᴛᴏᴋᴇɴs ᴛᴏᴅᴀʏ! ʏᴏᴜ'ʀᴇ ᴀᴛ "
+                    "ᴛʜᴇ ᴍᴇʀᴄʏ... ᴛʀʏ ᴀɢᴀɪɴ ᴛᴏᴍᴏʀʀᴏᴡ... 🙃."
+                )
+
+                return
+
+        # ----------------------------------------------------
         # PREVIOUS BALANCE
         # ----------------------------------------------------
 
@@ -287,22 +323,31 @@ def register_token_handlers(app):
 
         # ----------------------------------------------------
         # ALREADY CLAIMED
+        #
+        # Safety check for simultaneous requests.
         # ----------------------------------------------------
 
-        if result.get("reason") == "already_claimed":
+        if result.get(
+            "reason"
+        ) == "already_claimed":
 
             balance = result.get(
                 "tokens",
                 previous_tokens
             )
 
-            await animation.edit_text(
-                "✦ <b>𝗖𝗥𝗘𝗗𝗜𝗧𝗦 𝗔𝗟𝗥𝗘𝗔𝗗𝗬 𝗖𝗟𝗔𝗜𝗠𝗘𝗗!</b>\n\n"
+            try:
 
-                f"◍ ᴛᴏᴋᴇɴs: {balance}\n\n"
+                await animation.delete()
 
-                "⧗ ᴜsᴇ /tokens ᴛᴏ ᴄʜᴇᴄᴋ "
-                "ʏᴏᴜʀ ᴅᴀɪʟʏ ᴛᴏᴋᴇɴ ʙᴀʟᴀɴᴄᴇ."
+            except Exception:
+
+                pass
+
+            await message.reply_text(
+                "❌ ʜᴀ, ʏᴏᴜ ʜᴀᴠᴇ ᴀʟʀᴇᴀᴅʏ ᴄʟᴀɪᴍᴇᴅ "
+                "ʏᴏᴜʀ ғʀᴇᴇ ᴛᴏᴋᴇɴs ᴛᴏᴅᴀʏ! ʏᴏᴜ'ʀᴇ ᴀᴛ "
+                "ᴛʜᴇ ᴍᴇʀᴄʏ... ᴛʀʏ ᴀɢᴀɪɴ ᴛᴏᴍᴏʀʀᴏᴡ... 🙃."
             )
 
             return
@@ -311,9 +356,19 @@ def register_token_handlers(app):
         # FAILED
         # ----------------------------------------------------
 
-        if not result.get("success"):
+        if not result.get(
+            "success"
+        ):
 
-            await animation.edit_text(
+            try:
+
+                await animation.delete()
+
+            except Exception:
+
+                pass
+
+            await message.reply_text(
                 "❌ <b>Fᴀɪʟᴇᴅ ᴛᴏ ᴄʟᴀɪᴍ ᴛᴏᴋᴇɴs.</b>\n\n"
                 "Please try again later."
             )
@@ -335,10 +390,22 @@ def register_token_handlers(app):
         )
 
         # ----------------------------------------------------
+        # DELETE ANIMATION
+        # ----------------------------------------------------
+
+        try:
+
+            await animation.delete()
+
+        except Exception:
+
+            pass
+
+        # ----------------------------------------------------
         # SUCCESS MESSAGE
         # ----------------------------------------------------
 
-        await animation.edit_text(
+        await message.reply_text(
 
             "✦ <b>𝗖𝗥𝗘𝗗𝗜𝗧𝗦 𝗖𝗟𝗔𝗜𝗠𝗘𝗗!</b>\n\n"
 
