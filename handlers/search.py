@@ -623,6 +623,7 @@ def register_search_handlers(app):
                 "trendlist",
                 "alive",
                 "user",
+                "channel",
                 "premiumuser",
                 "activate",
                 "deactivate",
