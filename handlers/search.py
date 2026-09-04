@@ -657,7 +657,7 @@ def register_search_handlers(app):
         # ----------------------------------------------------
         # RECORD SEARCH FOR TRENDLIST
         # ----------------------------------------------------
-
+    if not query.startswith("/"):
         try:
             await record_search(query)
         except Exception as e:
