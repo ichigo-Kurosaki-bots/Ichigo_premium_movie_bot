@@ -46,6 +46,10 @@ from handlers.fsub import (
     register_fsub_handlers
 )
 
+from handlers.channel import (
+    register_channel_handlers
+)
+
 from indexer import (
     handle_database_post
 )
@@ -229,6 +233,8 @@ async def main():
     logger.info("TEST 5")
 
     register_token_handlers(app)
+
+    register_channel_handlers(app)
 
     register_font_handlers(app)
 
