@@ -56,8 +56,8 @@ def register_group_welcome_handlers(app):
             # SUPPORT / UPDATES LINKS
             # ------------------------------------------------
 
-            support_url = "https://t.me/Aero_Unity"
-            updates_url = "https://t.me/Anime_UpdatesAU"
+            support_url = "https://t.me/Coders_Grp"
+            updates_url = "https://t.me/Aero_Unity"
 
             # If UPDATES_CHANNEL is configured,
             # use it automatically.
@@ -81,10 +81,10 @@ def register_group_welcome_handlers(app):
             # ------------------------------------------------
 
             text = (
-                f"Thankyou For Adding Me In "
+                f"<b>Thankyou For Adding Me In</b>"
                 f"{group_name} ❣️\n\n"
-                "If you have any questions & doubts\n"
-                "about using me contact support."
+                "<b>If you have any questions & doubts</b>\n"
+                "<b>about using me contact support.</b>"
             )
 
             # ------------------------------------------------
@@ -95,17 +95,17 @@ def register_group_welcome_handlers(app):
                 [
                     [
                         InlineKeyboardButton(
-                            "↗ Sᴜᴘᴘᴏʀᴛ Gʀᴏᴜᴘ",
+                            "• Sᴜᴘᴘᴏʀᴛ Gʀᴏᴜᴘ •",
                             url=support_url
                         ),
                         InlineKeyboardButton(
-                            "↗ Uᴘᴅᴀᴛᴇs Cʜᴀɴɴᴇʟ",
+                            "• Uᴘᴅᴀᴛᴇs Cʜᴀɴɴᴇʟ •",
                             url=updates_url
                         )
                     ],
                     [
                         InlineKeyboardButton(
-                            "↗ Bᴏᴛ Oᴡɴᴇʀ",
+                            "• Bᴏᴛ Oᴡɴᴇʀ •",
                             url="https://t.me/Mr_Mohammed_29"
                         )
                     ]
