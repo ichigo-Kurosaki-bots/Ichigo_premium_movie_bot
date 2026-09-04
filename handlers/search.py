@@ -619,6 +619,7 @@ def register_search_handlers(app):
                 "plans",
                 "myplan",
                 "token",
+                "gentoken",
                 "font",
                 "trendlist",
                 "alive",
