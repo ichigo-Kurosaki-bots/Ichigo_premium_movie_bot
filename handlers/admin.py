@@ -1410,9 +1410,7 @@ def register_admin_handlers(app):
         except Exception:
 
             pass
-                        text=quoted_text
-                    )
-
+            
                 # ------------------------------------------------
                 # MEDIA WITH CAPTION
                 # ------------------------------------------------
