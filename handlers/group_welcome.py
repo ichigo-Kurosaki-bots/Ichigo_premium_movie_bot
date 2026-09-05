@@ -31,105 +31,189 @@ def register_group_welcome_handlers(app):
                     bot_added = True
                     break
 
-            if not bot_added:
-                return
-
             # ------------------------------------------------
-            # GROUP INFORMATION
+            # IF BOT WAS ADDED
             # ------------------------------------------------
 
-            chat = message.chat
+            if bot_added:
 
-            chat_id = chat.id
-            group_name = chat.title or "this group"
+                # ------------------------------------------------
+                # GROUP INFORMATION
+                # ------------------------------------------------
 
-            # IMPORTANT:
-            # Convert Pyrogram ChatType enum to a normal string
-            chat_type = str(chat.type.value)
+                chat = message.chat
 
-            # ------------------------------------------------
-            # SAVE GROUP TO MONGODB
-            # ------------------------------------------------
+                chat_id = chat.id
+                group_name = chat.title or "this group"
 
-            await register_chat(
-                chat_id=chat_id,
-                chat_type=chat_type,
-                title=group_name
-            )
+                # IMPORTANT:
+                # Convert Pyrogram ChatType enum to a normal string
+                chat_type = str(chat.type.value)
 
-            print(
-                f"GROUP REGISTERED | "
-                f"TITLE={group_name} | "
-                f"ID={chat_id} | "
-                f"TYPE={chat_type}"
-            )
+                # ------------------------------------------------
+                # SAVE GROUP TO MONGODB
+                # ------------------------------------------------
 
-            # ------------------------------------------------
-            # SUPPORT / UPDATES LINKS
-            # ------------------------------------------------
-
-            support_url = "https://t.me/Coders_Grp"
-            updates_url = "https://t.me/Aero_Unity"
-
-            if UPDATES_CHANNEL:
-
-                updates_username = (
-                    str(UPDATES_CHANNEL)
-                    .replace("https://t.me/", "")
-                    .replace("http://t.me/", "")
-                    .replace("@", "")
-                    .strip("/")
+                await register_chat(
+                    chat_id=chat_id,
+                    chat_type=chat_type,
+                    title=group_name
                 )
 
-                if updates_username:
-                    updates_url = (
-                        f"https://t.me/{updates_username}"
+                print(
+                    f"GROUP REGISTERED | "
+                    f"TITLE={group_name} | "
+                    f"ID={chat_id} | "
+                    f"TYPE={chat_type}"
+                )
+
+                # ------------------------------------------------
+                # SUPPORT / UPDATES LINKS
+                # ------------------------------------------------
+
+                support_url = "https://t.me/Coders_Grp"
+                updates_url = "https://t.me/Aero_Unity"
+
+                if UPDATES_CHANNEL:
+
+                    updates_username = (
+                        str(UPDATES_CHANNEL)
+                        .replace("https://t.me/", "")
+                        .replace("http://t.me/", "")
+                        .replace("@", "")
+                        .strip("/")
                     )
 
-            # ------------------------------------------------
-            # WELCOME TEXT
-            # ------------------------------------------------
-
-            text = (
-                f"<b>Thankyou For Adding Me In "
-                f"{group_name}</b> ❣️\n\n"
-                "<b>If you have any questions & doubts</b>\n"
-                "<b>about using me contact support.</b>"
-            )
-
-            # ------------------------------------------------
-            # BUTTONS
-            # ------------------------------------------------
-
-            buttons = InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton(
-                            "• Sᴜᴘᴘᴏʀᴛ Gʀᴏᴜᴘ •",
-                            url=support_url
-                        ),
-                        InlineKeyboardButton(
-                            "• Uᴘᴅᴀᴛᴇs Cʜᴀɴɴᴇʟ •",
-                            url=updates_url
+                    if updates_username:
+                        updates_url = (
+                            f"https://t.me/{updates_username}"
                         )
-                    ],
+
+                # ------------------------------------------------
+                # WELCOME TEXT
+                # ------------------------------------------------
+
+                text = (
+                    f"<b>Thankyou For Adding Me In "
+                    f"{group_name}</b> ❣️\n\n"
+                    "<b>If you have any questions & doubts</b>\n"
+                    "<b>about using me contact support.</b>"
+                )
+
+                # ------------------------------------------------
+                # BUTTONS
+                # ------------------------------------------------
+
+                buttons = InlineKeyboardMarkup(
                     [
-                        InlineKeyboardButton(
-                            "• Bᴏᴛ Oᴡɴᴇʀ •",
-                            url="https://t.me/Mr_Mohammed_29"
-                        )
+                        [
+                            InlineKeyboardButton(
+                                "• Sᴜᴘᴘᴏʀᴛ Gʀᴏᴜᴘ •",
+                                url=support_url
+                            ),
+                            InlineKeyboardButton(
+                                "• Uᴘᴅᴀᴛᴇs Cʜᴀɴɴᴇʟ •",
+                                url=updates_url
+                            )
+                        ],
+                        [
+                            InlineKeyboardButton(
+                                "• Bᴏᴛ Oᴡɴᴇʀ •",
+                                url="https://t.me/Mr_Mohammed_29"
+                            )
+                        ]
                     ]
-                ]
-            )
+                )
 
-            # ------------------------------------------------
-            # SEND WELCOME
-            # ------------------------------------------------
+                # ------------------------------------------------
+                # SEND BOT ADDED MESSAGE
+                # ------------------------------------------------
 
-            await message.reply_text(
-                text,
-                reply_markup=buttons
-            )
+                await message.reply_text(
+                    text,
+                    reply_markup=buttons
+                )
+
+                return
+
+            # ====================================================
+            # NORMAL USER JOINED
+            # ====================================================
+
+            for member in message.new_chat_members:
+
+                # Don't welcome other bots
+                if member.is_bot:
+                    continue
+
+                # ------------------------------------------------
+                # USER NAME
+                # ------------------------------------------------
+
+                first_name = member.first_name or "User"
+
+                # ------------------------------------------------
+                # UPDATES LINK
+                # ------------------------------------------------
+
+                updates_url = "https://t.me/Aero_Unity"
+
+                if UPDATES_CHANNEL:
+
+                    updates_username = (
+                        str(UPDATES_CHANNEL)
+                        .replace("https://t.me/", "")
+                        .replace("http://t.me/", "")
+                        .replace("@", "")
+                        .strip("/")
+                    )
+
+                    if updates_username:
+                        updates_url = (
+                            f"https://t.me/{updates_username}"
+                        )
+
+                # ------------------------------------------------
+                # USER WELCOME BUTTON
+                # ------------------------------------------------
+
+                user_buttons = InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "• Uᴘᴅᴀᴛᴇs Cʜᴀɴɴᴇʟ •",
+                                url=updates_url
+                            )
+                        ]
+                    ]
+                )
+
+                # ------------------------------------------------
+                # USER WELCOME MESSAGE
+                # ------------------------------------------------
+
+                welcome_text = (
+                    f"✨ <b>Wᴇʟᴄᴏᴍᴇ {first_name}!</b> 👋\n\n"
+                    f"🎬 <b>Wᴇʟᴄᴏᴍᴇ Tᴏ {group_name}!</b>\n\n"
+                    f"👤 Hᴇʏ <b>{first_name}</b>, "
+                    "<b>glad to have you here! ❤️</b>\n\n"
+                    "<b>Stay updated with the latest</b> "
+                    "<b>movies, series and bot updates.</b>\n\n"
+                    "<b>✨ Enjoy your stay!</b>"
+                )
+
+                # ------------------------------------------------
+                # SEND GIF + WELCOME
+                # ------------------------------------------------
+
+                await message.reply_animation(
+                    animation=(
+                        "https://media.tenor.com/"
+                        "9vRAkntogEMAAAAC/anime-welcome.gif"
+                    ),
+                    caption=welcome_text,
+                    reply_markup=user_buttons
+                )
 
         except Exception as e:
 
