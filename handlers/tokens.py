@@ -413,7 +413,7 @@ def register_token_handlers(app):
             f"◍ ɴᴇᴡ ᴛᴏᴋᴇɴs ᴀᴅᴅᴇᴅ: {new_tokens}\n"
             f"◍ ᴛᴏᴛᴀʟ ᴛᴏᴋᴇɴs: {total_tokens}\n\n"
 
-            "⧗ ᴜsᴇ /tokens ᴛᴏ ᴄʜᴇᴄᴋ "
+            "⧗ ᴜsᴇ /token ᴛᴏ ᴄʜᴇᴄᴋ "
             "ʏᴏᴜʀ ᴅᴀɪʟʏ ᴛᴏᴋᴇɴ ʙᴀʟᴀɴᴄᴇ.\n"
 
             "≡ ᴜsᴇ /premium ᴛᴏ ᴜᴘɢʀᴀᴅᴇ "
