@@ -23,7 +23,7 @@ from database import (
     get_stats,
     get_media_storage_stats,
     activate_premium,
-    remove_premium, 
+    remove_premium,
     get_indexer_state,
     get_trending_searches
 )
@@ -137,7 +137,7 @@ def register_admin_handlers(app):
 
                 await message.reply_text(
                     "📊 <b>Nᴏ Tʀᴇɴᴅɪɴɢ Sᴇᴀʀᴄʜᴇs Yᴇᴛ.</b>\n\n"
-                    "Sᴇᴀʀᴄᴇs Wɪʟʟ Aᴘᴘᴇᴀʀ Hᴇʀᴇ Wʜᴇɴ U sᴇʀs Sᴇᴀʀᴄʜ."
+                    "Sᴇᴀʀᴄʜᴇs Wɪʟʟ Aᴘᴘᴇᴀʀ Hᴇʀᴇ Wʜᴇɴ U sᴇʀs Sᴇᴀʀᴄʜ."
                 )
 
                 return
@@ -278,7 +278,7 @@ def register_admin_handlers(app):
             # ----------------------------------------------------
 
             memory = psutil.virtual_memory()
- 
+
             ram_percent = memory.percent
 
             # ----------------------------------------------------
@@ -319,28 +319,28 @@ def register_admin_handlers(app):
             # ----------------------------------------------------
 
             def progress_bar(
-               percent,
-               length=10
+                percent,
+                length=10
             ):
 
-               filled = int(
-                   percent / 100 * length
-               )
+                filled = int(
+                    percent / 100 * length
+                )
 
-               filled = max(
-                   0,
-                   min(
-                       filled,
-                       length
-                   )
-               )
+                filled = max(
+                    0,
+                    min(
+                        filled,
+                        length
+                    )
+                )
 
-               empty = length - filled
+                empty = length - filled
 
-               return (
-                   "■" * filled
-                   + "□" * empty
-               )
+                return (
+                    "■" * filled
+                    + "□" * empty
+                )
 
             # ----------------------------------------------------
             # STATS TEXT
@@ -512,7 +512,7 @@ def register_admin_handlers(app):
         await message.reply_text(
             text
         )
-        
+
     # /premiumuser
 
     @app.on_message(
@@ -662,6 +662,7 @@ def register_admin_handlers(app):
             )
 
     # ------ Activate User ------- #
+
     @app.on_message(
         filters.command("activate")
         & admin_only
@@ -930,13 +931,13 @@ def register_admin_handlers(app):
 
                 size_text = (
                     f"{total_size / (1024 ** 2):.2f} MB"
-            )
+                )
 
             elif total_size >= 1024:
 
                 size_text = (
                     f"{total_size / 1024:.2f} KB"
-            )
+                )
 
             else:
 
@@ -1033,7 +1034,7 @@ def register_admin_handlers(app):
         await message.reply_text(
             "<b>Your Telegram ID</b>\n\n"
             f"ID - <code>{user_id}</code>"
-            )
+        )
 
     # /broadcast
 
@@ -1353,7 +1354,7 @@ def register_admin_handlers(app):
             # SMALL DELAY
             # ------------------------------------------------
 
-            await asyncio.sleep(0.08)
+            await asyncio.sleep(0.05)
 
             # ------------------------------------------------
             # UPDATE STATUS
@@ -1410,70 +1411,3 @@ def register_admin_handlers(app):
         except Exception:
 
             pass
-            
-                # ------------------------------------------------
-                # MEDIA WITH CAPTION
-                # ------------------------------------------------
-
-                else:
-
-                    copied_message = await client.copy_message(
-                        chat_id=user_id,
-                        from_chat_id=message.chat.id,
-                        message_id=source.id
-                    )
-
-                    if source.caption:
-
-                        quoted_caption = (
-                            "<blockquote>"
-                            + escape(source.caption)
-                            + "</blockquote>"
-                        )
-
-                        try:
-
-                            await copied_message.edit_caption(
-                                caption=quoted_caption
-                            )
-
-                        except Exception as e:
-
-                            logger.warning(
-                                "Could not add quote to caption for %s: %s",
-                                user_id,
-                                e
-                            )
-
-                success += 1
-
-            except Exception as e:
-
-                failed += 1
-
-                logger.warning(
-                    "Broadcast failed for %s: %s",
-                    user_id,
-                    e
-                )
-
-            # Small delay to reduce Telegram flood pressure.
-            await asyncio.sleep(0.05)
-
-            # Update status every 50 users.
-            if (success + failed) % 50 == 0:
-
-                try:
-
-                    await status.edit_text(
-                        "📢 <b>Broadcasting...</b>\n\n"
-
-                        f"<b>👥 Total users: {total}</b>\n"
-                        f"<b>✅ Sent: {success}</b>\n"
-                        f"<b>❌ Failed: {failed}</b>\n"
-                        f"<b>📊 Progress: "
-                        f"{success + failed}/{total}</b>"
-                    )
-
-                except Exception:
-                    pass
