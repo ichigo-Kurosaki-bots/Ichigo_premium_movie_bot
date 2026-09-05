@@ -7,7 +7,7 @@ import urllib.parse
 import urllib.request
 import json
 
-from pyrogram import filters
+from pyrogram import filters, enums
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from config import (
@@ -565,7 +565,7 @@ async def send_database_file(
             from_chat_id=database_chat.id,
             message_id=int(message_id),
             caption=clickable_caption,
-            parse_mode="html",
+            parse_mode=enums.ParseMode.HTML,
             reply_markup=file_sent_buttons()
         )
 
