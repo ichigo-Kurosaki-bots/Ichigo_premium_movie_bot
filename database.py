@@ -1205,6 +1205,7 @@ async def get_trending_searches(limit=29):
     Return the most searched real queries.
 
     Command-like entries starting with "/" are ignored.
+    Invalid/non-numeric trend values are safely ignored.
     """
 
     document = await settings_collection.find_one(
@@ -1225,18 +1226,31 @@ async def get_trending_searches(limit=29):
         return []
 
     # --------------------------------------------------------
-    # REMOVE COMMANDS FROM TRENDING RESULTS
+    # REMOVE COMMANDS AND INVALID VALUES
     # --------------------------------------------------------
 
-    valid_queries = {
-        query: count
-        for query, count in queries.items()
-        if str(query).strip()
-        and not str(query).strip().startswith("/")
-    }
+    valid_queries = {}
+
+    for query, count in queries.items():
+
+        query = str(query).strip()
+
+        if not query:
+            continue
+
+        if query.startswith("/"):
+            continue
+
+        # Only accept numeric counts.
+        if isinstance(count, (int, float)):
+            valid_queries[query] = int(count)
 
     if not valid_queries:
         return []
+
+    # --------------------------------------------------------
+    # SORT BY SEARCH COUNT
+    # --------------------------------------------------------
 
     sorted_queries = sorted(
         valid_queries.items(),
@@ -1244,4 +1258,4 @@ async def get_trending_searches(limit=29):
         reverse=True
     )
 
-    return sorted_queries[:limit]
+    return sorted_queries[:int(limit)]
