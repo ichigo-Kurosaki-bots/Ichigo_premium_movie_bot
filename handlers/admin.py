@@ -15,6 +15,7 @@ from config import OWNER_ID, ADMIN_IDS
 from database import (
     get_user,
     get_all_user_ids,
+    users_collection,
     count_users,
     count_premium_users,
     count_media,
@@ -511,6 +512,8 @@ def register_admin_handlers(app):
         await message.reply_text(
             text
         )
+        
+    # /premiumuser
 
     @app.on_message(
         filters.command("premiumuser")
@@ -521,73 +524,144 @@ def register_admin_handlers(app):
         message
     ):
 
-        if len(message.command) < 2:
-
-            await message.reply_text(
-                "❌ <b>Usage:</b>\n"
-                "<code>/premiumuser USER_ID</code>"
-            )
-
-            return
-
         try:
 
-            user_id = int(
-                message.command[1]
+            # ------------------------------------------------
+            # GET ALL PREMIUM USERS
+            # ------------------------------------------------
+
+            cursor = users_collection.find(
+                {
+                    "premium": True
+                }
             )
 
-        except ValueError:
+            premium_users = []
+
+            async for user in cursor:
+                premium_users.append(user)
+
+            # ------------------------------------------------
+            # NO PREMIUM USERS
+            # ------------------------------------------------
+
+            if not premium_users:
+
+                await message.reply_text(
+                    "💎 <b>PREMIUM USERS</b>\n\n"
+                    "❌ No Premium users found."
+                )
+
+                return
+
+            # ------------------------------------------------
+            # TOTAL PREMIUM USERS
+            # ------------------------------------------------
+
+            text = (
+                "💎 <b>PREMIUM USERS</b>\n\n"
+                f"👥 <b>Total Premium Users:</b> "
+                f"<code>{len(premium_users)}</code>\n\n"
+            )
+
+            # ------------------------------------------------
+            # USER LIST
+            # ------------------------------------------------
+
+            for index, user in enumerate(
+                premium_users,
+                start=1
+            ):
+
+                user_id = user.get(
+                    "user_id",
+                    "Unknown"
+                )
+
+                first_name = user.get(
+                    "first_name",
+                    "Unknown"
+                )
+
+                username = user.get(
+                    "username",
+                    ""
+                )
+
+                plan = user.get(
+                    "plan"
+                ) or "Premium"
+
+                paid_amount = user.get(
+                    "paid_amount",
+                    0
+                )
+
+                premium_requests = user.get(
+                    "premium_requests",
+                    0
+                )
+
+                remaining = user.get(
+                    "remaining_requests",
+                    0
+                )
+
+                text += (
+                    f"<b>{index}.</b> "
+                    f"👤 <b>{escape(str(first_name))}</b>\n"
+                    f"   🆔 <code>{user_id}</code>\n"
+                )
+
+                if username:
+                    text += (
+                        f"   🔹 @{escape(str(username))}\n"
+                    )
+
+                text += (
+                    f"   📦 Plan: <b>{escape(str(plan))}</b>\n"
+                    f"   💰 Paid: <b>₹{paid_amount}</b>\n"
+                    f"   🎬 Plan Requests: "
+                    f"<b>{premium_requests}</b>\n"
+                    f"   🎟 Remaining: "
+                    f"<b>{remaining}</b>\n\n"
+                )
+
+                # ------------------------------------------------
+                # TELEGRAM MESSAGE LIMIT
+                # ------------------------------------------------
+
+                if len(text) >= 3500:
+
+                    await message.reply_text(
+                        text
+                    )
+
+                    text = ""
+
+            # ------------------------------------------------
+            # SEND REMAINING TEXT
+            # ------------------------------------------------
+
+            if text.strip():
+
+                await message.reply_text(
+                    text
+                )
+
+        except Exception as e:
+
+            logger.exception(
+                "Premium user list error: %s",
+                e
+            )
 
             await message.reply_text(
-                "❌ Invalid User ID."
+                "❌ <b>Could not load Premium users.</b>\n\n"
+                f"<code>{escape(str(e))}</code>"
             )
 
-            return
-
-        user = await get_user(
-            user_id
-        )
-
-        if not user:
-
-            await message.reply_text(
-                "❌ User not found."
-            )
-
-            return
-
-        premium = user.get(
-            "premium",
-            False
-        )
-
-        if not premium:
-
-            await message.reply_text(
-                "❌ This user does not currently "
-                "have Premium."
-            )
-
-            return
-
-        await message.reply_text(
-            "💎 <b>Premium User</b>\n\n"
-
-            f"🆔 ID: <code>{user_id}</code>\n"
-
-            f"📦 Plan: "
-            f"<b>{user.get('plan', 'Premium')}</b>\n"
-
-            f"💰 Paid: "
-            f"<b>₹{user.get('paid_amount', 0)}</b>\n"
-
-            f"🎬 Total plan requests: "
-            f"<b>{user.get('premium_requests', 0)}</b>\n"
-
-            f"🎟 Remaining: "
-            f"<b>{user.get('remaining_requests', 0)}</b>"
-        )
-
+    # ------ Activate User ------- #
     @app.on_message(
         filters.command("activate")
         & admin_only
@@ -957,20 +1031,11 @@ def register_admin_handlers(app):
         user_id = message.from_user.id
 
         await message.reply_text(
-            "🆔 <b>Your Telegram ID</b>\n\n"
-            f"<code>{user_id}</code>"
+            "<b>Your Telegram ID</b>\n\n"
+            f"ID - <code>{user_id}</code>"
             )
 
-    # ========================================================
     # /broadcast
-    #
-    # Usage:
-    #
-    # Reply to any message:
-    # /broadcast
-    #
-    # The bot will copy that message to all users.
-    # ========================================================
 
     @app.on_message(
         filters.command("broadcast")
@@ -982,21 +1047,31 @@ def register_admin_handlers(app):
     ):
 
         # ----------------------------------------------------
-        # BROADCAST MUST BE USED AS A REPLY
+        # CHECK REPLY
         # ----------------------------------------------------
 
         if not message.reply_to_message:
 
             await message.reply_text(
-                "❌ <b>Reply to a message to broadcast it.</b>\n\n"
+                "❌ <b>Reply to the message you want to broadcast.</b>"
             )
 
             return
 
+        source = message.reply_to_message
+
+        # ----------------------------------------------------
+        # STATUS MESSAGE
+        # ----------------------------------------------------
+
         status = await message.reply_text(
-            "📢 <b>Broadcast started...</b>\n\n"
-            "⏳ Please wait."
+            "📢 <b>Broadcast Started...</b>\n\n"
+            "⏳ Preparing broadcast..."
         )
+
+        # ----------------------------------------------------
+        # GET ALL USERS
+        # ----------------------------------------------------
 
         try:
 
@@ -1005,38 +1080,66 @@ def register_admin_handlers(app):
         except Exception as e:
 
             logger.exception(
-                "Could not get users for broadcast: %s",
+                "Failed to get users for broadcast: %s",
                 e
             )
 
             await status.edit_text(
-                "❌ Failed to get users from database."
+                "❌ <b>Broadcast Failed</b>\n\n"
+                "Could not get users from the database."
             )
 
             return
 
-        total = len(user_ids)
-
-        if total == 0:
-
-            await status.edit_text(
-                "❌ No users found in database."
-            )
-
-            return
-
-        success = 0
-        failed = 0
-
         # ----------------------------------------------------
-        # SEND BROADCAST
+        # REMOVE INVALID / DUPLICATE IDS
         # ----------------------------------------------------
+
+        clean_user_ids = []
 
         for user_id in user_ids:
 
             try:
 
-                source = message.reply_to_message
+                user_id = int(user_id)
+
+                if user_id not in clean_user_ids:
+                    clean_user_ids.append(user_id)
+
+            except (TypeError, ValueError):
+
+                continue
+
+        user_ids = clean_user_ids
+
+        total = len(user_ids)
+
+        # ----------------------------------------------------
+        # NO USERS
+        # ----------------------------------------------------
+
+        if total == 0:
+
+            await status.edit_text(
+                "❌ <b>No users found.</b>"
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # COUNTERS
+        # ----------------------------------------------------
+
+        success = 0
+        failed = 0
+
+        # ----------------------------------------------------
+        # BROADCAST LOOP
+        # ----------------------------------------------------
+
+        for user_id in user_ids:
+
+            try:
 
                 # ------------------------------------------------
                 # TEXT MESSAGE
@@ -1044,14 +1147,269 @@ def register_admin_handlers(app):
 
                 if source.text:
 
-                    quoted_text = (
-                        "<blockquote>"
-                        + escape(source.text)
-                        + "</blockquote>"
+                    text = source.text.strip()
+
+                    if text:
+
+                        formatted_text = (
+                            "<blockquote>"
+                            "<b>"
+                            f"{escape(text)}"
+                            "</b>"
+                            "</blockquote>"
+                        )
+
+                        await client.send_message(
+                            chat_id=user_id,
+                            text=formatted_text
+                        )
+
+                # ------------------------------------------------
+                # PHOTO
+                # ------------------------------------------------
+
+                elif source.photo:
+
+                    caption = source.caption or ""
+
+                    if caption:
+
+                        caption = (
+                            "<blockquote>"
+                            "<b>"
+                            f"{escape(caption)}"
+                            "</b>"
+                            "</blockquote>"
+                        )
+
+                    await client.send_photo(
+                        chat_id=user_id,
+                        photo=source.photo.file_id,
+                        caption=caption or None,
+                        parse_mode="html"
                     )
 
-                    await client.send_message(
+                # ------------------------------------------------
+                # VIDEO
+                # ------------------------------------------------
+
+                elif source.video:
+
+                    caption = source.caption or ""
+
+                    if caption:
+
+                        caption = (
+                            "<blockquote>"
+                            "<b>"
+                            f"{escape(caption)}"
+                            "</b>"
+                            "</blockquote>"
+                        )
+
+                    await client.send_video(
                         chat_id=user_id,
+                        video=source.video.file_id,
+                        caption=caption or None,
+                        parse_mode="html"
+                    )
+
+                # ------------------------------------------------
+                # DOCUMENT
+                # ------------------------------------------------
+
+                elif source.document:
+
+                    caption = source.caption or ""
+
+                    if caption:
+
+                        caption = (
+                            "<blockquote>"
+                            "<b>"
+                            f"{escape(caption)}"
+                            "</b>"
+                            "</blockquote>"
+                        )
+
+                    await client.send_document(
+                        chat_id=user_id,
+                        document=source.document.file_id,
+                        caption=caption or None,
+                        parse_mode="html"
+                    )
+
+                # ------------------------------------------------
+                # AUDIO
+                # ------------------------------------------------
+
+                elif source.audio:
+
+                    caption = source.caption or ""
+
+                    if caption:
+
+                        caption = (
+                            "<blockquote>"
+                            "<b>"
+                            f"{escape(caption)}"
+                            "</b>"
+                            "</blockquote>"
+                        )
+
+                    await client.send_audio(
+                        chat_id=user_id,
+                        audio=source.audio.file_id,
+                        caption=caption or None,
+                        parse_mode="html"
+                    )
+
+                # ------------------------------------------------
+                # VOICE
+                # ------------------------------------------------
+
+                elif source.voice:
+
+                    caption = source.caption or ""
+
+                    if caption:
+
+                        caption = (
+                            "<blockquote>"
+                            "<b>"
+                            f"{escape(caption)}"
+                            "</b>"
+                            "</blockquote>"
+                        )
+
+                    await client.send_voice(
+                        chat_id=user_id,
+                        voice=source.voice.file_id,
+                        caption=caption or None,
+                        parse_mode="html"
+                    )
+
+                # ------------------------------------------------
+                # ANIMATION / GIF
+                # ------------------------------------------------
+
+                elif source.animation:
+
+                    caption = source.caption or ""
+
+                    if caption:
+
+                        caption = (
+                            "<blockquote>"
+                            "<b>"
+                            f"{escape(caption)}"
+                            "</b>"
+                            "</blockquote>"
+                        )
+
+                    await client.send_animation(
+                        chat_id=user_id,
+                        animation=source.animation.file_id,
+                        caption=caption or None,
+                        parse_mode="html"
+                    )
+
+                # ------------------------------------------------
+                # STICKER
+                # ------------------------------------------------
+
+                elif source.sticker:
+
+                    await client.send_sticker(
+                        chat_id=user_id,
+                        sticker=source.sticker.file_id
+                    )
+
+                # ------------------------------------------------
+                # OTHER MESSAGE TYPES
+                # ------------------------------------------------
+
+                else:
+
+                    await client.copy_message(
+                        chat_id=user_id,
+                        from_chat_id=source.chat.id,
+                        message_id=source.id
+                    )
+
+                success += 1
+
+            except Exception as e:
+
+                failed += 1
+
+                logger.warning(
+                    "Broadcast failed for user %s: %s",
+                    user_id,
+                    e
+                )
+
+            # ------------------------------------------------
+            # SMALL DELAY
+            # ------------------------------------------------
+
+            await asyncio.sleep(0.08)
+
+            # ------------------------------------------------
+            # UPDATE STATUS
+            # ------------------------------------------------
+
+            processed = success + failed
+
+            if processed % 25 == 0:
+
+                try:
+
+                    await status.edit_text(
+                        "📢 <b>Broadcasting...</b>\n\n"
+
+                        f"👥 <b>Total Users:</b> "
+                        f"<code>{total}</code>\n\n"
+
+                        f"✅ <b>Sent:</b> "
+                        f"<code>{success}</code>\n"
+
+                        f"❌ <b>Failed:</b> "
+                        f"<code>{failed}</code>\n\n"
+
+                        f"📊 <b>Progress:</b> "
+                        f"<code>{processed}/{total}</code>"
+                    )
+
+                except Exception:
+
+                    pass
+
+        # ----------------------------------------------------
+        # FINAL RESULT
+        # ----------------------------------------------------
+
+        try:
+
+            await status.edit_text(
+                "📢 <b>Broadcast Completed!</b>\n\n"
+
+                f"👥 <b>Total Users:</b> "
+                f"<code>{total}</code>\n\n"
+
+                f"✅ <b>Successfully Sent:</b> "
+                f"<code>{success}</code>\n"
+
+                f"❌ <b>Failed:</b> "
+                f"<code>{failed}</code>\n\n"
+
+                f"📊 <b>Completed:</b> "
+                f"<code>{success + failed}/{total}</code>"
+            )
+
+        except Exception:
+
+            pass
                         text=quoted_text
                     )
 
