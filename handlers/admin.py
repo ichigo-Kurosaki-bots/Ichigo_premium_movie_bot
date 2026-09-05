@@ -513,8 +513,6 @@ def register_admin_handlers(app):
             text
         )
 
-    # /premiumuser
-
     @app.on_message(
         filters.command("premiumuser")
         & admin_only
@@ -530,7 +528,9 @@ def register_admin_handlers(app):
             # GET ALL PREMIUM USERS
             # ------------------------------------------------
 
-            cursor = users_collection.find(
+            import database
+
+            cursor = database.users_collection.find(
                 {
                     "premium": True
                 }
