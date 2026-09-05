@@ -19,6 +19,15 @@ def register_group_welcome_handlers(app):
 
         try:
             # ------------------------------------------------
+            # GROUP INFORMATION
+            # ------------------------------------------------
+
+            chat = message.chat
+
+            chat_id = chat.id
+            group_name = chat.title or "this group"
+
+            # ------------------------------------------------
             # CHECK WHETHER THE BOT WAS ADDED
             # ------------------------------------------------
 
@@ -41,13 +50,6 @@ def register_group_welcome_handlers(app):
                 # GROUP INFORMATION
                 # ------------------------------------------------
 
-                chat = message.chat
-
-                chat_id = chat.id
-                group_name = chat.title or "this group"
-
-                # IMPORTANT:
-                # Convert Pyrogram ChatType enum to a normal string
                 chat_type = str(chat.type.value)
 
                 # ------------------------------------------------
@@ -206,17 +208,31 @@ def register_group_welcome_handlers(app):
                 # SEND GIF + WELCOME
                 # ------------------------------------------------
 
-                await message.reply_animation(
-                    animation=(
-                        "https://media.tenor.com/"
-                        "9vRAkntogEMAAAAC/anime-welcome.gif"
-                    ),
-                    caption=welcome_text,
-                    reply_markup=user_buttons
-                )
+                try:
+
+                    await message.reply_animation(
+                        animation="CgACAgUAAxkBAAIRE2qbkJhcgq3KsmIu28gAAWluSO24TAAC2BcAAvhJiFSI780IKxezTj0E",
+                        caption=welcome_text,
+                        reply_markup=user_buttons
+                    )
+
+                except Exception as gif_error:
+
+                    print(
+                        f"WELCOME GIF ERROR: {gif_error}"
+                    )
+
+                    # ------------------------------------------------
+                    # FALLBACK: SEND TEXT WELCOME
+                    # ------------------------------------------------
+
+                    await message.reply_text(
+                        welcome_text,
+                        reply_markup=user_buttons
+                    )
 
         except Exception as e:
 
             print(
                 f"GROUP WELCOME ERROR: {e}"
-            )
+                        )
