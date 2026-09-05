@@ -501,11 +501,11 @@ async def send_database_file(
     message_id
 ):
 
-    # ----------------------------------------------------
-    # RESOLVE DATABASE CHANNEL
-    # ----------------------------------------------------
-
     try:
+
+        # ----------------------------------------------------
+        # RESOLVE DATABASE CHANNEL
+        # ----------------------------------------------------
 
         database_chat = await client.get_chat(
             DATABASE_CHANNEL_ID
@@ -519,31 +519,69 @@ async def send_database_file(
             database_chat.username
         )
 
+        # ----------------------------------------------------
+        # GET ORIGINAL DATABASE MESSAGE
+        # ----------------------------------------------------
+
+        source_message = await client.get_messages(
+            database_chat.id,
+            int(message_id)
+        )
+
+        original_caption = (
+            source_message.caption
+            or ""
+        )
+
+        # ----------------------------------------------------
+        # NO CAPTION
+        # ----------------------------------------------------
+
+        if not original_caption:
+
+            return await client.copy_message(
+                chat_id=user_id,
+                from_chat_id=database_chat.id,
+                message_id=int(message_id),
+                reply_markup=file_sent_buttons()
+            )
+
+        # ----------------------------------------------------
+        # MAKE ENTIRE CAPTION CLICKABLE
+        # ----------------------------------------------------
+
+        clickable_caption = (
+            '<a href="https://t.me/Aero_Unity">'
+            f'{escape_html(original_caption)}'
+            '</a>'
+        )
+
+        # ----------------------------------------------------
+        # COPY FILE WITH CLICKABLE CAPTION
+        # ----------------------------------------------------
+
+        sent_message = await client.copy_message(
+            chat_id=user_id,
+            from_chat_id=database_chat.id,
+            message_id=int(message_id),
+            caption=clickable_caption,
+            parse_mode="html",
+            reply_markup=file_sent_buttons()
+        )
+
+        return sent_message
+
     except Exception as e:
 
         logger.exception(
-            "Could not resolve database channel %s: %s",
-            DATABASE_CHANNEL_ID,
+            "Failed to send database file %s "
+            "to user %s: %s",
+            message_id,
+            user_id,
             e
         )
 
         raise
-
-    # ----------------------------------------------------
-    # COPY FILE TO USER
-    # ----------------------------------------------------
-
-    sent_message = await client.copy_message(
-        chat_id=user_id,
-
-        from_chat_id=database_chat.id,
-
-        message_id=int(message_id),
-
-        reply_markup=file_sent_buttons()
-    )
-
-    return sent_message
 
 # ============================================================
 # DELETE FILES + WARNING AFTER 5 MINUTES
