@@ -211,7 +211,7 @@ def register_group_welcome_handlers(app):
                 try:
 
                     await message.reply_animation(
-                        animation="CgACAgUAAxkBAAIRE2qbkJhcgq3KsmIu28gAAWluSO24TAAC2BcAAvhJiFSI780IKxezTj0E",
+                        animation="CgACAgUAAxkBAAIFR2qbmMVdmim8I1Ft0vzSrmkOqN2eAALYFwAC-EmIVDVrUMvRuMVUHgQ",
                         caption=welcome_text,
                         reply_markup=user_buttons
                     )
