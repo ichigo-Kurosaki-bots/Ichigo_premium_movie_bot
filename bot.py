@@ -181,6 +181,13 @@ async def main():
 
     logger.info("TEST 2")
 
+    @app.on_message(filters.animation)
+    async def get_gif_id(client, message):
+        await message.reply_text(
+            f"✅ GIF FILE ID:\n\n"
+            f"<code>{message.animation.file_id}</code>"
+        )
+
     # ========================================================
     # DATABASE CHANNEL AUTO INDEXER
     # ========================================================
