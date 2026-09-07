@@ -1,15 +1,14 @@
 import logging
 import os
 
-from pyrogram import filters, enums
+from pyrogram import filters, enums, StopPropagation
 from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup
 )
-from pyrogram.handlers import MessageHandler
-from pyrogram import StopPropagation
 
 from config import OWNER_ID, ADMIN_IDS
+
 from database import (
     get_fsub_channels,
     add_fsub_channel,
@@ -48,7 +47,6 @@ async def check_user_joined(
     user_id,
     channel
 ):
-
     try:
 
         member = await client.get_chat_member(
@@ -116,7 +114,10 @@ async def check_all_fsubs(
 # FSUB KEYBOARD
 # ============================================================
 
-def build_fsub_keyboard(channels):
+def build_fsub_keyboard(
+    channels,
+    check_data="fsub_check"
+):
 
     buttons = []
 
@@ -156,10 +157,14 @@ def build_fsub_keyboard(channels):
             )
         ])
 
+    # --------------------------------------------------------
+    # CHECK AGAIN
+    # --------------------------------------------------------
+
     buttons.append([
         InlineKeyboardButton(
             "• Check Again •",
-            callback_data="fsub_check"
+            callback_data=check_data
         )
     ])
 
@@ -175,7 +180,8 @@ def build_fsub_keyboard(channels):
 async def send_fsub_message(
     client,
     message,
-    channels
+    channels,
+    deep_link=None
 ):
 
     user = message.from_user
@@ -196,8 +202,23 @@ async def send_fsub_message(
         "» ‼️ <b>JOIN ALL CHANNELS BELOW 👇</b>"
     )
 
+    # --------------------------------------------------------
+    # CHECK BUTTON DATA
+    # --------------------------------------------------------
+
+    if deep_link:
+
+        check_data = (
+            f"fsub_check_{deep_link}"
+        )
+
+    else:
+
+        check_data = "fsub_check"
+
     keyboard = build_fsub_keyboard(
-        channels
+        channels,
+        check_data=check_data
     )
 
     image = os.getenv(
@@ -260,21 +281,41 @@ def register_fsub_start_handler(app):
         # ----------------------------------------------------
         # USER JOINED EVERYTHING
         #
-        # DO NOT STOP /START
-        # The normal start handler will continue.
+        # ALLOW NORMAL START HANDLER
         # ----------------------------------------------------
 
         if not not_joined:
             return
 
         # ----------------------------------------------------
-        # USER HAS NOT JOINED
+        # GET DEEP-LINK PAYLOAD
         # ----------------------------------------------------
+
+        deep_link = None
+
+        if (
+            message.command
+            and len(message.command) >= 2
+        ):
+
+            payload = message.command[1].strip()
+
+            if payload:
+                deep_link = payload
+
+        # ----------------------------------------------------
+        # SEND FSUB ONLY IN PRIVATE CHAT
+        # ----------------------------------------------------
+
+        if message.chat.type != enums.ChatType.PRIVATE:
+
+            return
 
         await send_fsub_message(
             client,
             message,
-            not_joined
+            not_joined,
+            deep_link=deep_link
         )
 
         # ----------------------------------------------------
@@ -291,7 +332,7 @@ def register_fsub_start_handler(app):
 def register_fsub_callback_handler(app):
 
     @app.on_callback_query(
-        filters.regex("^fsub_check$")
+        filters.regex(r"^fsub_check(?:_.+)?$")
     )
     async def fsub_check_callback(
         client,
@@ -299,6 +340,29 @@ def register_fsub_callback_handler(app):
     ):
 
         user_id = callback_query.from_user.id
+
+        # ----------------------------------------------------
+        # EXTRACT ORIGINAL PAYLOAD
+        # ----------------------------------------------------
+
+        callback_data = (
+            callback_query.data
+            or ""
+        )
+
+        deep_link = None
+
+        if callback_data.startswith(
+            "fsub_check_"
+        ):
+
+            deep_link = callback_data[
+                len("fsub_check_"):
+            ]
+
+        # ----------------------------------------------------
+        # GET CHANNELS
+        # ----------------------------------------------------
 
         channels = await get_fsub_channels()
 
@@ -311,14 +375,18 @@ def register_fsub_callback_handler(app):
 
             return
 
+        # ----------------------------------------------------
+        # CHECK MEMBERSHIP
+        # ----------------------------------------------------
+
         not_joined = await check_all_fsubs(
             client,
             user_id
         )
 
-        # ----------------------------------------------------
+        # ====================================================
         # EVERYTHING JOINED
-        # ----------------------------------------------------
+        # ====================================================
 
         if not not_joined:
 
@@ -334,27 +402,52 @@ def register_fsub_callback_handler(app):
             except Exception:
                 pass
 
-            # Tell user to start again so the normal
-            # start handler can process the command.
+            # ------------------------------------------------
+            # CONTINUE ORIGINAL REQUEST
+            # ------------------------------------------------
 
-            await client.send_message(
-                user_id,
-                "/start"
-            )
+            if deep_link:
+
+                await client.send_message(
+                    user_id,
+                    f"/start {deep_link}"
+                )
+
+            else:
+
+                await client.send_message(
+                    user_id,
+                    "/start"
+                )
 
             return
 
-        # ----------------------------------------------------
+        # ====================================================
         # STILL NOT JOINED
-        # ----------------------------------------------------
+        # ====================================================
 
         await callback_query.answer(
             "❌ You haven't joined all required channels.",
             show_alert=True
         )
 
+        # ----------------------------------------------------
+        # KEEP ORIGINAL PAYLOAD
+        # ----------------------------------------------------
+
+        if deep_link:
+
+            check_data = (
+                f"fsub_check_{deep_link}"
+            )
+
+        else:
+
+            check_data = "fsub_check"
+
         keyboard = build_fsub_keyboard(
-            not_joined
+            not_joined,
+            check_data=check_data
         )
 
         try:
@@ -528,9 +621,6 @@ def register_fsub_admin_handlers(app):
 
 # ============================================================
 # /DELFSUB
-#
-# /delfsub @channel
-# /delfsub -1001234567890
 # ============================================================
 
 def register_fsub_delete_handler(app):
@@ -671,8 +761,6 @@ def register_fsub_list_handler(app):
             ]
         ])
 
-        import os
-
         image = os.getenv(
             "FSUB_IMAGE_URL",
             ""
@@ -707,9 +795,6 @@ def register_fsub_close_handler(app):
         client,
         callback_query
     ):
-
-        # Only the person who used /fsublist
-        # should normally close it.
 
         await callback_query.answer()
 
