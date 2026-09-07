@@ -58,6 +58,14 @@ from handlers.access import (
     register_access_handlers
 )
 
+from handlers.owner import (
+    register_owner_handlers
+)
+
+from handlers.redeem import (
+    register_redeem_handlers
+)
+
 from indexer import (
     handle_database_post
 )
@@ -236,6 +244,10 @@ async def main():
     register_fsub_handlers(app)
 
     register_access_handlers(app)
+
+    register_owner_handlers(app)
+    
+    register_redeem_handlers(app)
 
     register_start_handlers(app)
 
