@@ -241,6 +241,7 @@ async def main():
     # --------------------------------------------------------
     # REGISTER HANDLERS
     # --------------------------------------------------------
+
     register_fsub_handlers(app)
 
     register_access_handlers(app)
@@ -390,6 +391,7 @@ async def main():
 
         await close_database()
 
+
 # ============================================================
 # START
 # ============================================================
@@ -429,4 +431,4 @@ if __name__ == "__main__":
         logger.exception(
             "Critical startup error: %s",
             e
-    )
+        )
