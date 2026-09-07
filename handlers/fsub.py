@@ -366,6 +366,11 @@ def register_fsub_callback_handler(app):
         except Exception:
             pass
 
+
+# ============================================================
+# ADMIN FORCE SUBSCRIBE
+# ============================================================
+
 def register_fsub_admin_handlers(app):
 
     @app.on_message(
