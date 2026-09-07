@@ -79,7 +79,7 @@ def register_access_handlers(app):
 
         try:
 
-            if await get_maintenance_mode():
+            if await is_maintenance_enabled():
 
                 try:
                     await message.reply_text(
@@ -152,7 +152,7 @@ def register_access_handlers(app):
 
         try:
 
-            if await get_maintenance_mode():
+            if await is_maintenance_enabled():
 
                 try:
                     await callback_query.answer(
