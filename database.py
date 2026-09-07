@@ -27,6 +27,8 @@ media_collection = None
 search_sessions_collection = None
 settings_collection = None
 chats_collection = None
+redeem_codes_collection = None
+banned_users_collection = None
 
 
 # ============================================================
@@ -42,6 +44,8 @@ async def init_database():
     global search_sessions_collection
     global settings_collection
     global chats_collection
+    global redeem_codes_collection
+    global banned_users_collection
 
     if not MONGO_URI:
         raise RuntimeError(
@@ -72,6 +76,14 @@ async def init_database():
 
     chats_collection = db[
         "chats"
+    ]
+
+    redeem_codes_collection = db[
+        "redeem_codes"
+    ]
+
+    banned_users_collection = db[
+        "banned_users"
     ]
 
     # --------------------------------------------------------
@@ -131,6 +143,23 @@ async def init_database():
 
     logger.info(
         "MongoDB indexes ready."
+    )
+    # --------------------------------------------------------
+    # REDEEM CODE INDEX
+    # --------------------------------------------------------
+
+    await redeem_codes_collection.create_index(
+        "code",
+        unique=True
+    )
+
+    # --------------------------------------------------------
+    # BANNED USER INDEX
+    # --------------------------------------------------------
+
+    await banned_users_collection.create_index(
+        "user_id",
+        unique=True
     )
 
 
@@ -1259,3 +1288,393 @@ async def get_trending_searches(limit=29):
     )
 
     return sorted_queries[:int(limit)]
+
+# ============================================================
+# REDEEM CODE SYSTEM
+# ============================================================
+
+async def create_redeem_code(
+    code,
+    amount,
+    created_by
+):
+    """
+    Create a new redeem code.
+
+    The code can only be redeemed once.
+    """
+
+    if not code:
+        return False
+
+    try:
+        amount = int(amount)
+    except (TypeError, ValueError):
+        return False
+
+    if amount <= 0:
+        return False
+
+    now = datetime.utcnow()
+
+    document = {
+        "code": str(code).upper().strip(),
+        "amount": amount,
+        "used": False,
+        "used_by": None,
+        "used_at": None,
+        "created_by": created_by,
+        "created_at": now
+    }
+
+    try:
+
+        await redeem_codes_collection.insert_one(
+            document
+        )
+
+        return True
+
+    except Exception as e:
+
+        logger.warning(
+            "Could not create redeem code: %s",
+            e
+        )
+
+        return False
+
+
+async def get_redeem_codes():
+
+    cursor = redeem_codes_collection.find(
+        {}
+    ).sort(
+        "created_at",
+        -1
+    )
+
+    return await cursor.to_list(
+        length=None
+    )
+
+
+async def get_redeem_code(code):
+
+    if not code:
+        return None
+
+    return await redeem_codes_collection.find_one(
+        {
+            "code": str(code).upper().strip()
+        }
+    )
+
+
+async def redeem_code(
+    code,
+    user_id
+):
+    """
+    Redeem a code exactly once.
+
+    Returns:
+        {
+            "success": True,
+            "amount": amount
+        }
+
+    or:
+
+        {
+            "success": False,
+            "reason": "..."
+        }
+    """
+
+    if not code:
+
+        return {
+            "success": False,
+            "reason": "invalid_code"
+        }
+
+    code = str(code).upper().strip()
+
+    now = datetime.utcnow()
+
+    result = await redeem_codes_collection.find_one_and_update(
+
+        {
+            "code": code,
+            "used": False
+        },
+
+        {
+            "$set": {
+                "used": True,
+                "used_by": user_id,
+                "used_at": now
+            }
+        },
+
+        return_document=ReturnDocument.AFTER
+    )
+
+    if not result:
+
+        existing = await redeem_codes_collection.find_one(
+            {
+                "code": code
+            }
+        )
+
+        if not existing:
+
+            return {
+                "success": False,
+                "reason": "code_not_found"
+            }
+
+        if existing.get("used"):
+
+            return {
+                "success": False,
+                "reason": "already_used"
+            }
+
+        return {
+            "success": False,
+            "reason": "redeem_failed"
+        }
+
+    return {
+        "success": True,
+        "reason": "redeemed",
+        "amount": int(
+            result.get(
+                "amount",
+                0
+            ) or 0
+        )
+    }
+
+
+async def delete_redeem_code(code):
+
+    if not code:
+        return False
+
+    result = await redeem_codes_collection.delete_one(
+        {
+            "code": str(code).upper().strip()
+        }
+    )
+
+    return result.deleted_count > 0
+
+
+async def count_redeem_codes():
+
+    return await redeem_codes_collection.count_documents(
+        {}
+    )
+
+
+async def count_unused_redeem_codes():
+
+    return await redeem_codes_collection.count_documents(
+        {
+            "used": False
+        }
+    )
+
+
+# ============================================================
+# BAN SYSTEM
+# ============================================================
+
+async def ban_user(
+    user_id,
+    banned_by=None,
+    reason=""
+):
+
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+
+        return False
+
+    now = datetime.utcnow()
+
+    result = await banned_users_collection.update_one(
+
+        {
+            "user_id": user_id
+        },
+
+        {
+            "$set": {
+                "user_id": user_id,
+                "banned": True,
+                "reason": reason or "",
+                "banned_by": banned_by,
+                "banned_at": now
+            }
+        },
+
+        upsert=True
+    )
+
+    return (
+        result.modified_count > 0
+        or result.upserted_id is not None
+    )
+
+
+async def unban_user(user_id):
+
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+
+        return False
+
+    result = await banned_users_collection.delete_one(
+        {
+            "user_id": user_id
+        }
+    )
+
+    return result.deleted_count > 0
+
+
+async def is_user_banned(user_id):
+
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+
+        return False
+
+    user = await banned_users_collection.find_one(
+        {
+            "user_id": user_id
+        }
+    )
+
+    return user is not None
+
+
+async def get_banned_user(user_id):
+
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+
+        return None
+
+    return await banned_users_collection.find_one(
+        {
+            "user_id": user_id
+        }
+    )
+
+
+async def get_banned_users():
+
+    cursor = banned_users_collection.find(
+        {}
+    ).sort(
+        "banned_at",
+        -1
+    )
+
+    return await cursor.to_list(
+        length=None
+    )
+
+
+async def count_banned_users():
+
+    return await banned_users_collection.count_documents(
+        {}
+    )
+
+
+# ============================================================
+# MAINTENANCE MODE
+# ============================================================
+
+async def set_maintenance(
+    enabled
+):
+
+    enabled = bool(enabled)
+
+    await settings_collection.update_one(
+
+        {
+            "_id": "maintenance"
+        },
+
+        {
+            "$set": {
+                "enabled": enabled,
+                "updated_at": datetime.utcnow()
+            }
+        },
+
+        upsert=True
+    )
+
+    return enabled
+
+
+async def is_maintenance_enabled():
+
+    document = await settings_collection.find_one(
+        {
+            "_id": "maintenance"
+        }
+    )
+
+    if not document:
+
+        return False
+
+    return bool(
+        document.get(
+            "enabled",
+            False
+        )
+    )
+
+
+async def get_maintenance_status():
+
+    document = await settings_collection.find_one(
+        {
+            "_id": "maintenance"
+        }
+    )
+
+    if not document:
+
+        return {
+            "enabled": False,
+            "updated_at": None
+        }
+
+    return {
+        "enabled": bool(
+            document.get(
+                "enabled",
+                False
+            )
+        ),
+        "updated_at": document.get(
+            "updated_at"
+        )
+    }
