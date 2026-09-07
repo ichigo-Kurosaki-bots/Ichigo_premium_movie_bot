@@ -43,6 +43,11 @@ from utils.helpers import (
     escape_html
 )
 
+from handlers.fsub import (
+    check_all_fsubs,
+    send_fsub_message
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -1135,6 +1140,30 @@ def register_search_handlers(app):
 
             return
 
+        # ----------------------------------------------------
+        # FORCE SUBSCRIBE CHECK
+        # ----------------------------------------------------
+
+        not_joined = await check_all_fsubs(
+            client,
+            user_id
+        )
+
+        if not_joined:
+
+            await callback.answer(
+                "❌ Please join all required channels first.",
+                show_alert=True
+            )
+
+            await send_fsub_message(
+                client,
+                callback.message,
+                not_joined
+            )
+
+            return
+
         try:
 
             results, has_next = await search_movies(
@@ -1343,6 +1372,30 @@ def register_search_handlers(app):
             )
 
         # ----------------------------------------------------
+        # FORCE SUBSCRIBE CHECK
+        # ----------------------------------------------------
+
+        not_joined = await check_all_fsubs(
+            client,
+            user_id
+        )
+
+        if not_joined:
+
+            await callback.answer(
+                "❌ Please join all required channels first.",
+                show_alert=True
+            )
+
+            await send_fsub_message(
+                client,
+                callback.message,
+                not_joined
+            )
+
+            return
+
+        # ----------------------------------------------------
         # CHECK BALANCE
         # ----------------------------------------------------
 
@@ -1479,4 +1532,3 @@ def register_search_handlers(app):
                 warning_message_id=warning_message.id
             )
         )
- 
