@@ -54,6 +54,10 @@ from handlers.group_welcome import (
     register_group_welcome_handlers
 )
 
+from handlers.access import (
+    register_access_handlers
+)
+
 from indexer import (
     handle_database_post
 )
@@ -230,6 +234,8 @@ async def main():
     # REGISTER HANDLERS
     # --------------------------------------------------------
     register_fsub_handlers(app)
+
+    register_access_handlers(app)
 
     register_start_handlers(app)
 
