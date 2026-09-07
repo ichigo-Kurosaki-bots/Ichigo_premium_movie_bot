@@ -7,7 +7,7 @@ from pyrogram import filters, StopPropagation
 from config import OWNER_ID, ADMIN_IDS
 from database import (
     is_user_banned,
-    get_maintenance_mode
+    is_maintenance_enabled
 )
 
 logger = logging.getLogger(__name__)
