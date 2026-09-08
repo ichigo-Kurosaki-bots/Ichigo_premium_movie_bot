@@ -8,7 +8,10 @@ import urllib.request
 import json
 
 from pyrogram import filters, enums
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup
+)
 
 from config import (
     DATABASE_CHANNEL_ID,
@@ -48,13 +51,7 @@ from handlers.fsub import (
     send_fsub_message
 )
 
-
 logger = logging.getLogger(__name__)
-
-
-# ============================================================
-# SETTINGS
-# ============================================================
 
 FILE_DELETE_AFTER = 300
 
@@ -65,7 +62,7 @@ TMDB_API_KEY = os.getenv(
 
 
 # ============================================================
-# DEFAULT TMDB DATA
+# TMDB
 # ============================================================
 
 def empty_tmdb_metadata(query):
@@ -78,16 +75,13 @@ def empty_tmdb_metadata(query):
         "genres": []
     }
 
+
 async def get_tmdb_metadata(query):
 
     if not TMDB_API_KEY:
         return empty_tmdb_metadata(query)
 
     try:
-
-        # ----------------------------------------------------
-        # CLEAN SEARCH QUERY
-        # ----------------------------------------------------
 
         clean_query = re.sub(
             r"\bS\d{1,2}E\d{1,3}\b",
@@ -114,10 +108,6 @@ async def get_tmdb_metadata(query):
         if not clean_query:
             clean_query = query
 
-        # ----------------------------------------------------
-        # BUILD TMDB URL
-        # ----------------------------------------------------
-
         encoded_query = urllib.parse.quote(
             clean_query
         )
@@ -127,10 +117,6 @@ async def get_tmdb_metadata(query):
             f"?api_key={TMDB_API_KEY}"
             f"&query={encoded_query}"
         )
-
-        # ----------------------------------------------------
-        # REQUEST
-        # ----------------------------------------------------
 
         def fetch():
 
@@ -168,10 +154,6 @@ async def get_tmdb_metadata(query):
                 clean_query
             )
 
-        # ----------------------------------------------------
-        # FIND MOVIE / TV
-        # ----------------------------------------------------
-
         item = None
 
         for result in results:
@@ -194,10 +176,6 @@ async def get_tmdb_metadata(query):
         media_type = item.get(
             "media_type"
         )
-
-        # ----------------------------------------------------
-        # TITLE
-        # ----------------------------------------------------
 
         if media_type == "movie":
 
@@ -223,23 +201,13 @@ async def get_tmdb_metadata(query):
                 or ""
             )
 
-        # ----------------------------------------------------
-        # YEAR
-        # ----------------------------------------------------
-
         year = ""
 
         if release_date:
             year = release_date[:4]
 
-        # ----------------------------------------------------
-        # LANGUAGE
-        # ----------------------------------------------------
-
         language_code = (
-            item.get(
-                "original_language"
-            )
+            item.get("original_language")
             or ""
         )
 
@@ -273,10 +241,6 @@ async def get_tmdb_metadata(query):
             else ""
         )
 
-        # ----------------------------------------------------
-        # RATING
-        # ----------------------------------------------------
-
         rating_value = item.get(
             "vote_average"
         )
@@ -294,10 +258,6 @@ async def get_tmdb_metadata(query):
             except Exception:
 
                 rating = ""
-
-        # ----------------------------------------------------
-        # GENRES
-        # ----------------------------------------------------
 
         genre_map = {
 
@@ -347,15 +307,10 @@ async def get_tmdb_metadata(query):
                 )
 
         return {
-
             "title": title,
-
             "year": year,
-
             "language": language,
-
             "rating": rating,
-
             "genres": genres
         }
 
@@ -372,7 +327,7 @@ async def get_tmdb_metadata(query):
 
 
 # ============================================================
-# BUILD SEARCH RESULT TEXT
+# SEARCH TEXT
 # ============================================================
 
 def build_search_text(
@@ -401,9 +356,10 @@ def build_search_text(
         "rating"
     )
 
-    genres = metadata.get(
-        "genres"
-    ) or []
+    genres = (
+        metadata.get("genres")
+        or []
+    )
 
     text += (
         f"🎬 <b>Tɪᴛʟᴇ:</b> "
@@ -454,13 +410,15 @@ def build_search_text(
     )
 
     text += (
-        "👇 <b>Hᴇʀᴇ Yᴏᴜʀ Rᴇǫᴜᴇsᴛᴇᴅ Fɪʟᴇs</b>"
+        "👇 <b>Hᴇʀᴇ Yᴏᴜʀ "
+        "Rᴇǫᴜᴇsᴛᴇᴅ Fɪʟᴇs</b>"
     )
 
     return text
 
+
 # ============================================================
-# FILE AUTO DELETE
+# DELETE SINGLE FILE
 # ============================================================
 
 async def delete_file_later(
@@ -481,8 +439,7 @@ async def delete_file_later(
         )
 
         logger.info(
-            "Deleted delivered file %s "
-            "from user %s after 5 minutes.",
+            "Deleted delivered file %s from user %s after 5 minutes.",
             message_id,
             chat_id
         )
@@ -497,7 +454,7 @@ async def delete_file_later(
 
 
 # ============================================================
-# SEND FILE
+# SEND DATABASE FILE
 # ============================================================
 
 async def send_database_file(
@@ -508,39 +465,32 @@ async def send_database_file(
 
     try:
 
-        # ----------------------------------------------------
-        # RESOLVE DATABASE CHANNEL
-        # ----------------------------------------------------
-
         database_chat = await client.get_chat(
             DATABASE_CHANNEL_ID
         )
 
         logger.info(
-            "Database channel resolved | "
-            "id=%s | title=%s | username=%s",
+            "Database channel resolved | id=%s | title=%s | username=%s",
             database_chat.id,
             database_chat.title,
             database_chat.username
         )
-
-        # ----------------------------------------------------
-        # GET ORIGINAL DATABASE MESSAGE
-        # ----------------------------------------------------
 
         source_message = await client.get_messages(
             database_chat.id,
             int(message_id)
         )
 
+        if not source_message:
+
+            raise ValueError(
+                f"Database message {message_id} not found."
+            )
+
         original_caption = (
             source_message.caption
             or ""
         )
-
-        # ----------------------------------------------------
-        # NO CAPTION
-        # ----------------------------------------------------
 
         if not original_caption:
 
@@ -551,19 +501,11 @@ async def send_database_file(
                 reply_markup=file_sent_buttons()
             )
 
-        # ----------------------------------------------------
-        # MAKE ENTIRE CAPTION CLICKABLE
-        # ----------------------------------------------------
-
         clickable_caption = (
             '<a href="https://t.me/Aero_Unity">'
             f'{escape_html(original_caption)}'
             '</a>'
         )
-
-        # ----------------------------------------------------
-        # COPY FILE WITH CLICKABLE CAPTION
-        # ----------------------------------------------------
 
         sent_message = await client.copy_message(
             chat_id=user_id,
@@ -579,8 +521,7 @@ async def send_database_file(
     except Exception as e:
 
         logger.exception(
-            "Failed to send database file %s "
-            "to user %s: %s",
+            "Failed to send database file %s to user %s: %s",
             message_id,
             user_id,
             e
@@ -588,8 +529,9 @@ async def send_database_file(
 
         raise
 
+
 # ============================================================
-# DELETE FILES + WARNING AFTER 5 MINUTES
+# DELETE FILES + WARNING
 # ============================================================
 
 async def delete_files_and_warning_later(
@@ -605,20 +547,12 @@ async def delete_files_and_warning_later(
             FILE_DELETE_AFTER
         )
 
-        # ----------------------------------------------------
-        # DELETE DELIVERED FILES
-        # ----------------------------------------------------
-
         if message_ids:
 
             await client.delete_messages(
                 chat_id=chat_id,
                 message_ids=message_ids
             )
-
-        # ----------------------------------------------------
-        # DELETE WARNING MESSAGE
-        # ----------------------------------------------------
 
         if warning_message_id:
 
@@ -628,8 +562,7 @@ async def delete_files_and_warning_later(
             )
 
         logger.info(
-            "Deleted %s delivered files + warning "
-            "from user %s after 5 minutes.",
+            "Deleted %s delivered files + warning from user %s after 5 minutes.",
             len(message_ids),
             chat_id
         )
@@ -642,6 +575,568 @@ async def delete_files_and_warning_later(
             e
         )
 
+
+# ============================================================
+# PM FILE DEEP LINK
+# ============================================================
+
+async def handle_file_deep_link(
+    client,
+    message,
+    message_id
+):
+
+    # This function is ONLY for PM delivery.
+
+    if not message.from_user:
+        return
+
+    user_id = message.from_user.id
+
+    # --------------------------------------------------------
+    # Make sure this is PM
+    # --------------------------------------------------------
+
+    if message.chat.type != enums.ChatType.PRIVATE:
+
+        me = await client.get_me()
+
+        bot_username = (
+            me.username
+            or ""
+        )
+
+        await message.reply_text(
+            "📩 <b>Please open me in PM to receive this file.</b>",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "• Oᴘᴇɴ Bᴏᴛ •",
+                            url=(
+                                f"https://t.me/{bot_username}"
+                                f"?start=file_{message_id}"
+                            )
+                        )
+                    ]
+                ]
+            )
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # Get / create user
+    # --------------------------------------------------------
+
+    user = await get_user(
+        user_id
+    )
+
+    if not user:
+
+        user = await create_user(
+            user_id=user_id,
+            first_name=(
+                message.from_user.first_name
+                or "User"
+            ),
+            username=(
+                message.from_user.username
+                or ""
+            )
+        )
+
+    else:
+
+        await update_user(
+            user_id=user_id,
+            first_name=(
+                message.from_user.first_name
+                or ""
+            ),
+            username=(
+                message.from_user.username
+                or ""
+            )
+        )
+
+        user = await get_user(
+            user_id
+        )
+
+    # --------------------------------------------------------
+    # FORCE SUB CHECK
+    # --------------------------------------------------------
+
+    not_joined = await check_all_fsubs(
+        client,
+        user_id
+    )
+
+    if not_joined:
+
+        await send_fsub_message(
+            client,
+            message,
+            not_joined
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # REQUEST LIMIT
+    # --------------------------------------------------------
+
+    if not can_use_movie(user):
+
+        await message.reply_text(
+            "💎 <b>Premium Required</b>\n\n"
+            "Your available movie requests have been used.\n\n"
+            "Choose a Premium plan to continue.",
+            reply_markup=premium_buttons()
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # CONSUME REQUEST ONLY AFTER F-SUB CHECK
+    # --------------------------------------------------------
+
+    consumed = await consume_request(
+        user_id
+    )
+
+    if not consumed:
+
+        await message.reply_text(
+            "💎 <b>Premium Required</b>\n\n"
+            "Please activate a Premium plan.",
+            reply_markup=premium_buttons()
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # SEND FILE
+    # --------------------------------------------------------
+
+    status_message = await message.reply_text(
+        "›› sᴇɴᴅɪɴɢ ғɪʟᴇs..."
+    )
+
+    try:
+
+        sent_message = await send_database_file(
+            client=client,
+            user_id=user_id,
+            message_id=message_id
+        )
+
+    except Exception as e:
+
+        logger.exception(
+            "Deep-link file delivery failed | user=%s | file=%s: %s",
+            user_id,
+            message_id,
+            e
+        )
+
+        await restore_request(
+            user_id
+        )
+
+        try:
+
+            await status_message.edit_text(
+                "❌ <b>File delivery failed.</b>\n\n"
+                "Your movie request has been restored.\n"
+                "Please try again."
+            )
+
+        except Exception:
+
+            await message.reply_text(
+                "❌ <b>File delivery failed.</b>\n\n"
+                "Your movie request has been restored.\n"
+                "Please try again."
+            )
+
+        return
+
+    # --------------------------------------------------------
+    # DELETE STATUS
+    # --------------------------------------------------------
+
+    try:
+
+        await status_message.delete()
+
+    except Exception:
+
+        pass
+
+    # --------------------------------------------------------
+    # REMAINING REQUESTS
+    # --------------------------------------------------------
+
+    updated_user = await get_user(
+        user_id
+    )
+
+    remaining = get_remaining_requests(
+        updated_user
+    )
+
+    logger.info(
+        "Deep-link file sent | user=%s | source_message=%s | sent_message=%s | remaining=%s",
+        user_id,
+        message_id,
+        sent_message.id,
+        remaining
+    )
+
+    # --------------------------------------------------------
+    # WARNING
+    # --------------------------------------------------------
+
+    warning_message = await client.send_message(
+        chat_id=user_id,
+        text=(
+            "<blockquote>"
+            "<b><i>❗️❗️❗️ IMPORTANT ❗️❗️❗️</i></b>"
+            "</blockquote>\n\n"
+
+            "<b>This Movie File/Video will be deleted "
+            "in 5 minutes.</b>\n"
+
+            "<i>(due to copyright issues)</i>\n\n"
+
+            "<b>Please forward this file to your "
+            "Saved Messages and download it there.</b>"
+        )
+    )
+
+    asyncio.create_task(
+        delete_files_and_warning_later(
+            client=client,
+            chat_id=user_id,
+            message_ids=[
+                sent_message.id
+            ],
+            warning_message_id=warning_message.id
+        )
+    )
+
+
+# ============================================================
+# PM SEND ALL DEEP LINK
+# ============================================================
+
+async def handle_sendall_deep_link(
+    client,
+    message,
+    session_id,
+    page
+):
+
+    # This function is ONLY for PM delivery.
+
+    if not message.from_user:
+        return
+
+    user_id = message.from_user.id
+
+    # --------------------------------------------------------
+    # PM ONLY
+    # --------------------------------------------------------
+
+    if message.chat.type != enums.ChatType.PRIVATE:
+
+        me = await client.get_me()
+
+        bot_username = (
+            me.username
+            or ""
+        )
+
+        await message.reply_text(
+            "📩 <b>Please open me in PM to receive these files.</b>",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "• Oᴘᴇɴ Bᴏᴛ •",
+                            url=(
+                                f"https://t.me/{bot_username}"
+                                f"?start=sendall_{session_id}_{page}"
+                            )
+                        )
+                    ]
+                ]
+            )
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # SESSION
+    # --------------------------------------------------------
+
+    session = await get_search_session(
+        session_id=session_id,
+        user_id=user_id
+    )
+
+    if not session:
+
+        await message.reply_text(
+            "❌ <b>This search session has expired.</b>\n\n"
+            "Please search for the movie again."
+        )
+
+        return
+
+    query = (
+        session.get("query", "")
+        .strip()
+    )
+
+    if not query:
+
+        await message.reply_text(
+            "❌ <b>Search query not found.</b>\n\n"
+            "Please search again."
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # GET / CREATE USER
+    # --------------------------------------------------------
+
+    user = await get_user(
+        user_id
+    )
+
+    if not user:
+
+        user = await create_user(
+            user_id=user_id,
+            first_name=(
+                message.from_user.first_name
+                or "User"
+            ),
+            username=(
+                message.from_user.username
+                or ""
+            )
+        )
+
+    else:
+
+        await update_user(
+            user_id=user_id,
+            first_name=(
+                message.from_user.first_name
+                or ""
+            ),
+            username=(
+                message.from_user.username
+                or ""
+            )
+        )
+
+        user = await get_user(
+            user_id
+        )
+
+    # --------------------------------------------------------
+    # FORCE SUB CHECK
+    # --------------------------------------------------------
+
+    not_joined = await check_all_fsubs(
+        client,
+        user_id
+    )
+
+    if not_joined:
+
+        await send_fsub_message(
+            client,
+            message,
+            not_joined
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # SEARCH
+    # --------------------------------------------------------
+
+    try:
+
+        results, has_next = await search_movies(
+            query=query,
+            page=page
+        )
+
+    except Exception as e:
+
+        logger.exception(
+            "Deep-link SEND ALL search failed: %s",
+            e
+        )
+
+        await message.reply_text(
+            "❌ <b>Search failed.</b>\n\n"
+            "Please try again."
+        )
+
+        return
+
+    if not results:
+
+        await message.reply_text(
+            "❌ <b>No files found.</b>"
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # CHECK REQUEST LIMIT
+    # --------------------------------------------------------
+
+    remaining = get_remaining_requests(
+        user
+    )
+
+    required = len(results)
+
+    if remaining < required:
+
+        await message.reply_text(
+            f"💎 <b>Not enough requests.</b>\n\n"
+            f"SEND ALL needs <b>{required}</b> requests.\n"
+            f"You currently have <b>{remaining}</b>.",
+            reply_markup=premium_buttons()
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # SEND FILES
+    # --------------------------------------------------------
+
+    status_message = await message.reply_text(
+        "›› sᴇɴᴅɪɴɢ ғɪʟᴇs..."
+    )
+
+    sent_count = 0
+    failed_count = 0
+
+    sent_message_ids = []
+
+    for item in results:
+
+        message_id = item.get(
+            "message_id"
+        )
+
+        if not message_id:
+
+            failed_count += 1
+            continue
+
+        consumed = await consume_request(
+            user_id
+        )
+
+        if not consumed:
+
+            failed_count += 1
+            break
+
+        try:
+
+            sent_message = await send_database_file(
+                client=client,
+                user_id=user_id,
+                message_id=message_id
+            )
+
+            sent_message_ids.append(
+                sent_message.id
+            )
+
+            sent_count += 1
+
+        except Exception as e:
+
+            logger.exception(
+                "Deep-link SEND ALL failed for message %s: %s",
+                message_id,
+                e
+            )
+
+            await restore_request(
+                user_id
+            )
+
+            failed_count += 1
+
+    # --------------------------------------------------------
+    # DELETE STATUS
+    # --------------------------------------------------------
+
+    try:
+
+        await status_message.delete()
+
+    except Exception:
+
+        pass
+
+    # --------------------------------------------------------
+    # WARNING
+    # --------------------------------------------------------
+
+    if sent_message_ids:
+
+        warning_message = await client.send_message(
+            chat_id=user_id,
+            text=(
+                "<blockquote>"
+                "<b><i>❗️❗️❗️ IMPORTANT ❗️❗️❗️</i></b>"
+                "</blockquote>\n\n"
+
+                "<b>These Movie Files/Videos will be deleted "
+                "in 5 minutes.</b>\n"
+
+                "<i>(due to copyright issues)</i>\n\n"
+
+                "<b>Please forward ALL Files/Videos to your "
+                "Saved Messages and download them there.</b>"
+            )
+        )
+
+        asyncio.create_task(
+            delete_files_and_warning_later(
+                client=client,
+                chat_id=user_id,
+                message_ids=sent_message_ids,
+                warning_message_id=warning_message.id
+            )
+        )
+
+    logger.info(
+        "Deep-link SEND ALL finished | user=%s | sent=%s | failed=%s",
+        user_id,
+        sent_count,
+        failed_count
+    )
+
+
 # ============================================================
 # REGISTER SEARCH HANDLERS
 # ============================================================
@@ -649,7 +1144,7 @@ async def delete_files_and_warning_later(
 def register_search_handlers(app):
 
     # ========================================================
-    # NORMAL TEXT SEARCH
+    # MOVIE SEARCH
     # ========================================================
 
     @app.on_message(
@@ -693,6 +1188,7 @@ def register_search_handlers(app):
         client,
         message
     ):
+
         if not message.from_user:
             return
 
@@ -707,12 +1203,19 @@ def register_search_handlers(app):
             return
 
         # ----------------------------------------------------
-        # RECORD SEARCH FOR TRENDLIST
+        # SEARCH RECORD
         # ----------------------------------------------------
+
         if not query.startswith("/"):
+
             try:
-                await record_search(query)
+
+                await record_search(
+                    query
+                )
+
             except Exception as e:
+
                 logger.warning(
                     "Could not record search '%s': %s",
                     query,
@@ -760,37 +1263,29 @@ def register_search_handlers(app):
             )
 
         # ----------------------------------------------------
-        # BALANCE
+        # PREMIUM / FREE LIMIT
         # ----------------------------------------------------
 
         if not can_use_movie(user):
 
             await message.reply_text(
-
-                "🚫 <b>Your movie request limit "
-                "has been reached.</b>\n\n"
-
-                "💎 Please activate a Premium plan "
-                "to continue receiving files.",
-
+                "🚫 <b>Your movie request limit has been reached.</b>\n\n"
+                "💎 Please activate a Premium plan to continue receiving files.",
                 reply_markup=premium_buttons()
             )
 
             return
 
         # ----------------------------------------------------
-        # SEARCHING
+        # SEARCH MESSAGE
         # ----------------------------------------------------
 
         wait = await message.reply_text(
-            f"🔎<b><i>Sᴇᴀʀᴄʜɪɴɢ {escape_html(query)}...</i></b>"
+            f"🔎<b><i>Sᴇᴀʀᴄʜɪɴɢ "
+            f"{escape_html(query)}...</i></b>"
         )
 
         search_started = time.perf_counter()
-
-        # ----------------------------------------------------
-        # SEARCH DATABASE
-        # ----------------------------------------------------
 
         try:
 
@@ -829,28 +1324,29 @@ def register_search_handlers(app):
                 + urllib.parse.quote(query)
             )
 
-            admin_url = "https://t.me/Mr_Mohammed_29"
-
-            not_found_text = (
-               f"<b>Your Sᴇᴀʀᴄʜ:</b> "
-               f"<code>{escape_html(query)}</code>\n\n"
-
-               "<b>Tʜɪs Mᴏᴠɪᴇ Nᴏᴛ Fᴏᴜɴᴅ Iɴ Mʏ Dᴀᴛᴀʙᴀsᴇ</b>\n\n"
-
-               "<b>Pʟᴇᴀsᴇ Cʜᴇᴄᴋ Yᴏᴜʀ Sᴘᴇʟʟɪɴɢ Oɴ Gᴏᴏɢʟᴇ & "
-               "Tʀʏ Aɢᴀɪɴ</b>\n\n"
-
-               "<b>○ 𝖭𝗈𝗍𝖾 1 :</b> "
-               "𝖣𝗈𝗇'𝗍 𝖲𝖾𝗇𝖽 𝖠𝗇𝗒 𝖪𝗂𝗇𝖽 𝖮𝖿 𝖯𝗁𝗈𝗍𝗈𝗌, "
-               "𝖵𝗂𝖽𝖾𝗈𝗌, 𝖣𝗈𝖼𝗎𝗆𝖾𝗇𝗍𝗌, 𝖴𝗋𝗅𝗌 𝖤𝗍𝖼.\n"
-
-               "<b>○ 𝖭𝗈𝗍𝖾 2 :</b> "
-               "𝖣𝗈𝗇'𝗍 𝖴𝗌𝖾 ➠ ':(!,./)'"
+            admin_url = (
+                "https://t.me/Mr_Mohammed_29"
             )
 
-            # --------------------------------------------------------
-            # BUTTONS
-            # --------------------------------------------------------
+            not_found_text = (
+
+                f"<b>Your Sᴇᴀʀᴄʜ:</b> "
+                f"<code>{escape_html(query)}</code>\n\n"
+
+                "<b>Tʜɪs Mᴏᴠɪᴇ Nᴏᴛ Fᴏᴜɴᴅ "
+                "Iɴ Mʏ Dᴀᴛᴀʙᴀsᴇ</b>\n\n"
+
+                "<b>Pʟᴇᴀsᴇ Cʜᴇᴄᴋ Yᴏᴜʀ "
+                "Sᴘᴇʟʟɪɴɢ Oɴ Gᴏᴏɢʟᴇ & Tʀʏ Aɢᴀɪɴ</b>\n\n"
+
+                "<b>○ 𝖭𝗈𝗍𝖾 1 :</b> "
+                "𝖣𝗈𝗇'𝗍 𝖲𝖾𝗇𝖽 𝖠𝗇𝗒 𝖪𝗂𝗇𝖽 𝖮𝖿 𝖯𝗁𝗈𝗍𝗈𝗌, "
+                "𝖵𝗂𝖽𝖾𝗈𝗌, 𝖣𝗈𝖼𝗎𝗆𝖾𝗇𝗍𝗌, "
+                "𝖴𝗋𝗅𝗌 𝖤𝗍𝖼.\n"
+
+                "<b>○ 𝖭𝗈𝗍𝖾 2 :</b> "
+                "𝖣𝗈𝗇'𝗍 𝖴𝗌𝖾 ➠ ':(!,./)'"
+            )
 
             buttons = InlineKeyboardMarkup(
                 [
@@ -865,19 +1361,19 @@ def register_search_handlers(app):
                             "• Cʜᴇᴄᴋ Sᴘᴇʟʟɪɴɢ Oɴ Gᴏᴏɢʟᴇ •",
                             url=google_url
                         )
-                    ]     
+                    ]
                 ]
             )
 
             await wait.edit_text(
                 not_found_text,
                 reply_markup=buttons
-            ) 
+            )
 
             return
 
         # ----------------------------------------------------
-        # SESSION
+        # CREATE SESSION
         # ----------------------------------------------------
 
         try:
@@ -910,23 +1406,33 @@ def register_search_handlers(app):
         )
 
         # ----------------------------------------------------
-        # RESULT MESSAGE
+        # BOT USERNAME
+        # ----------------------------------------------------
+
+        me = await client.get_me()
+
+        bot_username = (
+            me.username
+            or ""
+        )
+
+        # ----------------------------------------------------
+        # RESULTS
         # ----------------------------------------------------
 
         await wait.edit_text(
-
             build_search_text(
                 query=query,
                 results=results,
                 elapsed=elapsed,
                 metadata=metadata
             ),
-
             reply_markup=search_result_buttons(
                 results=results,
                 session_id=session_id,
                 page=0,
-                has_next=has_next
+                has_next=has_next,
+                bot_username=bot_username
             )
         )
 
@@ -988,7 +1494,8 @@ def register_search_handlers(app):
                 "query",
                 ""
             )
-        ).strip()
+            .strip()
+        )
 
         if not query:
 
@@ -1040,28 +1547,33 @@ def register_search_handlers(app):
             query
         )
 
+        me = await client.get_me()
+
+        bot_username = (
+            me.username
+            or ""
+        )
+
         try:
 
             await callback.message.edit_text(
-
                 build_search_text(
                     query=query,
                     results=results,
                     elapsed=elapsed,
                     metadata=metadata
                 ),
-
                 reply_markup=search_result_buttons(
                     results=results,
                     session_id=session_id,
                     page=page,
-                    has_next=has_next
+                    has_next=has_next,
+                    bot_username=bot_username
                 )
             )
 
         except Exception as e:
 
-            # Prevent MESSAGE_NOT_MODIFIED
             if "MESSAGE_NOT_MODIFIED" not in str(e):
 
                 logger.exception(
@@ -1073,7 +1585,7 @@ def register_search_handlers(app):
 
 
     # ========================================================
-    # SEND ALL
+    # LEGACY SEND ALL CALLBACK
     # ========================================================
 
     @app.on_callback_query(
@@ -1110,217 +1622,72 @@ def register_search_handlers(app):
 
             return
 
-        session = await get_search_session(
+        # ----------------------------------------------------
+        # OLD GROUP BUTTON
+        # Redirect to PM instead of showing FSub in group.
+        # ----------------------------------------------------
+
+        if callback.message.chat.type in (
+            enums.ChatType.GROUP,
+            enums.ChatType.SUPERGROUP
+        ):
+
+            me = await client.get_me()
+
+            bot_username = (
+                me.username
+                or ""
+            )
+
+            await callback.answer(
+                "Opening PM...",
+                show_alert=False
+            )
+
+            try:
+
+                await callback.message.reply_text(
+                    "📩 <b>Send All is available in PM.</b>",
+                    reply_markup=InlineKeyboardMarkup(
+                        [
+                            [
+                                InlineKeyboardButton(
+                                    "• Oᴘᴇɴ Bᴏᴛ •",
+                                    url=(
+                                        f"https://t.me/{bot_username}"
+                                        f"?start=sendall_{session_id}_{page}"
+                                    )
+                                ]
+                            ]
+                        ]
+                    )
+                )
+
+            except Exception as e:
+
+                logger.warning(
+                    "Could not send PM redirect: %s",
+                    e
+                )
+
+            return
+
+        # ----------------------------------------------------
+        # PM LEGACY CALLBACK
+        # ----------------------------------------------------
+
+        await handle_sendall_deep_link(
+            client=client,
+            message=callback.message,
             session_id=session_id,
-            user_id=user_id
+            page=page
         )
 
-        if not session:
-
-            await callback.answer(
-                "This search session has expired.",
-                show_alert=True
-            )
-
-            return
-
-        query = (
-            session.get(
-                "query",
-                ""
-            )
-        ).strip()
-
-        if not query:
-
-            await callback.answer(
-                "Search query not found.",
-                show_alert=True
-            )
-
-            return
-
-        # ----------------------------------------------------
-        # FORCE SUBSCRIBE CHECK
-        # ----------------------------------------------------
-
-        not_joined = await check_all_fsubs(
-            client,
-            user_id
-        )
-
-        if not_joined:
-
-            await callback.answer(
-                "❌ Please join all required channels first.",
-                show_alert=True
-            )
-
-            await send_fsub_message(
-                client,
-                callback.message,
-                not_joined
-            )
-
-            return
-
-        try:
-
-            results, has_next = await search_movies(
-                query=query,
-                page=page
-            )
-
-        except Exception as e:
-
-            logger.exception(
-                "SEND ALL search failed: %s",
-                e
-            )
-
-            await callback.answer(
-                "Search failed.",
-                show_alert=True
-            )
-
-            return
-
-        if not results:
-
-            await callback.answer(
-                "No files found.",
-                show_alert=True
-            )
-
-            return
-
-        user = await get_user(
-            user_id
-        )
-
-        if not user:
-
-            user = await create_user(
-                user_id=user_id,
-                first_name=(
-                    callback.from_user.first_name
-                    or "User"
-                ),
-                username=(
-                    callback.from_user.username
-                    or ""
-                )
-            )
-
-        remaining = get_remaining_requests(
-            user
-        )
-
-        required = len(results)
-
-        if remaining < required:
-
-            await callback.answer(
-                f"SEND ALL needs {required} "
-                f"requests. You have {remaining}.",
-                show_alert=True
-            )
-
-            return
-
-        await callback.answer(
-            "›› sᴇɴᴅɪɴɢ ғɪʟᴇs.."
-        )
-
-        sent_count = 0
-        failed_count = 0
-        
-        sent_message_ids = []
-
-        for item in results:
-
-           message_id = item.get(
-               "message_id"
-           )
-
-           if not message_id:
-               failed_count += 1
-               continue
-
-           consumed = await consume_request(
-               user_id
-           )
-
-           if not consumed:
-               failed_count += 1
-               break
-
-           try:
-
-               sent_message = await send_database_file(
-                   client=client,
-                   user_id=user_id,
-                   message_id=message_id
-               )
-
-               sent_message_ids.append(
-                   sent_message.id
-               )
-
-               sent_count += 1
-
-           except Exception as e:
-
-               logger.exception(
-                   "SEND ALL failed for message %s: %s",
-                   message_id,
-                   e
-               )
-
-               await restore_request(
-                   user_id
-               )
-
-               failed_count += 1
-
-        # --------------------------------------------------------
-        # SEND ALL WARNING
-        # --------------------------------------------------------
-
-        if sent_message_ids:
-
-            warning_message = await client.send_message(
-                chat_id=user_id,
-                text=(
-                    "<blockquote><b><i>❗️❗️❗️ IMPORTANT ❗️❗️❗️</i></b></blockquote>\n\n"
-                    "<b>This Movie File/Video will be deleted in 5 minutes.</b>\n"
-                    "<i>(due to copyright issues)</i>\n\n"
-                    "<b>Please forward this file to your Saved Messages and download it there.</b>"
-                )
-            )
-            # ----------------------------------------------------
-            # DELETE ALL FILES + WARNING AFTER 5 MINUTES
-            # ----------------------------------------------------
-   
-            asyncio.create_task(
-                delete_files_and_warning_later(
-                    client=client,
-                    chat_id=user_id,
-                    message_ids=sent_message_ids,
-                    warning_message_id=warning_message.id
-                )
-            )
-      
-        logger.info(
-            "SEND ALL finished | user=%s | sent=%s | failed=%s",
-            user_id,
-            sent_count,
-            failed_count
-        )
+        await callback.answer()
 
 
     # ========================================================
-    # SINGLE FILE
+    # LEGACY FILE CALLBACK
     # ========================================================
 
     @app.on_callback_query(
@@ -1353,182 +1720,63 @@ def register_search_handlers(app):
 
             return
 
-        user = await get_user(
-            user_id
-        )
+        # ----------------------------------------------------
+        # OLD GROUP BUTTON
+        # ----------------------------------------------------
 
-        if not user:
+        if callback.message.chat.type in (
+            enums.ChatType.GROUP,
+            enums.ChatType.SUPERGROUP
+        ):
 
-            user = await create_user(
-                user_id=user_id,
-                first_name=(
-                    callback.from_user.first_name
-                    or "User"
-                ),
-                username=(
-                    callback.from_user.username
-                    or ""
+            me = await client.get_me()
+
+            bot_username = (
+                me.username
+                or ""
+            )
+
+            await callback.answer(
+                "Opening PM...",
+                show_alert=False
+            )
+
+            try:
+
+                await callback.message.reply_text(
+                    "📩 <b>Open the bot in PM to receive this file.</b>",
+                    reply_markup=InlineKeyboardMarkup(
+                        [
+                            [
+                                InlineKeyboardButton(
+                                    "• Oᴘᴇɴ Bᴏᴛ •",
+                                    url=(
+                                        f"https://t.me/{bot_username}"
+                                        f"?start=file_{message_id}"
+                                    )
+                                )
+                            ]
+                        ]
+                    )
                 )
-            )
 
-        # ----------------------------------------------------
-        # FORCE SUBSCRIBE CHECK
-        # ----------------------------------------------------
+            except Exception as e:
 
-        not_joined = await check_all_fsubs(
-            client,
-            user_id
-        )
-
-        if not_joined:
-
-            await callback.answer(
-                "❌ Please join all required channels first.",
-                show_alert=True
-            )
-
-            await send_fsub_message(
-                client,
-                callback.message,
-                not_joined
-            )
+                logger.warning(
+                    "Could not send PM redirect: %s",
+                    e
+                )
 
             return
 
         # ----------------------------------------------------
-        # CHECK BALANCE
+        # PM LEGACY CALLBACK
         # ----------------------------------------------------
 
-        if not can_use_movie(user):
-
-            await callback.answer(
-                "Your request limit is finished.",
-                show_alert=True
-            )
-
-            await callback.message.reply_text(
-
-                "💎 <b>Premium Required</b>\n\n"
-
-                "Your available movie requests "
-                "have been used.\n\n"
-
-                "Choose a Premium plan to continue.",
-
-                reply_markup=premium_buttons()
-            )
-
-            return
-
-        # ----------------------------------------------------
-        # CONSUME
-        # ----------------------------------------------------
-
-        consumed = await consume_request(
-            user_id
+        await handle_file_deep_link(
+            client=client,
+            message=callback.message,
+            message_id=message_id
         )
 
-        if not consumed:
-
-            await callback.answer(
-                "No requests remaining.",
-                show_alert=True
-            )
-
-            await callback.message.reply_text(
-
-                "💎 <b>Premium Required</b>\n\n"
-                "Please activate a Premium plan.",
-
-                reply_markup=premium_buttons()
-            )
-
-            return
-
-        await callback.answer(
-            "›› sᴇɴᴅɪɴɢ ғɪʟᴇs..."
-        )
-
-        # ----------------------------------------------------
-        # SEND ACTUAL FILE
-        # ----------------------------------------------------
-
-        try:
-
-            sent_message = await send_database_file(
-
-                client=client,
-
-                user_id=user_id,
-
-                message_id=message_id
-            )
-
-        except Exception as e:
-
-            logger.exception(
-                "File delivery failed: %s",
-                e
-            )
-
-            await restore_request(
-                user_id
-            )
-
-            await callback.message.reply_text(
-
-                "❌ <b>File delivery failed.</b>\n\n"
-
-                "Your movie request has been restored.\n"
-                "Please try again."
-            )
-
-            return
-
-        # ----------------------------------------------------
-        # GET BALANCE
-        # ----------------------------------------------------
-
-        updated_user = await get_user(
-            user_id
-        )
-
-        remaining = get_remaining_requests(
-            updated_user
-        )
-
-        logger.info(
-            "File sent | user=%s | source_message=%s | "
-            "sent_message=%s | remaining=%s",
-            user_id,
-            message_id,
-            sent_message.id,
-            remaining
-        )
-
-        # --------------------------------------------------------
-        # WARNING MESSAGE
-        # --------------------------------------------------------
-
-        warning_message = await client.send_message(
-            chat_id=user_id,
-            text=(
-                "<blockquote><b><i>❗️❗️❗️ IMPORTANT ❗️❗️❗️</i></b></blockquote>\n\n"
-                "<b>These Movie Files/Videos will be deleted in 5 minutes.</b>\n"
-                "<i>(due to copyright issues)</i>\n\n"
-                "<b>Please forward ALL Files/Videos to your Saved Messages and download them there.</b>"
-            )
-        )
-        
-        # --------------------------------------------------------
-        # DELETE FILE + WARNING AFTER 5 MINUTES
-        # --------------------------------------------------------
-
-        asyncio.create_task(
-            delete_files_and_warning_later(
-                client=client,
-                chat_id=user_id,
-                message_ids=[sent_message.id],
-                warning_message_id=warning_message.id
-            )
-        )
+        await callback.answer()
