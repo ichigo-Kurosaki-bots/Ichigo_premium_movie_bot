@@ -163,7 +163,7 @@ def build_fsub_keyboard(
 
     buttons.append([
         InlineKeyboardButton(
-            "• Check Again •",
+            "• ᴛʀʏ ᴀɢᴀɪɴ •",
             callback_data=check_data
         )
     ])
@@ -195,11 +195,9 @@ async def send_fsub_message(
     text = (
         f"HEY <b>{first_name}</b> ♡\n\n"
 
-        "» ‼️ <b>LOOKS LIKE YOU HAVEN'T "
-        "JOINED TO OUR CHANNELS YET, "
-        "SUBSCRIBE NOW...</b>\n\n"
-
-        "» ‼️ <b>JOIN ALL CHANNELS BELOW 👇</b>"
+        "» ‼️ <b>›› ‼️ ʟᴏᴏᴋs ʟɪᴋᴇ ʏᴏᴜ ʜᴀᴠᴇɴ'ᴛ "
+        "ᴊᴏɪɴᴇᴅ ᴛᴏ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs ʏᴇᴛ, "
+        "sᴜʙsᴄʀɪʙᴇ ɴᴏw...</b>\n\n"
     )
 
     # --------------------------------------------------------
@@ -258,7 +256,18 @@ def register_fsub_start_handler(app):
         if not message.from_user:
             return
 
+        # ----------------------------------------------------
+        # FSUB MUST ONLY WORK IN PRIVATE CHAT
+        # ----------------------------------------------------
+
+        if message.chat.type != enums.ChatType.PRIVATE:
+            return
+
         user_id = message.from_user.id
+
+        # ----------------------------------------------------
+        # GET FSUB CHANNELS
+        # ----------------------------------------------------
 
         channels = await get_fsub_channels()
 
@@ -281,7 +290,7 @@ def register_fsub_start_handler(app):
         # ----------------------------------------------------
         # USER JOINED EVERYTHING
         #
-        # ALLOW NORMAL START HANDLER
+        # ALLOW NORMAL /START HANDLER
         # ----------------------------------------------------
 
         if not not_joined:
@@ -304,12 +313,8 @@ def register_fsub_start_handler(app):
                 deep_link = payload
 
         # ----------------------------------------------------
-        # SEND FSUB ONLY IN PRIVATE CHAT
+        # SEND FSUB MESSAGE IN PM
         # ----------------------------------------------------
-
-        if message.chat.type != enums.ChatType.PRIVATE:
-
-            return
 
         await send_fsub_message(
             client,
@@ -342,6 +347,21 @@ def register_fsub_callback_handler(app):
         user_id = callback_query.from_user.id
 
         # ----------------------------------------------------
+        # FSUB CHECK MUST ONLY WORK IN PRIVATE CHAT
+        # ----------------------------------------------------
+
+        if (
+            not callback_query.message
+            or callback_query.message.chat.type
+            != enums.ChatType.PRIVATE
+        ):
+            await callback_query.answer(
+                "❌ Please check your subscription in PM.",
+                show_alert=True
+            )
+            return
+
+        # ----------------------------------------------------
         # EXTRACT ORIGINAL PAYLOAD
         # ----------------------------------------------------
 
@@ -352,13 +372,21 @@ def register_fsub_callback_handler(app):
 
         deep_link = None
 
-        if callback_data.startswith(
-            "fsub_check_"
-        ):
+        prefix = "fsub_check_"
+
+        if callback_data.startswith(prefix):
 
             deep_link = callback_data[
-                len("fsub_check_"):
-            ]
+                len(prefix):
+            ].strip()
+
+            # ------------------------------------------------
+            # INVALID PAYLOAD PROTECTION
+            # ------------------------------------------------
+
+            if not deep_link:
+
+                deep_link = None
 
         # ----------------------------------------------------
         # GET CHANNELS
@@ -391,7 +419,7 @@ def register_fsub_callback_handler(app):
         if not not_joined:
 
             await callback_query.answer(
-                "✅ Subscription verified!",
+                "✅ sᴜʙsᴄʀɪᴘᴛɪᴏɴ ᴠᴇʀɪꜰɪᴇᴅ!",
                 show_alert=True
             )
 
@@ -399,8 +427,12 @@ def register_fsub_callback_handler(app):
 
                 await callback_query.message.delete()
 
-            except Exception:
-                pass
+            except Exception as e:
+
+                logger.debug(
+                    "Could not delete FSub message: %s",
+                    e
+                )
 
             # ------------------------------------------------
             # CONTINUE ORIGINAL REQUEST
@@ -456,8 +488,12 @@ def register_fsub_callback_handler(app):
                 reply_markup=keyboard
             )
 
-        except Exception:
-            pass
+        except Exception as e:
+
+            logger.debug(
+                "Could not update FSub keyboard: %s",
+                e
+            )
 
 
 # ============================================================
