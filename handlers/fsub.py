@@ -158,7 +158,7 @@ def build_fsub_keyboard(
         ])
 
     # --------------------------------------------------------
-    # CHECK AGAIN
+    # TRY AGAIN
     # --------------------------------------------------------
 
     buttons.append([
@@ -201,7 +201,7 @@ async def send_fsub_message(
     )
 
     # --------------------------------------------------------
-    # CHECK BUTTON DATA
+    # PRESERVE ORIGINAL REQUEST
     # --------------------------------------------------------
 
     if deep_link:
@@ -257,7 +257,7 @@ def register_fsub_start_handler(app):
             return
 
         # ----------------------------------------------------
-        # FSUB MUST ONLY WORK IN PRIVATE CHAT
+        # FSUB ONLY IN PRIVATE CHAT
         # ----------------------------------------------------
 
         if message.chat.type != enums.ChatType.PRIVATE:
@@ -266,20 +266,16 @@ def register_fsub_start_handler(app):
         user_id = message.from_user.id
 
         # ----------------------------------------------------
-        # GET FSUB CHANNELS
+        # GET CHANNELS
         # ----------------------------------------------------
 
         channels = await get_fsub_channels()
-
-        # ----------------------------------------------------
-        # NO FSUB CHANNELS
-        # ----------------------------------------------------
 
         if not channels:
             return
 
         # ----------------------------------------------------
-        # CHECK USER
+        # CHECK MEMBERSHIP
         # ----------------------------------------------------
 
         not_joined = await check_all_fsubs(
@@ -288,16 +284,14 @@ def register_fsub_start_handler(app):
         )
 
         # ----------------------------------------------------
-        # USER JOINED EVERYTHING
-        #
-        # ALLOW NORMAL /START HANDLER
+        # ALREADY JOINED EVERYTHING
         # ----------------------------------------------------
 
         if not not_joined:
             return
 
         # ----------------------------------------------------
-        # GET DEEP-LINK PAYLOAD
+        # GET ORIGINAL DEEP LINK
         # ----------------------------------------------------
 
         deep_link = None
@@ -313,7 +307,7 @@ def register_fsub_start_handler(app):
                 deep_link = payload
 
         # ----------------------------------------------------
-        # SEND FSUB MESSAGE IN PM
+        # SEND FSUB MESSAGE
         # ----------------------------------------------------
 
         await send_fsub_message(
@@ -324,14 +318,14 @@ def register_fsub_start_handler(app):
         )
 
         # ----------------------------------------------------
-        # STOP NORMAL /START HANDLER
+        # STOP NORMAL START HANDLER
         # ----------------------------------------------------
 
         raise StopPropagation
 
 
 # ============================================================
-# CHECK AGAIN BUTTON
+# TRY AGAIN CALLBACK
 # ============================================================
 
 def register_fsub_callback_handler(app):
@@ -347,7 +341,7 @@ def register_fsub_callback_handler(app):
         user_id = callback_query.from_user.id
 
         # ----------------------------------------------------
-        # FSUB CHECK MUST ONLY WORK IN PRIVATE CHAT
+        # ONLY PM
         # ----------------------------------------------------
 
         if (
@@ -355,14 +349,16 @@ def register_fsub_callback_handler(app):
             or callback_query.message.chat.type
             != enums.ChatType.PRIVATE
         ):
+
             await callback_query.answer(
                 "❌ Please check your subscription in PM.",
                 show_alert=True
             )
+
             return
 
         # ----------------------------------------------------
-        # EXTRACT ORIGINAL PAYLOAD
+        # GET CALLBACK DATA
         # ----------------------------------------------------
 
         callback_data = (
@@ -380,12 +376,7 @@ def register_fsub_callback_handler(app):
                 len(prefix):
             ].strip()
 
-            # ------------------------------------------------
-            # INVALID PAYLOAD PROTECTION
-            # ------------------------------------------------
-
             if not deep_link:
-
                 deep_link = None
 
         # ----------------------------------------------------
@@ -404,7 +395,7 @@ def register_fsub_callback_handler(app):
             return
 
         # ----------------------------------------------------
-        # CHECK MEMBERSHIP
+        # CHECK MEMBERSHIP AGAIN
         # ----------------------------------------------------
 
         not_joined = await check_all_fsubs(
@@ -413,7 +404,7 @@ def register_fsub_callback_handler(app):
         )
 
         # ====================================================
-        # EVERYTHING JOINED
+        # ALL CHANNELS JOINED
         # ====================================================
 
         if not not_joined:
@@ -422,6 +413,10 @@ def register_fsub_callback_handler(app):
                 "✅ sᴜʙsᴄʀɪᴘᴛɪᴏɴ ᴠᴇʀɪꜰɪᴇᴅ!",
                 show_alert=True
             )
+
+            # ------------------------------------------------
+            # DELETE FSUB MESSAGE
+            # ------------------------------------------------
 
             try:
 
@@ -434,23 +429,110 @@ def register_fsub_callback_handler(app):
                     e
                 )
 
-            # ------------------------------------------------
-            # CONTINUE ORIGINAL REQUEST
-            # ------------------------------------------------
+            # =================================================
+            # RESUME ORIGINAL REQUEST DIRECTLY
+            # =================================================
 
             if deep_link:
 
-                await client.send_message(
-                    user_id,
-                    f"/start {deep_link}"
-                )
+                try:
 
-            else:
+                    # -----------------------------------------
+                    # FILE REQUEST
+                    # -----------------------------------------
 
-                await client.send_message(
-                    user_id,
-                    "/start"
-                )
+                    if deep_link.startswith("file_"):
+
+                        message_id = int(
+                            deep_link.split(
+                                "_",
+                                1
+                            )[1]
+                        )
+
+                        # Local import avoids circular import
+                        # because search.py imports fsub.py.
+                        from handlers.search import (
+                            handle_file_deep_link
+                        )
+
+                        await handle_file_deep_link(
+                            client=client,
+                            message=callback_query.message,
+                            message_id=message_id
+                        )
+
+                        return
+
+                    # -----------------------------------------
+                    # SEND ALL REQUEST
+                    # -----------------------------------------
+
+                    if deep_link.startswith("sendall_"):
+
+                        parts = deep_link.split("_")
+
+                        if len(parts) != 3:
+
+                            await client.send_message(
+                                user_id,
+                                "❌ Invalid Send All request."
+                            )
+
+                            return
+
+                        session_id = parts[1]
+                        page = int(parts[2])
+
+                        from handlers.search import (
+                            handle_sendall_deep_link
+                        )
+
+                        await handle_sendall_deep_link(
+                            client=client,
+                            message=callback_query.message,
+                            session_id=session_id,
+                            page=page
+                        )
+
+                        return
+
+                    # -----------------------------------------
+                    # UNKNOWN REQUEST
+                    # -----------------------------------------
+
+                    await client.send_message(
+                        user_id,
+                        "❌ Invalid request link."
+                    )
+
+                    return
+
+                except Exception as e:
+
+                    logger.exception(
+                        "Failed to resume original request | "
+                        "user=%s | deep_link=%s",
+                        user_id,
+                        deep_link
+                    )
+
+                    await client.send_message(
+                        user_id,
+                        "❌ Something went wrong while "
+                        "processing your request."
+                    )
+
+                    return
+
+            # ------------------------------------------------
+            # NORMAL /START
+            # ------------------------------------------------
+
+            await client.send_message(
+                user_id,
+                "/start"
+            )
 
             return
 
@@ -464,7 +546,7 @@ def register_fsub_callback_handler(app):
         )
 
         # ----------------------------------------------------
-        # KEEP ORIGINAL PAYLOAD
+        # KEEP ORIGINAL REQUEST
         # ----------------------------------------------------
 
         if deep_link:
