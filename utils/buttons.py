@@ -75,7 +75,6 @@ def start_buttons():
 def premium_buttons():
 
     buttons = []
-
     row = []
 
     for amount, plan in PREMIUM_PLANS.items():
@@ -95,7 +94,6 @@ def premium_buttons():
         if len(row) == 2:
 
             buttons.append(row)
-
             row = []
 
     if row:
@@ -192,11 +190,17 @@ def help_buttons():
         ]
     )
 
+
+# ============================================================
+# SEARCH RESULT BUTTONS
+# ============================================================
+
 def search_result_buttons(
     results,
     session_id,
     page=0,
-    has_next=False
+    has_next=False,
+    bot_username=None
 ):
 
     buttons = []
@@ -223,20 +227,39 @@ def search_result_buttons(
         title = str(title)
 
         if len(title) > 55:
+            title = title[:52] + "..."
 
-            title = (
-                title[:52]
-                + "..."
+        # ----------------------------------------------------
+        # OPEN BOT IN PM
+        # ----------------------------------------------------
+
+        if bot_username:
+
+            file_url = (
+                f"https://t.me/{bot_username}"
+                f"?start=file_{message_id}"
             )
 
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    f"›› {title}",
-                    callback_data=f"file_{message_id}"
-                )
-            ]
-        )
+            buttons.append(
+                [
+                    InlineKeyboardButton(
+                        f"›› {title}",
+                        url=file_url
+                    )
+                ]
+            )
+
+        else:
+
+            # Fallback
+            buttons.append(
+                [
+                    InlineKeyboardButton(
+                        f"›› {title}",
+                        callback_data=f"file_{message_id}"
+                    )
+                ]
+            )
 
     # --------------------------------------------------------
     # SEND ALL + PREMIUM
@@ -244,14 +267,30 @@ def search_result_buttons(
 
     if results:
 
+        if bot_username:
+
+            send_all_url = (
+                f"https://t.me/{bot_username}"
+                f"?start=sendall_{session_id}_{page}"
+            )
+
+            send_all_button = InlineKeyboardButton(
+                "• sᴇɴᴅ ᴀʟʟ •",
+                url=send_all_url
+            )
+
+        else:
+
+            send_all_button = InlineKeyboardButton(
+                "• sᴇɴᴅ ᴀʟʟ •",
+                callback_data=(
+                    f"sendall_{session_id}_{page}"
+                )
+            )
+
         buttons.append(
             [
-                InlineKeyboardButton(
-                    "• sᴇɴᴅ ᴀʟʟ •",
-                    callback_data=(
-                        f"sendall_{session_id}_{page}"
-                    )
-                ),
+                send_all_button,
                 InlineKeyboardButton(
                     "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
                     callback_data="premium_plans"
@@ -296,7 +335,7 @@ def search_result_buttons(
 
 
 # ============================================================
-# BUTTON ATTACHED DIRECTLY TO THE SENT FILE
+# SENT FILE BUTTONS
 # ============================================================
 
 def file_sent_buttons():
