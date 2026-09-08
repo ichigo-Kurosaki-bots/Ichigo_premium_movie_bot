@@ -132,7 +132,7 @@ def build_start_text(first_name, remaining):
 
         "<b>ғʀᴇᴇ ʀᴇǫᴜᴇsᴛs ᴀʀᴇ ғɪɴɪsʜᴇᴅ.</b>\n\n"
 
-        "🌿<b>Mᴀɪɴᴛᴀɪɴᴇᴅ ʙʏ: @Mr_Mohammed_29</b>"
+        "<b>Mᴀɪɴᴛᴀɪɴᴇᴅ ʙʏ: @Mr_Mohammed_29</b>"
     )
 
 
@@ -414,8 +414,7 @@ def register_start_handlers(app):
             "📢 <b>Uᴘᴅᴀᴛᴇs</b>\n"
             "Sᴛᴀʏ ᴜᴘᴅᴀᴛᴇᴅ ᴡɪᴛʜ ᴛʜᴇ ʟᴀᴛᴇsᴛ ᴄᴏɴᴛᴇɴᴛ.\n\n"
 
-            "⚡️ <b>Pᴏᴡᴇʀғᴜʟ ᴀɴᴅ ғᴀsᴛ Mᴏᴠɪᴇ Bᴏᴛ</b>"
-            "🌿<b>Mᴀɪɴᴛᴀɪɴᴇᴅ ʙʏ: @Mr_Mohammed_29</b>"
+            "<b>Mᴀɪɴᴛᴀɪɴᴇᴅ ʙʏ: @Mr_Mohammed_29</b>"
         )
 
         buttons = InlineKeyboardMarkup(
@@ -524,69 +523,97 @@ def register_start_handlers(app):
     # START BACK
     # ========================================================
 
-    @app.on_callback_query(
-        filters.regex(r"^start_back$")
-    )
-    async def start_back_callback(
-        client,
-        callback
-    ):
+    @app.on_callback_query(filters.regex(r"^start_back$"))
+    async def start_back_callback(client, callback_query):
 
-        user_id = callback.from_user.id
+        user_id = callback_query.from_user.id
 
         first_name = (
-            callback.from_user.first_name
+            callback_query.from_user.first_name
             or "User"
-        )
+        )   
 
-        user = await get_user(
-            user_id
-        )
+        username = (
+            callback_query.from_user.username
+            or ""
+        )  
+
+        user = await get_user(user_id)
 
         if not user:
-
             user = await create_user(
                 user_id=user_id,
                 first_name=first_name,
-                username=(
-                    callback.from_user.username
-                    or ""
-                )
+                username=username
             )
+        else:
+             await update_user(
+                 user_id=user_id,
+                 first_name=first_name,
+                 username=username
+             )
+   
+             user = await get_user(user_id)
 
         remaining = user.get(
-            "remaining_requests",
-            FREE_REQUESTS
+             "remaining_requests",
+             FREE_REQUESTS
         )
 
         me = await client.get_me()
 
-        bot_username = (
-            me.username
-            or ""
-        )
+        bot_username = me.username or ""
 
         text = build_start_text(
             first_name=first_name,
             remaining=remaining
         )
 
+        reply_markup = start_buttons(
+            bot_username=bot_username
+        )   
+
+        await callback_query.answer()
+
+        # Delete the current Help / About / Features message
         try:
-
-            await callback.message.edit_caption(
-                caption=text,
-                reply_markup=start_buttons(
-                    bot_username=bot_username
-                )
-            )
-
+            await callback_query.message.delete()
+ 
         except Exception as e:
-
             print(
-                f"START BACK FAILED: {e}"
+                f"START BACK DELETE ERROR: {e}"
             )
 
-        await callback.answer()
+        # Send complete START screen again
+        if START_IMAGE:
+
+            try:
+                await client.send_photo(
+                    chat_id=user_id,
+                    photo=START_IMAGE,
+                    caption=text,
+                    reply_markup=reply_markup
+                )    
+
+                return
+
+            except Exception as e:
+                print(
+                    f"START BACK IMAGE SEND FAILED: {e}"
+                )
+
+         # Fallback when START_IMAGE is not configured
+        try:
+            await client.send_message(
+                chat_id=user_id,
+                text=text,
+                reply_markup=reply_markup
+            )
+    
+        except Exception as e:
+            print(
+                f"START BACK TEXT SEND FAILED: {e}"
+            )
 
 
     # ========================================================
@@ -782,7 +809,7 @@ def register_start_handlers(app):
             "anime, or other authorized media.\n\n"
 
             "<b>Example:</b>\n"
-            "<code>Example Movie</code>"
+            "<code>Example : Avengers Endgame</code>"
         )
 
         await callback.message.edit_text(
