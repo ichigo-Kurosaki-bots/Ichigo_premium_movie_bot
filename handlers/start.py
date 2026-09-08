@@ -1,6 +1,6 @@
 import os
 import asyncio
-from datetime import datetime
+
 from pyrogram import filters
 from pyrogram.types import (
     InlineKeyboardButton,
@@ -29,15 +29,24 @@ from utils.buttons import (
     help_buttons
 )
 
-START_IMAGE = os.getenv(
-    "START_IMAGE",
-    ""
+# ============================================================
+# DEEP LINK HANDLERS
+# ============================================================
+
+from handlers.search import (
+    handle_file_deep_link,
+    handle_sendall_deep_link
 )
 
 
 # ============================================================
-# UPDATES CHANNEL
+# CONFIG
 # ============================================================
+
+START_IMAGE = os.getenv(
+    "START_IMAGE",
+    ""
+)
 
 UPDATES_URL = os.getenv(
     "UPDATES_URL",
@@ -47,7 +56,6 @@ UPDATES_URL = os.getenv(
 
 # ============================================================
 # START BUTTONS
-# ONLY THESE 3 BUTTONS
 # ============================================================
 
 def start_buttons(bot_username):
@@ -57,7 +65,6 @@ def start_buttons(bot_username):
         f"?startgroup=true"
     )
 
-    # Your Movies Group Telegram link
     MOVIES_GROUP_URL = os.getenv(
         "MOVIES_GROUP_URL",
         "https://t.me/+YaRuf7dVB6RlZWJl"
@@ -105,25 +112,29 @@ def start_buttons(bot_username):
 # START TEXT
 # ============================================================
 
-def build_start_text(
-    first_name,
-    remaining
-):
+def build_start_text(first_name, remaining):
 
     return (
-        f"👋 <b>Hey {first_name.upper()} Mʏ Nᴀᴍᴇ Is Pʀᴇᴍɪᴜᴍ Mᴏᴠɪᴇ Bᴏᴛ</b>\n\n"
+        f"👋 <b>Hey {first_name.upper()} "
+        f"Mʏ Nᴀᴍᴇ Is Pʀᴇᴍɪᴜᴍ Mᴏᴠɪᴇ Bᴏᴛ</b>\n\n"
 
         "<b>I ᴀᴍ A Pᴏᴡᴇʀғᴜʟ Mᴏᴠɪᴇ Sᴇᴀʀᴄʜ Bᴏᴛ.</b> "
+
         "<b>ʏᴏᴜ ᴄᴀɴ ᴜsᴇ ᴍᴇ ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ</b>"
-        "<b>ɪ ᴡɪʟʟ ɢɪᴠᴇ ᴍᴏᴠɪᴇs ᴏʀ sᴇʀɪᴇs ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ ᴀɴᴅ ᴘᴍ !! 😍.</b>\n\n"
+
+        "<b>ɪ ᴡɪʟʟ ɢɪᴠᴇ ᴍᴏᴠɪᴇs ᴏʀ sᴇʀɪᴇs "
+        "ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ ᴀɴᴅ ᴘᴍ !! 😍.</b>\n\n"
 
         f"🆓 <b>ғʀᴇᴇ ʀᴇǫᴜᴇsᴛs ʀᴇᴍᴀɪɴɪɴɢ:</b> "
         f"<b>{remaining}</b>\n\n"
+
         "<b>Aᴄᴛɪᴠᴀᴛᴇ Pʀᴇᴍɪᴜᴍ Aғᴛᴇʀ Yᴏᴜʀ</b> "
+
         "<b>ғʀᴇᴇ ʀᴇǫᴜᴇsᴛs ᴀʀᴇ ғɪɴɪsʜᴇᴅ.</b>\n\n"
 
         "🌿<b>Mᴀɪɴᴛᴀɪɴᴇᴅ ʙʏ: @Mr_Mohammed_29</b>"
     )
+
 
 # ============================================================
 # REGISTER START HANDLERS
@@ -131,22 +142,103 @@ def build_start_text(
 
 def register_start_handlers(app):
 
-    # ========================================================
-    # START
-    # ========================================================
-
     @app.on_message(
         filters.command("start")
     )
-    async def start_handler(
-        client,
-        message
-    ):
+    async def start_handler(client, message):
 
         print(
             f"START RECEIVED from "
             f"{message.from_user.id}"
         )
+
+        # ====================================================
+        # DEEP LINK PAYLOAD
+        # ====================================================
+
+        payload = ""
+
+        if message.command and len(message.command) > 1:
+            payload = message.command[1].strip()
+
+        # ====================================================
+        # FILE DEEP LINK
+        # /start file_12345
+        # ====================================================
+
+        if payload.startswith("file_"):
+
+            try:
+
+                message_id = int(
+                    payload.split(
+                        "_",
+                        1
+                    )[1]
+                )
+
+            except (
+                ValueError,
+                IndexError
+            ):
+
+                await message.reply_text(
+                    "❌ <b>Invalid file link.</b>"
+                )
+
+                return
+
+            await handle_file_deep_link(
+                client=client,
+                message=message,
+                message_id=message_id
+            )
+
+            return
+
+        # ====================================================
+        # SEND ALL DEEP LINK
+        # /start sendall_SESSION_PAGE
+        # ====================================================
+
+        if payload.startswith("sendall_"):
+
+            try:
+
+                parts = payload.split("_")
+
+                if len(parts) != 3:
+                    raise ValueError
+
+                session_id = parts[1]
+
+                page = int(
+                    parts[2]
+                )
+
+            except (
+                ValueError,
+                IndexError
+            ):
+
+                await message.reply_text(
+                    "❌ <b>Invalid Send All link.</b>"
+                )
+
+                return
+
+            await handle_sendall_deep_link(
+                client=client,
+                message=message,
+                session_id=session_id,
+                page=page
+            )
+
+            return
+
+        # ====================================================
+        # NORMAL START
+        # ====================================================
 
         user_id = message.from_user.id
 
@@ -160,11 +252,9 @@ def register_start_handlers(app):
             or ""
         )
 
-        # ----------------------------------------------------
-        # GET / CREATE USER
-        # ----------------------------------------------------
-
-        user = await get_user(user_id)
+        user = await get_user(
+            user_id
+        )
 
         if not user:
 
@@ -182,11 +272,13 @@ def register_start_handlers(app):
                 username=username
             )
 
-            user = await get_user(user_id)
+            user = await get_user(
+                user_id
+            )
 
-        # ----------------------------------------------------
+        # ====================================================
         # START ANIMATION
-        # ----------------------------------------------------
+        # ====================================================
 
         try:
 
@@ -223,18 +315,18 @@ def register_start_handlers(app):
                 f"START ANIMATION ERROR: {e}"
             )
 
-        # ----------------------------------------------------
-        # REQUEST BALANCE
-        # ----------------------------------------------------
+        # ====================================================
+        # REMAINING REQUESTS
+        # ====================================================
 
         remaining = user.get(
             "remaining_requests",
             FREE_REQUESTS
         )
 
-        # ----------------------------------------------------
-        # GET BOT USERNAME
-        # ----------------------------------------------------
+        # ====================================================
+        # BOT USERNAME
+        # ====================================================
 
         me = await client.get_me()
 
@@ -243,26 +335,22 @@ def register_start_handlers(app):
             or ""
         )
 
-        # ----------------------------------------------------
-        # START TEXT
-        # ----------------------------------------------------
+        # ====================================================
+        # START MESSAGE
+        # ====================================================
 
         text = build_start_text(
             first_name=first_name,
             remaining=remaining
         )
 
-        # ----------------------------------------------------
-        # BUTTONS
-        # ----------------------------------------------------
-
         reply_markup = start_buttons(
             bot_username=bot_username
         )
 
-        # ----------------------------------------------------
-        # SEND IMAGE + TEXT
-        # ----------------------------------------------------
+        # ====================================================
+        # START IMAGE
+        # ====================================================
 
         if START_IMAGE:
 
@@ -282,14 +370,15 @@ def register_start_handlers(app):
                     f"START IMAGE SEND FAILED: {e}"
                 )
 
-        # ----------------------------------------------------
-        # FALLBACK IF IMAGE URL IS MISSING/BROKEN
-        # ----------------------------------------------------
+        # ====================================================
+        # NORMAL START MESSAGE
+        # ====================================================
 
         await message.reply_text(
             text,
             reply_markup=reply_markup
         )
+
 
     # ========================================================
     # FEATURES
@@ -326,7 +415,6 @@ def register_start_handlers(app):
             "Sᴛᴀʏ ᴜᴘᴅᴀᴛᴇᴅ ᴡɪᴛʜ ᴛʜᴇ ʟᴀᴛᴇsᴛ ᴄᴏɴᴛᴇɴᴛ.\n\n"
 
             "⚡️ <b>Pᴏᴡᴇʀғᴜʟ ᴀɴᴅ ғᴀsᴛ Mᴏᴠɪᴇ Bᴏᴛ</b>"
-
             "🌿<b>Mᴀɪɴᴛᴀɪɴᴇᴅ ʙʏ: @Mr_Mohammed_29</b>"
         )
 
@@ -379,27 +467,30 @@ def register_start_handlers(app):
     ):
 
         text = (
-
             "<b>⍟───[ MY ᴅᴇᴛᴀɪʟꜱ ]───⍟</b>\n\n"
 
             "• <b>Pʀᴏɢʀᴀᴍᴇʀ: "
-            "<a href=\"https://t.me/Mr_Mohammed_29\">ᴍᴏʜᴀᴍᴍᴇᴅ</a></b>\n"
+            "<a href=\"https://t.me/Mr_Mohammed_29\">"
+            "ᴍᴏʜᴀᴍᴍᴇᴅ</a></b>\n"
 
             "• <b>ꜰᴏᴜɴᴅᴇʀ ᴏꜰ: "
-            "<a href=\"https://t.me/Aero_Unity\">ᴀᴇʀᴏ ᴜɴɪᴛʏ</a></b>\n"
+            "<a href=\"https://t.me/Aero_Unity\">"
+            "ᴀᴇʀᴏ ᴜɴɪᴛʏ</a></b>\n"
 
             "• <b>Lɪʙʀᴀʀʏ:</b> Pyʀᴏɢʀᴀᴍ 2.0\n"
 
             "• <b>Lᴀɴɢᴜᴀɢᴇ:</b> Pʏᴛʜᴏɴ 𝟹\n"
 
-            "• <b>Dᴀᴛᴀʙᴀsᴇ:</b> ᴍᴏɴɢᴏ ᴅʙ\n"
+            "• <b>ᴅᴀᴛᴀʙᴀsᴇ:</b> ᴍᴏɴɢᴏ ᴅʙ\n"
 
             "• <b>ᴄʜᴀɴɴᴇʟ: "
-            "<a href=\"https://t.me/Aero_Unity\">ᴀᴇʀᴏ ᴜɴɪᴛʏ</a></b>\n"
+            "<a href=\"https://t.me/Aero_Unity\">"
+            "ᴀᴇʀᴏ ᴜɴɪᴛʏ</a></b>\n"
 
-            "• <b>ᴍʏ ꜱᴇʀᴠᴇʀ:"
-            "<a href=\"https://t.me/Mr_Mohammed_29\">ꜱᴇʀᴠᴇʀ</a></b>\n"
-   
+            "• <b>ᴍʏ sᴇʀᴠᴇʀ:"
+            "<a href=\"https://t.me/Mr_Mohammed_29\">"
+            "ꜱᴇʀᴠᴇʀ</a></b>\n"
+
             "• <b>ʙᴜɪʟᴅ sᴛᴀᴛᴜs:</b> "
             "ᴠ3 [sᴛᴀʙʟᴇ]\n\n"
         )
@@ -407,9 +498,7 @@ def register_start_handlers(app):
         try:
 
             await callback.message.edit_caption(
-
                 caption=text,
-
                 reply_markup=InlineKeyboardMarkup(
                     [
                         [
@@ -432,7 +521,7 @@ def register_start_handlers(app):
 
 
     # ========================================================
-    # BACK FROM ABOUT
+    # START BACK
     # ========================================================
 
     @app.on_callback_query(
@@ -449,10 +538,6 @@ def register_start_handlers(app):
             callback.from_user.first_name
             or "User"
         )
-
-        # ----------------------------------------------------
-        # GET USER
-        # ----------------------------------------------------
 
         user = await get_user(
             user_id
@@ -474,10 +559,6 @@ def register_start_handlers(app):
             FREE_REQUESTS
         )
 
-        # ----------------------------------------------------
-        # GET BOT USERNAME
-        # ----------------------------------------------------
-
         me = await client.get_me()
 
         bot_username = (
@@ -485,18 +566,10 @@ def register_start_handlers(app):
             or ""
         )
 
-        # ----------------------------------------------------
-        # START TEXT
-        # ----------------------------------------------------
-
         text = build_start_text(
             first_name=first_name,
             remaining=remaining
         )
-
-        # ----------------------------------------------------
-        # RESTORE START SCREEN
-        # ----------------------------------------------------
 
         try:
 
@@ -555,6 +628,7 @@ def register_start_handlers(app):
 
         text = (
             "<b>Pʀᴇᴍɪᴜᴍ Mᴏᴠɪᴇ Bᴏᴛ</b>\n\n"
+
             f"🎟 ғʀᴇᴇ ʀᴇǫᴜᴇsᴛs ʀᴇᴍᴀɪɴɪɴɢ: "
             f"<b>{remaining}</b>\n\n"
         )
@@ -568,7 +642,7 @@ def register_start_handlers(app):
 
 
     # ========================================================
-    # ACCOUNT
+    # MY ACCOUNT
     # ========================================================
 
     @app.on_callback_query(
@@ -652,7 +726,8 @@ def register_start_handlers(app):
 
             "➤ Tʜᴇ Bᴏᴛ Wɪʟʟ Sᴇᴀʀᴄʜ Mʏ Dᴀᴛᴀʙᴀsᴇ.\n\n"
 
-            "➤ Sᴇʟᴇᴄᴛ Tʜᴇ Rᴇǫᴜɪʀᴇᴅ Fɪʟᴇ Fʀᴏᴍ Tʜᴇ Rᴇsᴜʟᴛs.\n\n"
+            "➤ Sᴇʟᴇᴄᴛ Tʜᴇ Rᴇǫᴜɪʀᴇᴅ Fɪʟᴇ "
+            "Fʀᴏᴍ Tʜᴇ Rᴇsᴜʟᴛs.\n\n"
 
             "⚠️ <b>Mᴏᴠɪᴇ Sᴇᴀʀᴄʜ Rᴜʟᴇs:</b>\n\n"
 
@@ -667,7 +742,8 @@ def register_start_handlers(app):
             f"🆓 Fʀᴇᴇ Rᴇǫᴜᴇsᴛs: "
             f"<b>{FREE_REQUESTS}</b>\n\n"
 
-            "💎 Aᴄᴛɪᴠᴀᴛᴇ Pʀᴇᴍɪᴜᴍ Aғᴛᴇʀ Yᴏᴜʀ Fʀᴇᴇ Rᴇǫᴜᴇsᴛs Aʀᴇ Fɪɴɪsʜᴇᴅ."
+            "💎 Aᴄᴛɪᴠᴀᴛᴇ Pʀᴇᴍɪᴜᴍ Aғᴛᴇʀ Yᴏᴜʀ "
+            "Fʀᴇᴇ Rᴇǫᴜᴇsᴛs Aʀᴇ Fɪɴɪsʜᴇᴅ."
         )
 
         await callback.message.edit_text(
@@ -701,8 +777,10 @@ def register_start_handlers(app):
 
         text = (
             "🔎 <b>Search Movies</b>\n\n"
+
             "Send the name of the movie, series, "
             "anime, or other authorized media.\n\n"
+
             "<b>Example:</b>\n"
             "<code>Example Movie</code>"
         )
