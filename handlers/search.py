@@ -805,16 +805,15 @@ async def handle_file_deep_link(
         chat_id=user_id,
         text=(
             "<blockquote>"
-            "<b><i>❗️❗️❗️ IMPORTANT ❗️❗️❗️</i></b>"
+            "<b><i>❗️❗️❗️ ɪᴍᴘᴏʀᴛᴀɴᴛ ❗️❗️❗️</i></b>"
             "</blockquote>\n\n"
 
-            "<b>This Movie File/Video will be deleted "
-            "in 5 minutes.</b>\n"
-
-            "<i>(due to copyright issues)</i>\n\n"
-
-            "<b>Please forward this file to your "
-            "Saved Messages and download it there.</b>"
+            "<b>⏳️ ᴅᴜᴇ ᴛᴏ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs...</b>\n"
+            "<b>›› ʏᴏᴜʀ ғɪʟᴇs ᴡɪʟʟ ʙ ᴅᴇʟᴇᴛᴇᴅ ᴡɪᴛʜɪɴ 5 min,"
+            "sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ"
+            "sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
+            "<b>›› ɴᴏᴛᴇ : ᴜsᴇ ᴠʟᴄ ᴘʟᴀʏᴇʀ ᴏʀ ᴍx ᴘʟᴀʏᴇʀ ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs"
+            "ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ.</b>"
         )
     )
 
@@ -1109,16 +1108,15 @@ async def handle_sendall_deep_link(
             chat_id=user_id,
             text=(
                 "<blockquote>"
-                "<b><i>❗️❗️❗️ IMPORTANT ❗️❗️❗️</i></b>"
+                "<b><i>❗️❗️❗️ ɪᴍᴘᴏʀᴛᴀɴᴛ ❗️❗️❗️</i></b>"
                 "</blockquote>\n\n"
 
-                "<b>These Movie Files/Videos will be deleted "
-                "in 5 minutes.</b>\n"
-
-                "<i>(due to copyright issues)</i>\n\n"
-
-                "<b>Please forward ALL Files/Videos to your "
-                "Saved Messages and download them there.</b>"
+                "<b>⏳️ ᴅᴜᴇ ᴛᴏ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs...</b>\n"
+                "<b>›› ʏᴏᴜʀ ғɪʟᴇs ᴡɪʟʟ ʙ ᴅᴇʟᴇᴛᴇᴅ ᴡɪᴛʜɪɴ 5 min,"
+                "sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ"
+                "sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
+                "<b>›› ɴᴏᴛᴇ : ᴜsᴇ ᴠʟᴄ ᴘʟᴀʏᴇʀ ᴏʀ ᴍx ᴘʟᴀʏᴇʀ ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs"
+                "ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ.</b>"
             )
         )
 
