@@ -679,7 +679,8 @@ async def handle_file_deep_link(
         await send_fsub_message(
             client,
             message,
-            not_joined
+            not_joined,
+            deep_link=f"file_{message_id}"
         )
 
         return
@@ -965,7 +966,8 @@ async def handle_sendall_deep_link(
         await send_fsub_message(
             client,
             message,
-            not_joined
+            not_joined,
+            deep_link=f"sendall_{session_id}_{page}"
         )
 
         return
@@ -1657,7 +1659,7 @@ def register_search_handlers(app):
                                         f"https://t.me/{bot_username}"
                                         f"?start=sendall_{session_id}_{page}"
                                     )
-                                ]
+                                )
                             ]
                         ]
                     )
