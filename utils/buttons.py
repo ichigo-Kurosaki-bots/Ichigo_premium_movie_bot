@@ -301,6 +301,7 @@ def language_filter_buttons(
     session_id,
     languages,
     page=0,
+    current_language=None,
 ):
     buttons = []
 
@@ -361,6 +362,7 @@ def year_filter_buttons(
     session_id,
     years,
     page=0,
+    current_year=None,
 ):
     buttons = []
 
@@ -428,6 +430,7 @@ def season_filter_buttons(
     session_id,
     seasons,
     page=0,
+    current_season=None,
 ):
     buttons = []
 
@@ -493,6 +496,7 @@ def episode_filter_buttons(
     session_id,
     episodes,
     page=0,
+    current_episode=None,
 ):
     buttons = []
 
