@@ -180,9 +180,20 @@ def build_fsub_keyboard(
 async def send_fsub_message(
     client,
     message,
-    channels,
+    channels=None,
     deep_link=None
 ):
+
+    # --------------------------------------------------------
+    # Automatically load FSub channels when caller does not
+    # provide them.
+    # --------------------------------------------------------
+
+    if channels is None:
+        channels = await get_fsub_channels()
+
+    if not channels:
+        return None
 
     user = message.from_user
 
