@@ -1,191 +1,216 @@
-import logging
-from datetime import datetime
+# indexer.py
 
-from config import DATABASE_CHANNEL_ID
+import asyncio
+import logging
+from datetime import datetime, timezone
+
+from pyrogram import Client, enums
+from pyrogram.errors import FloodWait, RPCError
+
+from config import (
+    API_ID,
+    API_HASH,
+    BOT_TOKEN,
+    DATABASE_CHANNEL_ID,
+)
 
 from database import (
     add_media,
     get_indexer_state,
-    save_indexer_state
+    update_indexer_state,
 )
 
 from utils.helpers import (
+    is_media_message,
+    get_original_filename,
     get_message_title,
     get_search_key,
     human_size,
-    is_media_message
+    extract_media_metadata,
 )
 
+
+# ============================================================
+# LOGGER
+# ============================================================
 
 logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# INDEXER STATE
+# PYROGRAM CLIENT
 # ============================================================
 
-indexer_running = False
-
-
-# ============================================================
-# CHECK DATABASE CHANNEL
-# ============================================================
-
-def is_database_channel(message):
-
-    if not message:
-        return False
-
-    if not message.chat:
-        return False
-
-    try:
-
-        return int(message.chat.id) == int(
-            DATABASE_CHANNEL_ID
-        )
-
-    except (TypeError, ValueError):
-
-        return False
+indexer_client = Client(
+    "indexer_session",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    bot_token=BOT_TOKEN,
+)
 
 
 # ============================================================
-# GET MEDIA INFORMATION
+# MEDIA INFORMATION
 # ============================================================
 
 def get_media_information(message):
+    """
+    Extract all required information from a Telegram media
+    message before storing it in MongoDB.
 
-    media_type = None
+    Metadata extracted:
+        - language
+        - year
+        - season
+        - episode
+    """
 
-    file_name = ""
+    if not message:
+        return None
 
-    file_size = 0
-
-    mime_type = ""
-
-    # --------------------------------------------------------
-    # DOCUMENT
-    # --------------------------------------------------------
-
-    if message.document:
-
-        media_type = "document"
-
-        file_name = (
-            message.document.file_name
-            or ""
-        )
-
-        file_size = (
-            message.document.file_size
-            or 0
-        )
-
-        mime_type = (
-            message.document.mime_type
-            or ""
-        )
-
-    # --------------------------------------------------------
-    # VIDEO
-    # --------------------------------------------------------
-
-    elif message.video:
-
-        media_type = "video"
-
-        file_name = (
-            message.video.file_name
-            or ""
-        )
-
-        file_size = (
-            message.video.file_size
-            or 0
-        )
-
-        mime_type = (
-            message.video.mime_type
-            or ""
-        )
-
-    # --------------------------------------------------------
-    # AUDIO
-    # --------------------------------------------------------
-
-    elif message.audio:
-
-        media_type = "audio"
-
-        file_name = (
-            message.audio.file_name
-            or ""
-        )
-
-        file_size = (
-            message.audio.file_size
-            or 0
-        )
-
-        mime_type = (
-            message.audio.mime_type
-            or ""
-        )
-
-    else:
-
+    if not is_media_message(message):
         return None
 
     # --------------------------------------------------------
-    # TITLE
+    # File information
     # --------------------------------------------------------
 
-    title = get_message_title(
-        message
+    file_name = get_original_filename(message)
+
+    file_size = 0
+    mime_type = None
+    media_type = None
+
+    if message.document:
+        file_size = message.document.file_size or 0
+        mime_type = message.document.mime_type
+        media_type = "document"
+
+    elif message.video:
+        file_size = message.video.file_size or 0
+        mime_type = message.video.mime_type
+        media_type = "video"
+
+    elif message.audio:
+        file_size = message.audio.file_size or 0
+        mime_type = message.audio.mime_type
+        media_type = "audio"
+
+    elif message.animation:
+        file_size = message.animation.file_size or 0
+        mime_type = message.animation.mime_type
+        media_type = "animation"
+
+    # --------------------------------------------------------
+    # Title
+    # --------------------------------------------------------
+
+    title = get_message_title(message)
+
+    # --------------------------------------------------------
+    # Caption
+    # --------------------------------------------------------
+
+    caption = message.caption or ""
+
+    # --------------------------------------------------------
+    # Metadata source
+    #
+    # Use filename first because filenames usually contain
+    # language/year/season/episode information.
+    #
+    # Caption is also included so metadata can be detected
+    # when it exists only in the caption.
+    # --------------------------------------------------------
+
+    metadata_source = ""
+
+    if file_name:
+        metadata_source += f" {file_name}"
+
+    if caption:
+        metadata_source += f" {caption}"
+
+    # --------------------------------------------------------
+    # Extract metadata
+    # --------------------------------------------------------
+
+    metadata = extract_media_metadata(
+        metadata_source
+    )
+
+    language = metadata.get("language")
+    year = metadata.get("year")
+    season = metadata.get("season")
+    episode = metadata.get("episode")
+
+    # --------------------------------------------------------
+    # Search key
+    # --------------------------------------------------------
+
+    search_key = get_search_key(
+        f"{title} {file_name or ''} {caption}"
     )
 
     # --------------------------------------------------------
-    # DATABASE DOCUMENT
+    # Date
     # --------------------------------------------------------
 
-    return {
+    message_date = message.date
 
+    if message_date is None:
+        message_date = datetime.now(timezone.utc)
+
+    # --------------------------------------------------------
+    # Final MongoDB document
+    # --------------------------------------------------------
+
+    media_data = {
+        # Telegram information
         "channel_id": message.chat.id,
-
         "message_id": message.id,
 
+        # Basic media information
         "title": title,
-
-        "title_key": get_search_key(
-            title
-        ),
-
-        "search_key": get_search_key(
-            title
-        ),
+        "title_key": get_search_key(title),
+        "search_key": search_key,
 
         "file_name": file_name,
-
         "file_size": file_size,
-
-        "file_size_text": human_size(
-            file_size
-        ),
+        "file_size_text": human_size(file_size),
 
         "mime_type": mime_type,
-
         "media_type": media_type,
 
-        "caption": (
-            message.caption
-            or ""
-        ),
+        # Caption
+        "caption": caption,
 
-        "date": message.date,
+        # ----------------------------------------------------
+        # FILTER METADATA
+        # ----------------------------------------------------
 
-        "indexed_at": datetime.utcnow()
+        "language": language,
+        "year": year,
+        "season": season,
+        "episode": episode,
+
+        # Dates
+        "date": message_date,
+        "indexed_at": datetime.now(timezone.utc),
     }
+
+    logger.info(
+        "Extracted metadata | message_id=%s | title=%s | "
+        "language=%s | year=%s | season=%s | episode=%s",
+        message.id,
+        title,
+        language,
+        year,
+        season,
+        episode,
+    )
+
+    return media_data
 
 
 # ============================================================
@@ -193,195 +218,275 @@ def get_media_information(message):
 # ============================================================
 
 async def index_message(message):
-
-    # --------------------------------------------------------
-    # ONLY DATABASE CHANNEL
-    # --------------------------------------------------------
-
-    if not is_database_channel(
-        message
-    ):
-
-        return False
-
-    # --------------------------------------------------------
-    # CHECK MEDIA
-    # --------------------------------------------------------
-
-    if not is_media_message(
-        message
-    ):
-
-        return False
-
-    # --------------------------------------------------------
-    # GET MEDIA DATA
-    # --------------------------------------------------------
-
-    data = get_media_information(
-        message
-    )
-
-    if not data:
-
-        return False
-
-    # --------------------------------------------------------
-    # SAVE TO MONGODB
-    # --------------------------------------------------------
+    """
+    Index one Telegram message into MongoDB.
+    """
 
     try:
 
-        success = await add_media(
-            data
+        if not is_media_message(message):
+            return False
+
+        media_data = get_media_information(message)
+
+        if not media_data:
+            return False
+
+        result = await add_media(media_data)
+
+        logger.info(
+            "Indexed message: %s | title=%s | language=%s | "
+            "year=%s | season=%s | episode=%s",
+            message.id,
+            media_data.get("title"),
+            media_data.get("language"),
+            media_data.get("year"),
+            media_data.get("season"),
+            media_data.get("episode"),
         )
 
-        if success:
+        return result
 
-            logger.info(
-                "Indexed message %s",
-                message.id
-            )
+    except FloodWait as e:
 
-            return True
+        logger.warning(
+            "FloodWait: sleeping for %s seconds",
+            e.value
+        )
+
+        await asyncio.sleep(e.value)
+
+        return False
+
+    except RPCError as e:
+
+        logger.error(
+            "Telegram RPC error while indexing %s: %s",
+            getattr(message, "id", None),
+            e,
+        )
 
         return False
 
     except Exception as e:
 
         logger.exception(
-            "Failed to index message %s",
-            message.id
+            "Error indexing message %s: %s",
+            getattr(message, "id", None),
+            e,
         )
 
         return False
 
 
 # ============================================================
-# AUTO INDEX DATABASE CHANNEL POST
+# INDEX NEW DATABASE CHANNEL POSTS
 # ============================================================
 
-async def handle_database_post(
-    client,
-    message
-):
+@indexer_client.on_message()
+async def new_database_message(client, message):
 
     try:
 
-        # ----------------------------------------------------
-        # ONLY DATABASE CHANNEL
-        # ----------------------------------------------------
+        if not message.chat:
+            return
 
-        if not is_database_channel(
-            message
-        ):
+        if message.chat.id != DATABASE_CHANNEL_ID:
+            return
 
-            return False
+        if not is_media_message(message):
+            return
 
-        # ----------------------------------------------------
-        # CHECK MEDIA
-        # ----------------------------------------------------
-
-        if not is_media_message(
-            message
-        ):
-
-            return False
-
-        # ----------------------------------------------------
-        # INDEX MESSAGE
-        # ----------------------------------------------------
-
-        indexed = await index_message(
-            message
-        )
-
-        if indexed:
-
-            state = await get_indexer_state()
-
-            current_count = state.get(
-                "indexed_count",
-                0
-            )
-
-            await save_indexer_state(
-
-                last_message_id=message.id,
-
-                indexed_count=current_count + 1
-            )
-
-            logger.info(
-                "New database file indexed: "
-                "message_id=%s",
-                message.id
-            )
-
-            return True
-
-        return False
+        await index_message(message)
 
     except Exception as e:
 
         logger.exception(
-            "Automatic indexing failed: %s",
+            "Error processing new database channel message: %s",
             e
         )
 
-        return False
-
 
 # ============================================================
-# MANUAL INDEX COMMAND
+# INDEX CHANNEL HISTORY
 # ============================================================
 
-async def start_indexer(
-    app,
-    force=False
+async def index_channel_history(
+    start_message_id=None,
+    end_message_id=None,
 ):
+    """
+    Index existing messages from the database channel.
 
-    logger.warning(
-        "Manual history indexing is not available "
-        "with a Telegram bot account."
+    NOTE:
+    Telegram bot accounts have restrictions when reading
+    channel history. This function is kept for installations
+    where the bot is able to access the required messages.
+    """
+
+    logger.info(
+        "Starting channel history indexing..."
     )
 
-    return {
+    indexed_count = 0
 
-        "success": False,
+    try:
 
-        "message": (
-            "Telegram bots cannot read channel history "
-            "using get_chat_history().\n\n"
-            "New database files are indexed "
-            "automatically when they are posted."
+        async for message in indexer_client.get_chat_history(
+            DATABASE_CHANNEL_ID
+        ):
+
+            # ------------------------------------------------
+            # Optional range
+            # ------------------------------------------------
+
+            if start_message_id is not None:
+                if message.id < start_message_id:
+                    continue
+
+            if end_message_id is not None:
+                if message.id > end_message_id:
+                    continue
+
+            # ------------------------------------------------
+            # Media check
+            # ------------------------------------------------
+
+            if not is_media_message(message):
+                continue
+
+            success = await index_message(message)
+
+            if success:
+                indexed_count += 1
+
+            # ------------------------------------------------
+            # Small delay to reduce API pressure
+            # ------------------------------------------------
+
+            await asyncio.sleep(0.05)
+
+    except FloodWait as e:
+
+        logger.warning(
+            "FloodWait during history indexing: %s seconds",
+            e.value
+        )
+
+        await asyncio.sleep(e.value)
+
+    except Exception as e:
+
+        logger.exception(
+            "History indexing failed: %s",
+            e
+        )
+
+    logger.info(
+        "History indexing completed. Indexed: %s",
+        indexed_count
+    )
+
+    return indexed_count
+
+
+# ============================================================
+# START INDEXER
+# ============================================================
+
+async def start_indexer():
+
+    logger.info(
+        "Starting database channel indexer..."
+    )
+
+    await indexer_client.start()
+
+    logger.info(
+        "Indexer connected successfully."
+    )
+
+    logger.info(
+        "Database channel ID: %s",
+        DATABASE_CHANNEL_ID
+    )
+
+
+# ============================================================
+# STOP INDEXER
+# ============================================================
+
+async def stop_indexer():
+
+    try:
+
+        if indexer_client.is_connected:
+            await indexer_client.stop()
+
+            logger.info(
+                "Indexer stopped."
+            )
+
+    except Exception as e:
+
+        logger.exception(
+            "Error stopping indexer: %s",
+            e
+        )
+
+
+# ============================================================
+# MANUAL INDEX FUNCTION
+# ============================================================
+
+async def run_indexer():
+
+    """
+    Convenience function for manually starting the indexer.
+    """
+
+    await start_indexer()
+
+    try:
+
+        await asyncio.Event().wait()
+
+    finally:
+
+        await stop_indexer()
+
+
+# ============================================================
+# MAIN
+# ============================================================
+
+if __name__ == "__main__":
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format=(
+            "%(asctime)s | "
+            "%(levelname)s | "
+            "%(name)s | "
+            "%(message)s"
         ),
-
-        "scanned": 0,
-
-        "indexed": 0
-    }
-
-
-# ============================================================
-# INDEX DATABASE CHANNEL
-# ============================================================
-
-async def index_database_channel(
-    app,
-    force=False
-):
-
-    return await start_indexer(
-        app,
-        force=force
     )
 
+    try:
 
-# ============================================================
-# CHECK INDEXER
-# ============================================================
+        indexer_client.run(
+            start_indexer()
+        )
 
-def is_indexer_running():
+    except KeyboardInterrupt:
 
-    return indexer_running
+        logger.info(
+            "Indexer stopped by user."
+        )
+
+    except Exception as e:
+
+        logger.exception(
+            "Indexer crashed: %s",
+            e
+        )
