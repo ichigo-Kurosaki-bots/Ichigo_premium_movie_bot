@@ -197,7 +197,7 @@ async def send_fsub_message(
 
         "<b>›› ‼️ ʟᴏᴏᴋs ʟɪᴋᴇ ʏᴏᴜ ʜᴀᴠᴇɴ'ᴛ "
         "ᴊᴏɪɴᴇᴅ ᴛᴏ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs ʏᴇᴛ, "
-        "sᴜʙsᴄʀɪʙᴇ ɴᴏw...</b>\n\n"
+        "sᴜʙsᴄʀɪʙᴇ ɴᴏᴡ...</b>\n\n"
     )
 
     # --------------------------------------------------------
@@ -415,43 +415,52 @@ def register_fsub_callback_handler(app):
             )
 
             # ------------------------------------------------
-            # DELETE FSUB MESSAGE
+            # KEEP THE MESSAGE ALIVE WHILE THE REQUEST
+            # IS BEING PROCESSED.
+            #
+            # IMPORTANT:
+            # The previous version deleted this message
+            # BEFORE passing it to search.py.
+            #
+            # search.py may use message.reply_*(), so deleting
+            # it first could cause delivery problems.
             # ------------------------------------------------
-
-            try:
-
-                await callback_query.message.delete()
-
-            except Exception as e:
-
-                logger.debug(
-                    "Could not delete FSub message: %s",
-                    e
-                )
-
-            # =================================================
-            # RESUME ORIGINAL REQUEST DIRECTLY
-            # =================================================
 
             if deep_link:
 
                 try:
 
-                    # -----------------------------------------
+                    # ========================================
                     # FILE REQUEST
-                    # -----------------------------------------
+                    # ========================================
 
                     if deep_link.startswith("file_"):
 
-                        message_id = int(
-                            deep_link.split(
-                                "_",
-                                1
-                            )[1]
-                        )
+                        try:
 
+                            message_id = int(
+                                deep_link.split(
+                                    "_",
+                                    1
+                                )[1]
+                            )
+
+                        except (
+                            ValueError,
+                            IndexError
+                        ):
+
+                            await client.send_message(
+                                user_id,
+                                "❌ Invalid file request."
+                            )
+
+                            return
+
+                        # ------------------------------------
                         # Local import avoids circular import
-                        # because search.py imports fsub.py.
+                        # ------------------------------------
+
                         from handlers.search import (
                             handle_file_deep_link
                         )
@@ -462,13 +471,11 @@ def register_fsub_callback_handler(app):
                             message_id=message_id
                         )
 
-                        return
-
-                    # -----------------------------------------
+                    # ========================================
                     # SEND ALL REQUEST
-                    # -----------------------------------------
+                    # ========================================
 
-                    if deep_link.startswith("sendall_"):
+                    elif deep_link.startswith("sendall_"):
 
                         parts = deep_link.split("_")
 
@@ -482,7 +489,25 @@ def register_fsub_callback_handler(app):
                             return
 
                         session_id = parts[1]
-                        page = int(parts[2])
+
+                        try:
+
+                            page = int(
+                                parts[2]
+                            )
+
+                        except ValueError:
+
+                            await client.send_message(
+                                user_id,
+                                "❌ Invalid Send All page."
+                            )
+
+                            return
+
+                        # ------------------------------------
+                        # Local import avoids circular import
+                        # ------------------------------------
 
                         from handlers.search import (
                             handle_sendall_deep_link
@@ -495,18 +520,18 @@ def register_fsub_callback_handler(app):
                             page=page
                         )
 
-                        return
-
-                    # -----------------------------------------
+                    # ========================================
                     # UNKNOWN REQUEST
-                    # -----------------------------------------
+                    # ========================================
 
-                    await client.send_message(
-                        user_id,
-                        "❌ Invalid request link."
-                    )
+                    else:
 
-                    return
+                        await client.send_message(
+                            user_id,
+                            "❌ Invalid request link."
+                        )
+
+                        return
 
                 except Exception as e:
 
@@ -517,17 +542,54 @@ def register_fsub_callback_handler(app):
                         deep_link
                     )
 
-                    await client.send_message(
-                        user_id,
-                        "❌ Something went wrong while "
-                        "processing your request."
-                    )
+                    try:
+
+                        await client.send_message(
+                            user_id,
+                            "❌ Something went wrong while "
+                            "processing your request."
+                        )
+
+                    except Exception:
+
+                        pass
 
                     return
+
+                # ------------------------------------------------
+                # REQUEST COMPLETED
+                # NOW DELETE FSUB MESSAGE
+                # ------------------------------------------------
+
+                try:
+
+                    await callback_query.message.delete()
+
+                except Exception as e:
+
+                    logger.debug(
+                        "Could not delete FSub message "
+                        "after request: %s",
+                        e
+                    )
+
+                return
 
             # ------------------------------------------------
             # NORMAL /START
             # ------------------------------------------------
+
+            # Delete the FSub message first for normal start.
+            try:
+
+                await callback_query.message.delete()
+
+            except Exception as e:
+
+                logger.debug(
+                    "Could not delete FSub message: %s",
+                    e
+                )
 
             await client.send_message(
                 user_id,
@@ -907,7 +969,7 @@ def register_fsub_list_handler(app):
 def register_fsub_close_handler(app):
 
     @app.on_callback_query(
-        filters.regex("^fsub_close$")
+        filters.regex(r"^fsub_close$")
     )
     async def fsub_close_callback(
         client,
