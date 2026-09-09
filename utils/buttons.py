@@ -1,3 +1,5 @@
+import re
+
 from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup
@@ -190,6 +192,32 @@ def help_buttons():
         ]
     )
 
+def extract_episode_info(text):
+    if not text:
+        return None
+
+    match = re.search(
+        r'\bS(\d{1,3})E(\d{1,4})\b',
+        str(text),
+        re.IGNORECASE
+    )
+
+    if match:
+        return (
+            f"S{int(match.group(1)):02d}"
+            f"E{int(match.group(2)):02d}"
+        )
+
+    match = re.search(
+        r'\b(?:EP|EPISODE|E)[\s._-]*(\d{1,4})\b',
+        str(text),
+        re.IGNORECASE
+    )
+
+    if match:
+        return f"EP {int(match.group(1))}"
+
+    return None
 
 # ============================================================
 # SEARCH RESULT BUTTONS
