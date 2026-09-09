@@ -181,112 +181,67 @@ def filter_menu_buttons(
     page=0,
     available=None,
 ):
-    """
-    Main filter menu.
-
-    Only shows filter categories for which matching
-    values actually exist.
-    """
-
     available = available or {}
 
-    languages = available.get(
-        "languages",
-        [],
-    )
-
-    years = available.get(
-        "years",
-        [],
-    )
-
-    seasons = available.get(
-        "seasons",
-        [],
-    )
-
-    episodes = available.get(
-        "episodes",
-        [],
-    )
+    languages = available.get("languages", [])
+    years = available.get("years", [])
+    qualities = available.get("qualities", [])
+    seasons = available.get("seasons", [])
+    episodes = available.get("episodes", [])
 
     buttons = []
-
-    # --------------------------------------------------------
-    # LANGUAGE
-    # --------------------------------------------------------
 
     if languages:
         buttons.append([
             InlineKeyboardButton(
                 "🌐 Lᴀɴɢᴜᴀɢᴇ",
-                callback_data=(
-                    f"filter_lang_{session_id}_{page}"
-                ),
+                callback_data=f"filter_lang_{session_id}_{page}",
             )
         ])
-
-    # --------------------------------------------------------
-    # YEAR
-    # --------------------------------------------------------
 
     if years:
         buttons.append([
             InlineKeyboardButton(
                 "📅 Yᴇᴀʀ",
-                callback_data=(
-                    f"filter_year_{session_id}_{page}"
-                ),
+                callback_data=f"filter_year_{session_id}_{page}",
             )
         ])
 
-    # --------------------------------------------------------
-    # SEASON
-    # --------------------------------------------------------
+    if qualities:
+        buttons.append([
+            InlineKeyboardButton(
+                "🎞 Qᴜᴀʟɪᴛʏ",
+                callback_data=f"filter_quality_{session_id}_{page}",
+            )
+        ])
+
+    if episodes:
+        buttons.append([
+            InlineKeyboardButton(
+                "🎬 Eᴘɪsᴏᴅᴇ",
+                callback_data=f"filter_episode_{session_id}_{page}",
+            )
+        ])
 
     if seasons:
         buttons.append([
             InlineKeyboardButton(
                 "📺 Sᴇᴀsᴏɴ",
-                callback_data=(
-                    f"filter_season_{session_id}_{page}"
-                ),
+                callback_data=f"filter_season_{session_id}_{page}",
             )
         ])
-
-    # --------------------------------------------------------
-    # EPISODE
-    # --------------------------------------------------------
-
-    if episodes:
-        buttons.append([
-            InlineKeyboardButton(
-                "🎞 Eᴘɪsᴏᴅᴇ",
-                callback_data=(
-                    f"filter_episode_{session_id}_{page}"
-                ),
-            )
-        ])
-
-    # --------------------------------------------------------
-    # CLEAR FILTERS
-    # --------------------------------------------------------
 
     buttons.append([
         InlineKeyboardButton(
             "✖️ Cʟᴇᴀʀ Fɪʟᴛᴇʀs",
-            callback_data=(
-                f"filter_clear_{session_id}_{page}"
-            ),
+            callback_data=f"filter_clear_{session_id}_{page}",
         )
     ])
 
     buttons.append([
         InlineKeyboardButton(
             "‹ Bᴀᴄᴋ",
-            callback_data=(
-                f"filter_back_{session_id}_{page}"
-            ),
+            callback_data=f"filter_back_{session_id}_{page}",
         )
     ])
 
@@ -304,24 +259,31 @@ def language_filter_buttons(
     current_language=None,
 ):
     buttons = []
-
     languages = languages or []
 
     row = []
 
     for language in languages:
-
         language = str(language).strip()
 
         if not language:
             continue
 
+        text = (
+            f"✓ {language}"
+            if current_language
+            and str(current_language).lower() == language.lower()
+            else language
+        )
+
+        # Keep callback compact.
+        callback_value = language[:25]
+
         row.append(
             InlineKeyboardButton(
-                language,
+                text,
                 callback_data=(
-                    f"setlang_{session_id}_{page}_"
-                    f"{language[:30]}"
+                    f"setlang_{session_id}_{page}_{callback_value}"
                 ),
             )
         )
@@ -336,18 +298,14 @@ def language_filter_buttons(
     buttons.append([
         InlineKeyboardButton(
             "✖️ Clear Language",
-            callback_data=(
-                f"setlang_{session_id}_{page}_clear"
-            ),
+            callback_data=f"setlang_{session_id}_{page}_clear",
         )
     ])
 
     buttons.append([
         InlineKeyboardButton(
             "‹ Bᴀᴄᴋ",
-            callback_data=(
-                f"filters_{session_id}_{page}"
-            ),
+            callback_data=f"filters_{session_id}_{page}",
         )
     ])
 
@@ -365,31 +323,35 @@ def year_filter_buttons(
     current_year=None,
 ):
     buttons = []
-
     years = years or []
 
-    row = []
-
-    # Newest years first.
     try:
         years = sorted(
-            [int(year) for year in years],
+            {int(year) for year in years},
             reverse=True,
         )
     except Exception:
         pass
+
+    row = []
 
     for year in years:
 
         if not 1960 <= int(year) <= 2026:
             continue
 
+        text = (
+            f"✓ {year}"
+            if current_year is not None
+            and int(current_year) == int(year)
+            else str(year)
+        )
+
         row.append(
             InlineKeyboardButton(
-                str(year),
+                text,
                 callback_data=(
-                    f"setyear_{session_id}_{page}_"
-                    f"{int(year)}"
+                    f"setyear_{session_id}_{page}_{int(year)}"
                 ),
             )
         )
@@ -404,176 +366,58 @@ def year_filter_buttons(
     buttons.append([
         InlineKeyboardButton(
             "✖️ Clear Year",
-            callback_data=(
-                f"setyear_{session_id}_{page}_clear"
-            ),
+            callback_data=f"setyear_{session_id}_{page}_clear",
         )
     ])
 
     buttons.append([
         InlineKeyboardButton(
             "‹ Bᴀᴄᴋ",
-            callback_data=(
-                f"filters_{session_id}_{page}"
-            ),
+            callback_data=f"filters_{session_id}_{page}",
         )
     ])
 
     return InlineKeyboardMarkup(buttons)
 
-
-# ============================================================
-# SEASON FILTER BUTTONS
-# ============================================================
-
-def season_filter_buttons(
-    session_id,
-    seasons,
-    page=0,
-    current_season=None,
-):
-    buttons = []
-
-    seasons = seasons or []
-
-    try:
-        seasons = sorted(
-            [int(season) for season in seasons]
-        )
-    except Exception:
-        pass
-
-    row = []
-
-    for season in seasons:
-
-        if not 1 <= int(season) <= 20:
-            continue
-
-        row.append(
-            InlineKeyboardButton(
-                f"S{int(season):02d}",
-                callback_data=(
-                    f"setseason_{session_id}_{page}_"
-                    f"{int(season)}"
-                ),
-            )
-        )
-
-        if len(row) == 4:
-            buttons.append(row)
-            row = []
-
-    if row:
-        buttons.append(row)
-
-    buttons.append([
-        InlineKeyboardButton(
-            "✖️ Clear Season",
-            callback_data=(
-                f"setseason_{session_id}_{page}_clear"
-            ),
-        )
-    ])
-
-    buttons.append([
-        InlineKeyboardButton(
-            "‹ Bᴀᴄᴋ",
-            callback_data=(
-                f"filters_{session_id}_{page}"
-            ),
-        )
-    ])
-
-    return InlineKeyboardMarkup(buttons)
-
-
-# ============================================================
-# EPISODE FILTER BUTTONS
-# ============================================================
-
-def episode_filter_buttons(
-    session_id,
-    episodes,
-    page=0,
-    current_episode=None,
-):
-    buttons = []
-
-    episodes = episodes or []
-
-    try:
-        episodes = sorted(
-            [int(episode) for episode in episodes]
-        )
-    except Exception:
-        pass
-
-    row = []
-
-    for episode in episodes:
-
-        if not 1 <= int(episode) <= 50:
-            continue
-
-        row.append(
-            InlineKeyboardButton(
-                f"E{int(episode):02d}",
-                callback_data=(
-                    f"setepisode_{session_id}_{page}_"
-                    f"{int(episode)}"
-                ),
-            )
-        )
-
-        if len(row) == 5:
-            buttons.append(row)
-            row = []
-
-    if row:
-        buttons.append(row)
-
-    buttons.append([
-        InlineKeyboardButton(
-            "✖️ Clear Episode",
-            callback_data=(
-                f"setepisode_{session_id}_{page}_clear"
-            ),
-        )
-    ])
-
-    buttons.append([
-        InlineKeyboardButton(
-            "‹ Bᴀᴄᴋ",
-            callback_data=(
-                f"filters_{session_id}_{page}"
-            ),
-        )
-    ])
-
-    return InlineKeyboardMarkup(buttons)
 
 # ============================================================
 # QUALITY FILTER BUTTONS
 # ============================================================
 
-def quality_filter_buttons(session_id, qualities, page=0):
+def quality_filter_buttons(
+    session_id,
+    qualities,
+    page=0,
+    current_quality=None,
+):
     buttons = []
-
     qualities = qualities or []
 
     row = []
 
     for quality in qualities:
+
         quality = str(quality).strip()
 
         if not quality:
             continue
 
+        text = (
+            f"✓ {quality}"
+            if current_quality
+            and str(current_quality).lower() == quality.lower()
+            else quality
+        )
+
+        # Keep callback data short.
+        value = quality[:20]
+
         row.append(
             InlineKeyboardButton(
-                quality,
-                callback_data=f"setquality_{session_id}_{page}_{quality[:20]}",
+                text,
+                callback_data=(
+                    f"setquality_{session_id}_{page}_{value}"
+                ),
             )
         )
 
@@ -600,6 +444,141 @@ def quality_filter_buttons(session_id, qualities, page=0):
 
     return InlineKeyboardMarkup(buttons)
 
+
+# ============================================================
+# SEASON FILTER BUTTONS
+# ============================================================
+
+def season_filter_buttons(
+    session_id,
+    seasons,
+    page=0,
+    current_season=None,
+):
+    buttons = []
+    seasons = seasons or []
+
+    try:
+        seasons = sorted(
+            {int(season) for season in seasons}
+        )
+    except Exception:
+        pass
+
+    row = []
+
+    for season in seasons:
+
+        if not 1 <= int(season) <= 20:
+            continue
+
+        text = (
+            f"✓ S{int(season):02d}"
+            if current_season is not None
+            and int(current_season) == int(season)
+            else f"S{int(season):02d}"
+        )
+
+        row.append(
+            InlineKeyboardButton(
+                text,
+                callback_data=(
+                    f"setseason_{session_id}_{page}_{int(season)}"
+                ),
+            )
+        )
+
+        if len(row) == 4:
+            buttons.append(row)
+            row = []
+
+    if row:
+        buttons.append(row)
+
+    buttons.append([
+        InlineKeyboardButton(
+            "✖️ Clear Season",
+            callback_data=f"setseason_{session_id}_{page}_clear",
+        )
+    ])
+
+    buttons.append([
+        InlineKeyboardButton(
+            "‹ Bᴀᴄᴋ",
+            callback_data=f"filters_{session_id}_{page}",
+        )
+    ])
+
+    return InlineKeyboardMarkup(buttons)
+
+
+# ============================================================
+# EPISODE FILTER BUTTONS
+# ============================================================
+
+def episode_filter_buttons(
+    session_id,
+    episodes,
+    page=0,
+    current_episode=None,
+):
+    buttons = []
+    episodes = episodes or []
+
+    try:
+        episodes = sorted(
+            {int(episode) for episode in episodes}
+        )
+    except Exception:
+        pass
+
+    row = []
+
+    for episode in episodes:
+
+        if not 1 <= int(episode) <= 50:
+            continue
+
+        text = (
+            f"✓ E{int(episode):02d}"
+            if current_episode is not None
+            and int(current_episode) == int(episode)
+            else f"E{int(episode):02d}"
+        )
+
+        row.append(
+            InlineKeyboardButton(
+                text,
+                callback_data=(
+                    f"setepisode_{session_id}_{page}_{int(episode)}"
+                ),
+            )
+        )
+
+        if len(row) == 5:
+            buttons.append(row)
+            row = []
+
+    if row:
+        buttons.append(row)
+
+    buttons.append([
+        InlineKeyboardButton(
+            "✖️ Clear Episode",
+            callback_data=f"setepisode_{session_id}_{page}_clear",
+        )
+    ])
+
+    buttons.append([
+        InlineKeyboardButton(
+            "‹ Bᴀᴄᴋ",
+            callback_data=f"filters_{session_id}_{page}",
+        )
+    ])
+
+    return InlineKeyboardMarkup(buttons)
+
+
 # ============================================================
 # ACTIVE FILTER BUTTONS
 # ============================================================
@@ -609,16 +588,13 @@ def active_filter_buttons(
     page=0,
     filters=None,
 ):
-    """
-    Displays currently selected filters.
-    """
-
     filters = filters or {}
 
     buttons = []
 
     language = filters.get("language")
     year = filters.get("year")
+    quality = filters.get("quality")
     season = filters.get("season")
     episode = filters.get("episode")
 
@@ -626,9 +602,7 @@ def active_filter_buttons(
         buttons.append([
             InlineKeyboardButton(
                 f"🌐 {language}",
-                callback_data=(
-                    f"setlang_{session_id}_{page}_clear"
-                ),
+                callback_data=f"setlang_{session_id}_{page}_clear",
             )
         ])
 
@@ -636,9 +610,15 @@ def active_filter_buttons(
         buttons.append([
             InlineKeyboardButton(
                 f"📅 {year}",
-                callback_data=(
-                    f"setyear_{session_id}_{page}_clear"
-                ),
+                callback_data=f"setyear_{session_id}_{page}_clear",
+            )
+        ])
+
+    if quality:
+        buttons.append([
+            InlineKeyboardButton(
+                f"🎞 {quality}",
+                callback_data=f"setquality_{session_id}_{page}_clear",
             )
         ])
 
@@ -646,37 +626,29 @@ def active_filter_buttons(
         buttons.append([
             InlineKeyboardButton(
                 f"📺 S{int(season):02d}",
-                callback_data=(
-                    f"setseason_{session_id}_{page}_clear"
-                ),
+                callback_data=f"setseason_{session_id}_{page}_clear",
             )
         ])
 
     if episode:
         buttons.append([
             InlineKeyboardButton(
-                f"🎞 E{int(episode):02d}",
-                callback_data=(
-                    f"setepisode_{session_id}_{page}_clear"
-                ),
+                f"🎬 E{int(episode):02d}",
+                callback_data=f"setepisode_{session_id}_{page}_clear",
             )
         ])
 
     buttons.append([
         InlineKeyboardButton(
             "✖️ Cʟᴇᴀʀ Aʟʟ",
-            callback_data=(
-                f"filter_clear_{session_id}_{page}"
-            ),
+            callback_data=f"filter_clear_{session_id}_{page}",
         )
     ])
 
     buttons.append([
         InlineKeyboardButton(
             "‹ Bᴀᴄᴋ",
-            callback_data=(
-                f"filter_back_{session_id}_{page}"
-            ),
+            callback_data=f"filter_back_{session_id}_{page}",
         )
     ])
 
