@@ -745,6 +745,32 @@ def back_button(callback_data="close"):
         ]
     ])
 
+# ============================================================
+# ACCOUNT BUTTONS
+# ============================================================
+
+def account_buttons():
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "👤 Mʏ Aᴄᴄᴏᴜɴᴛ",
+                callback_data="account",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "💎 Pʀᴇᴍɪᴜᴍ",
+                callback_data="premium",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "‹ Bᴀᴄᴋ",
+                callback_data="close",
+            )
+        ],
+    ])
+
 
 # ============================================================
 # HOME BUTTONS
