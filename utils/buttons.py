@@ -12,6 +12,10 @@ from pyrogram.types import (
 # SEARCH RESULT BUTTONS
 # ============================================================
 
+# ============================================================
+# SEARCH RESULT BUTTONS
+# ============================================================
+
 def search_result_buttons(
     results,
     session_id,
@@ -19,20 +23,11 @@ def search_result_buttons(
     has_next=False,
     bot_username=None,
 ):
-    """
-    Search result buttons.
-
-    In groups:
-        Movie buttons open the bot in PM using a deep link.
-
-    In PM:
-        The same buttons can also use deep links.
-
-    Deep link format:
-        https://t.me/BOT_USERNAME?start=file_MESSAGE_ID
-    """
-
     buttons = []
+
+    # --------------------------------------------------------
+    # MOVIE / FILE BUTTONS
+    # --------------------------------------------------------
 
     for result in results:
         message_id = (
@@ -54,7 +49,6 @@ def search_result_buttons(
 
         title = str(title).strip()
 
-        # Keep button text reasonable.
         if len(title) > 55:
             title = title[:52] + "..."
 
@@ -95,22 +89,60 @@ def search_result_buttons(
                 f"?start=sendall_{session_id}_{page}"
             )
 
-            buttons.append([
-                InlineKeyboardButton(
-                    "• sᴇɴᴅ ᴀʟʟ •",
-                    url=sendall_url,
-                )
-            ])
+            send_all_button = InlineKeyboardButton(
+                "Sᴇɴᴅ Aʟʟ",
+                url=sendall_url,
+            )
 
         else:
-            buttons.append([
-                InlineKeyboardButton(
-                    "• sᴇɴᴅ ᴀʟʟ •",
-                    callback_data=(
-                        f"sendall_{session_id}_{page}"
-                    ),
-                )
-            ])
+            send_all_button = InlineKeyboardButton(
+                "Sᴇɴᴅ Aʟʟ",
+                callback_data=f"sendall_{session_id}_{page}",
+            )
+
+    else:
+        send_all_button = None
+
+    # --------------------------------------------------------
+    # DIRECT FILTER BUTTONS
+    #
+    # Layout:
+    #
+    # SEND ALL | LANGUAGES | YEARS
+    # QUALITY  | EPISODES  | SEASONS
+    # --------------------------------------------------------
+
+    if send_all_button:
+        buttons.append([
+            send_all_button,
+
+            InlineKeyboardButton(
+                "Lᴀɴɢᴜᴀɢᴇs",
+                callback_data=f"filter_lang_{session_id}_{page}",
+            ),
+
+            InlineKeyboardButton(
+                "Yᴇᴀʀs",
+                callback_data=f"filter_year_{session_id}_{page}",
+            ),
+        ])
+
+        buttons.append([
+            InlineKeyboardButton(
+                "Qᴜᴀʟɪᴛʏ",
+                callback_data=f"filter_quality_{session_id}_{page}",
+            ),
+
+            InlineKeyboardButton(
+                "Eᴘɪsᴏᴅᴇs",
+                callback_data=f"filter_episode_{session_id}_{page}",
+            ),
+
+            InlineKeyboardButton(
+                "Sᴇᴀsᴏɴs",
+                callback_data=f"filter_season_{session_id}_{page}",
+            ),
+        ])
 
     # --------------------------------------------------------
     # PAGINATION
@@ -136,17 +168,6 @@ def search_result_buttons(
 
     if navigation:
         buttons.append(navigation)
-
-    # --------------------------------------------------------
-    # FILTER BUTTON
-    # --------------------------------------------------------
-
-    buttons.append([
-        InlineKeyboardButton(
-            "⚙️ Fɪʟᴛᴇʀs",
-            callback_data=f"filters_{session_id}_{page}",
-        )
-    ])
 
     return InlineKeyboardMarkup(buttons)
 
