@@ -98,7 +98,6 @@ def normalize_filters(filters_data=None):
         if not value:
             continue
 
-        # Never keep the special clear value.
         if value.lower() == "clear":
             continue
 
@@ -828,10 +827,6 @@ async def show_filter_menu(
         )
     )
 
-    # --------------------------------------------------------
-    # AVAILABLE FILTERS
-    # --------------------------------------------------------
-
     filters_data = await get_filter_options(
         query,
         filters=current_filters,
@@ -1228,11 +1223,15 @@ def register_search_handlers(app):
 
     # ========================================================
     # FILTER MENU
+    # Supports:
+    #
+    # filter_menu_SESSION
+    # filter_menu_SESSION_PAGE
     # ========================================================
 
     @app.on_callback_query(
         filters.regex(
-            r"^filter_menu_[a-fA-F0-9]+_\d+$"
+            r"^filter_menu_[a-fA-F0-9]+(?:_\d+)?$"
         )
     )
     async def filter_menu_callback(
@@ -1243,7 +1242,18 @@ def register_search_handlers(app):
         parts = callback_query.data.split("_")
 
         session_id = parts[2]
-        page = int(parts[3])
+
+        if len(parts) >= 4:
+
+            try:
+                page = int(parts[3])
+
+            except ValueError:
+                page = 0
+
+        else:
+
+            page = 0
 
         await show_filter_menu(
             client,
@@ -1649,10 +1659,6 @@ def register_search_handlers(app):
             )
         )
 
-        # ----------------------------------------------------
-        # CLEAR LANGUAGE
-        # ----------------------------------------------------
-
         if language.lower() == "clear":
 
             current_filters.pop(
@@ -1719,10 +1725,6 @@ def register_search_handlers(app):
             )
         )
 
-        # ----------------------------------------------------
-        # CLEAR YEAR
-        # ----------------------------------------------------
-
         if year.lower() == "clear":
 
             current_filters.pop(
@@ -1788,10 +1790,6 @@ def register_search_handlers(app):
                 {},
             )
         )
-
-        # ----------------------------------------------------
-        # CLEAR QUALITY
-        # ----------------------------------------------------
 
         if quality.lower() == "clear":
 
@@ -1868,10 +1866,6 @@ def register_search_handlers(app):
             )
         )
 
-        # ----------------------------------------------------
-        # CLEAR SEASON
-        # ----------------------------------------------------
-
         if season.lower() == "clear":
 
             current_filters.pop(
@@ -1937,10 +1931,6 @@ def register_search_handlers(app):
                 {},
             )
         )
-
-        # ----------------------------------------------------
-        # CLEAR EPISODE
-        # ----------------------------------------------------
 
         if episode.lower() == "clear":
 
