@@ -638,6 +638,25 @@ def premium_buttons():
         ],
     ])
 
+# ============================================================
+# PREMIUM PLAN CONFIRM BUTTONS
+# ============================================================
+
+def plan_confirm_buttons(amount):
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "💳 Pᴀʏ Nᴏᴡ",
+                callback_data=f"pay_{amount}"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "‹ Bᴀᴄᴋ Tᴏ Pʟᴀɴs",
+                callback_data="premium"
+            )
+        ]
+    ])
 
 # ============================================================
 # FILE SENT BUTTONS
