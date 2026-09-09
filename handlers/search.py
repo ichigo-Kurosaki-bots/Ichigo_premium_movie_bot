@@ -1,27 +1,23 @@
 import asyncio
 import logging
 import os
-import re
-import time
 import urllib.parse
 import urllib.request
 import json
 
-from pyrogram import filters, enums
+from pyrogram import filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from config import DATABASE_CHANNEL_ID, OWNER_ID
+from config import DATABASE_CHANNEL_ID
 
 from database import (
     get_user,
     create_user,
-    update_user,
     consume_request,
     restore_request,
     create_search_session,
     get_search_session,
     update_search_session_filters,
-    get_search_session_filters,
     record_search,
 )
 
@@ -102,6 +98,10 @@ def normalize_filters(filters_data=None):
         if not value:
             continue
 
+        # Never keep the special clear value.
+        if value.lower() == "clear":
+            continue
+
         result[key] = value
 
     return result
@@ -163,6 +163,7 @@ async def get_tmdb_metadata(title):
         return None
 
     try:
+
         encoded_title = urllib.parse.quote(title)
 
         url = (
@@ -172,17 +173,22 @@ async def get_tmdb_metadata(title):
         )
 
         def fetch():
+
             with urllib.request.urlopen(
                 url,
-                timeout=8
+                timeout=8,
             ) as response:
+
                 return json.loads(
                     response.read().decode("utf-8")
                 )
 
         data = await asyncio.to_thread(fetch)
 
-        results = data.get("results", [])
+        results = data.get(
+            "results",
+            [],
+        )
 
         if not results:
             return None
@@ -195,9 +201,16 @@ async def get_tmdb_metadata(title):
                 or item.get("name")
                 or title
             ),
-            "overview": item.get("overview", ""),
-            "poster_path": item.get("poster_path"),
-            "vote_average": item.get("vote_average"),
+            "overview": item.get(
+                "overview",
+                "",
+            ),
+            "poster_path": item.get(
+                "poster_path"
+            ),
+            "vote_average": item.get(
+                "vote_average"
+            ),
             "release_date": (
                 item.get("release_date")
                 or item.get("first_air_date")
@@ -206,10 +219,12 @@ async def get_tmdb_metadata(title):
         }
 
     except Exception as e:
+
         logger.warning(
             "TMDB metadata error: %s",
-            e
+            e,
         )
+
         return None
 
 
@@ -228,11 +243,15 @@ def build_search_text(
     Build search result message.
     """
 
-    filters_data = normalize_filters(filters_data)
+    filters_data = normalize_filters(
+        filters_data
+    )
 
     text = ""
 
-    text += "🔎 <b>Search Results</b>\n\n"
+    text += (
+        "🔎 <b>Search Results</b>\n\n"
+    )
 
     text += (
         f"🎬 <b>Query:</b> "
@@ -240,6 +259,7 @@ def build_search_text(
     )
 
     if filters_data:
+
         text += (
             f"🎛 <b>Filters:</b> "
             f"{escape_html(filters_to_text(filters_data))}\n"
@@ -248,6 +268,7 @@ def build_search_text(
     text += "\n"
 
     if results:
+
         text += (
             f"📄 <b>Page:</b> "
             f"{page}/{total_pages}\n\n"
@@ -271,15 +292,18 @@ async def delete_file_later(
     """
 
     try:
+
         await asyncio.sleep(delay)
 
         try:
+
             await client.delete_messages(
                 chat_id,
                 message_id,
             )
 
         except Exception as e:
+
             logger.warning(
                 "Could not delete message %s: %s",
                 message_id,
@@ -287,9 +311,11 @@ async def delete_file_later(
             )
 
     except asyncio.CancelledError:
+
         pass
 
     except Exception as e:
+
         logger.exception(
             "delete_file_later error: %s",
             e,
@@ -361,18 +387,22 @@ async def delete_files_and_warning_later(
         for message_id in message_ids:
 
             try:
+
                 await client.delete_messages(
                     chat_id,
                     message_id,
                 )
 
             except Exception:
+
                 pass
 
     except asyncio.CancelledError:
+
         pass
 
     except Exception as e:
+
         logger.warning(
             "Delete multiple files error: %s",
             e,
@@ -392,8 +422,10 @@ async def handle_file_deep_link(
     Handle:
 
         /start file_<message_id>
-
     """
+
+    if not message.from_user:
+        return
 
     user_id = message.from_user.id
 
@@ -420,7 +452,9 @@ async def handle_file_deep_link(
     # USER
     # --------------------------------------------------------
 
-    user = await get_user(user_id)
+    user = await get_user(
+        user_id
+    )
 
     if not user:
 
@@ -432,8 +466,6 @@ async def handle_file_deep_link(
                 else None
             ),
         )
-
-        user = await get_user(user_id)
 
     # --------------------------------------------------------
     # PREMIUM / FREE REQUEST
@@ -487,10 +519,13 @@ async def handle_file_deep_link(
     if not sent:
 
         try:
+
             await restore_request(
                 user_id
             )
+
         except Exception:
+
             pass
 
         await message.reply_text(
@@ -505,11 +540,14 @@ async def handle_file_deep_link(
     # --------------------------------------------------------
 
     try:
+
         await record_search(
             user_id,
             str(file_id),
         )
+
     except Exception:
+
         pass
 
     remaining = await get_remaining_requests(
@@ -517,14 +555,18 @@ async def handle_file_deep_link(
     )
 
     try:
+
         await message.reply_text(
             "✅ <b>File sent successfully!</b>\n\n"
-            f"⏳ Auto-delete: <b>{FILE_DELETE_AFTER // 60} minutes</b>\n"
-            f"🎬 Remaining requests: <b>{remaining}</b>",
+            f"⏳ Auto-delete: "
+            f"<b>{FILE_DELETE_AFTER // 60} minutes</b>\n"
+            f"🎬 Remaining requests: "
+            f"<b>{remaining}</b>",
             reply_markup=file_sent_buttons(),
         )
 
     except Exception:
+
         pass
 
 
@@ -544,6 +586,9 @@ async def handle_sendall_deep_link(
         /start sendall_<session_id>_<page>
     """
 
+    if not message.from_user:
+        return
+
     user_id = message.from_user.id
 
     # --------------------------------------------------------
@@ -560,7 +605,9 @@ async def handle_sendall_deep_link(
         await send_fsub_message(
             client,
             message,
-            deep_link=f"sendall_{session_id}_{page}",
+            deep_link=(
+                f"sendall_{session_id}_{page}"
+            ),
         )
 
         return
@@ -631,7 +678,9 @@ async def handle_sendall_deep_link(
     # USER
     # --------------------------------------------------------
 
-    user = await get_user(user_id)
+    user = await get_user(
+        user_id
+    )
 
     if not user:
 
@@ -690,10 +739,13 @@ async def handle_sendall_deep_link(
         else:
 
             try:
+
                 await restore_request(
                     user_id
                 )
+
             except Exception:
+
                 pass
 
     # --------------------------------------------------------
@@ -731,7 +783,8 @@ async def handle_sendall_deep_link(
         f"📦 Files sent: <b>{len(sent_ids)}</b>\n"
         f"⏳ Auto-delete: "
         f"<b>{FILE_DELETE_AFTER // 60} minutes</b>\n"
-        f"🎬 Remaining requests: <b>{remaining}</b>",
+        f"🎬 Remaining requests: "
+        f"<b>{remaining}</b>",
         reply_markup=file_sent_buttons(),
     )
 
@@ -744,6 +797,7 @@ async def show_filter_menu(
     client,
     callback_query,
     session_id,
+    page=0,
 ):
     """
     Show the main filter menu.
@@ -774,7 +828,10 @@ async def show_filter_menu(
         )
     )
 
-    # Get actual available filter values.
+    # --------------------------------------------------------
+    # AVAILABLE FILTERS
+    # --------------------------------------------------------
+
     filters_data = await get_filter_options(
         query,
         filters=current_filters,
@@ -805,7 +862,7 @@ async def show_filter_menu(
         text,
         reply_markup=filter_menu_buttons(
             session_id,
-            page=0,
+            page=page,
             available=filters_data,
         ),
     )
@@ -928,14 +985,35 @@ async def refresh_filtered_results(
     )
 
     # --------------------------------------------------------
+    # BOT USERNAME
+    # --------------------------------------------------------
+
+    try:
+
+        bot_username = (
+            client.me.username
+            if client.me
+            else None
+        )
+
+    except Exception:
+
+        bot_username = None
+
+    # --------------------------------------------------------
     # BUTTONS
     # --------------------------------------------------------
+
+    has_next = (
+        int(page) + 1 < int(total_pages)
+    )
 
     keyboard = search_result_buttons(
         results,
         session_id,
         page=int(page),
-        total_pages=total_pages,
+        has_next=has_next,
+        bot_username=bot_username,
     )
 
     await callback_query.message.edit_text(
@@ -972,6 +1050,9 @@ def register_search_handlers(app):
         client,
         message,
     ):
+
+        if not message.from_user:
+            return
 
         query = message.text.strip()
 
@@ -1033,7 +1114,8 @@ def register_search_handlers(app):
 
             await message.reply_text(
                 "❌ <b>Request limit reached.</b>\n\n"
-                f"🎬 Remaining requests: <b>{remaining}</b>\n\n"
+                f"🎬 Remaining requests: "
+                f"<b>{remaining}</b>\n\n"
                 "⭐ Upgrade to Premium.",
                 reply_markup=premium_buttons(),
             )
@@ -1097,14 +1179,35 @@ def register_search_handlers(app):
         )
 
         # ----------------------------------------------------
+        # BOT USERNAME
+        # ----------------------------------------------------
+
+        try:
+
+            bot_username = (
+                client.me.username
+                if client.me
+                else None
+            )
+
+        except Exception:
+
+            bot_username = None
+
+        # ----------------------------------------------------
         # BUTTONS
         # ----------------------------------------------------
+
+        has_next = (
+            int(total_pages) > 1
+        )
 
         keyboard = search_result_buttons(
             results,
             session_id,
             page=0,
-            total_pages=total_pages,
+            has_next=has_next,
+            bot_username=bot_username,
         )
 
         await message.reply_text(
@@ -1120,6 +1223,7 @@ def register_search_handlers(app):
             )
 
         except Exception:
+
             pass
 
     # ========================================================
@@ -1128,7 +1232,7 @@ def register_search_handlers(app):
 
     @app.on_callback_query(
         filters.regex(
-            r"^filter_menu_[a-fA-F0-9]+$"
+            r"^filter_menu_[a-fA-F0-9]+_\d+$"
         )
     )
     async def filter_menu_callback(
@@ -1139,11 +1243,13 @@ def register_search_handlers(app):
         parts = callback_query.data.split("_")
 
         session_id = parts[2]
+        page = int(parts[3])
 
         await show_filter_menu(
             client,
             callback_query,
             session_id,
+            page,
         )
 
     # ========================================================
@@ -1543,7 +1649,20 @@ def register_search_handlers(app):
             )
         )
 
-        current_filters["language"] = language
+        # ----------------------------------------------------
+        # CLEAR LANGUAGE
+        # ----------------------------------------------------
+
+        if language.lower() == "clear":
+
+            current_filters.pop(
+                "language",
+                None,
+            )
+
+        else:
+
+            current_filters["language"] = language
 
         await update_search_session_filters(
             session_id,
@@ -1600,7 +1719,20 @@ def register_search_handlers(app):
             )
         )
 
-        current_filters["year"] = year
+        # ----------------------------------------------------
+        # CLEAR YEAR
+        # ----------------------------------------------------
+
+        if year.lower() == "clear":
+
+            current_filters.pop(
+                "year",
+                None,
+            )
+
+        else:
+
+            current_filters["year"] = year
 
         await update_search_session_filters(
             session_id,
@@ -1637,15 +1769,6 @@ def register_search_handlers(app):
         page = int(parts[2])
         quality = parts[3].strip()
 
-        if not quality:
-
-            await callback_query.answer(
-                "Invalid quality.",
-                show_alert=True,
-            )
-
-            return
-
         session = await get_search_session(
             session_id
         )
@@ -1666,11 +1789,29 @@ def register_search_handlers(app):
             )
         )
 
-        # IMPORTANT:
-        # Keep language/year/season/episode.
-        # Only update quality.
+        # ----------------------------------------------------
+        # CLEAR QUALITY
+        # ----------------------------------------------------
 
-        current_filters["quality"] = quality
+        if quality.lower() == "clear":
+
+            current_filters.pop(
+                "quality",
+                None,
+            )
+
+        else:
+
+            if not quality:
+
+                await callback_query.answer(
+                    "Invalid quality.",
+                    show_alert=True,
+                )
+
+                return
+
+            current_filters["quality"] = quality
 
         await update_search_session_filters(
             session_id,
@@ -1727,7 +1868,20 @@ def register_search_handlers(app):
             )
         )
 
-        current_filters["season"] = season
+        # ----------------------------------------------------
+        # CLEAR SEASON
+        # ----------------------------------------------------
+
+        if season.lower() == "clear":
+
+            current_filters.pop(
+                "season",
+                None,
+            )
+
+        else:
+
+            current_filters["season"] = season
 
         await update_search_session_filters(
             session_id,
@@ -1784,7 +1938,20 @@ def register_search_handlers(app):
             )
         )
 
-        current_filters["episode"] = episode
+        # ----------------------------------------------------
+        # CLEAR EPISODE
+        # ----------------------------------------------------
+
+        if episode.lower() == "clear":
+
+            current_filters.pop(
+                "episode",
+                None,
+            )
+
+        else:
+
+            current_filters["episode"] = episode
 
         await update_search_session_filters(
             session_id,
@@ -1799,12 +1966,12 @@ def register_search_handlers(app):
         )
 
     # ========================================================
-    # CLEAR FILTERS
+    # CLEAR ALL FILTERS
     # ========================================================
 
     @app.on_callback_query(
         filters.regex(
-            r"^clearfilters_[a-fA-F0-9]+$"
+            r"^filter_clear_[a-fA-F0-9]+_\d+$"
         )
     )
     async def clear_filters_callback(
@@ -1816,7 +1983,8 @@ def register_search_handlers(app):
             "_"
         )
 
-        session_id = parts[1]
+        session_id = parts[2]
+        page = int(parts[3])
 
         await update_search_session_filters(
             session_id,
@@ -1836,7 +2004,7 @@ def register_search_handlers(app):
 
     @app.on_callback_query(
         filters.regex(
-            r"^filter_back_[a-fA-F0-9]+_\d+$"
+            r"^(?:filter_back|filters)_[a-fA-F0-9]+_\d+$"
         )
     )
     async def filter_back_callback(
@@ -1844,14 +2012,18 @@ def register_search_handlers(app):
         callback_query,
     ):
 
-        parts = callback_query.data.split("_")
+        parts = callback_query.data.split(
+            "_"
+        )
 
-        session_id = parts[2]
+        session_id = parts[1]
+        page = int(parts[2])
 
         await show_filter_menu(
             client,
             callback_query,
             session_id,
+            page,
         )
 
     # ========================================================
@@ -1868,7 +2040,9 @@ def register_search_handlers(app):
         callback_query,
     ):
 
-        parts = callback_query.data.split("_")
+        parts = callback_query.data.split(
+            "_"
+        )
 
         session_id = parts[1]
         page = int(parts[2])
@@ -1894,12 +2068,33 @@ def register_search_handlers(app):
         callback_query,
     ):
 
-        parts = callback_query.data.split("_")
+        parts = callback_query.data.split(
+            "_"
+        )
 
         session_id = parts[1]
         page = int(parts[2])
 
-        bot_username = client.me.username
+        try:
+
+            bot_username = (
+                client.me.username
+                if client.me
+                else None
+            )
+
+        except Exception:
+
+            bot_username = None
+
+        if not bot_username:
+
+            await callback_query.answer(
+                "Bot username unavailable.",
+                show_alert=True,
+            )
+
+            return
 
         deep_link = (
             f"https://t.me/{bot_username}"
@@ -1940,11 +2135,32 @@ def register_search_handlers(app):
         callback_query,
     ):
 
-        parts = callback_query.data.split("_")
+        parts = callback_query.data.split(
+            "_"
+        )
 
         file_id = parts[1]
 
-        bot_username = client.me.username
+        try:
+
+            bot_username = (
+                client.me.username
+                if client.me
+                else None
+            )
+
+        except Exception:
+
+            bot_username = None
+
+        if not bot_username:
+
+            await callback_query.answer(
+                "Bot username unavailable.",
+                show_alert=True,
+            )
+
+            return
 
         deep_link = (
             f"https://t.me/{bot_username}"
