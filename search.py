@@ -7,6 +7,7 @@ import logging
 from typing import Optional
 
 from config import RESULTS_PER_PAGE, MAX_RESULTS
+
 from database import (
     search_media,
     create_search_session,
@@ -62,9 +63,17 @@ def clean_query(query: str) -> str:
         flags=re.IGNORECASE,
     )
 
-    query = re.sub(r"[\[\]\(\)\{\}_\-]+", " ", query)
+    query = re.sub(
+        r"[\[\]\(\)\{\}_\-]+",
+        " ",
+        query,
+    )
 
-    query = re.sub(r"\s+", " ", query)
+    query = re.sub(
+        r"\s+",
+        " ",
+        query,
+    )
 
     return query.strip()
 
@@ -75,9 +84,17 @@ def normalize_query(query: str) -> str:
 
     query = str(query).lower().strip()
 
-    query = re.sub(r"[^a-z0-9\u0900-\u097f\u0b80-\u0bff\u0c00-\u0c7f\u0d00-\u0d7f\s]", " ", query)
+    query = re.sub(
+        r"[^a-z0-9\u0900-\u097f\u0b80-\u0bff\u0c00-\u0c7f\u0d00-\u0d7f\s]",
+        " ",
+        query,
+    )
 
-    query = re.sub(r"\s+", " ", query)
+    query = re.sub(
+        r"\s+",
+        " ",
+        query,
+    )
 
     return query.strip()
 
@@ -151,6 +168,17 @@ def get_result_message_id(result: dict):
 # ============================================================
 
 def normalize_filters(filters=None):
+    """
+    Normalizes all supported search filters.
+
+    Supported filters:
+        language
+        year
+        season
+        episode
+        quality
+    """
+
     if not filters:
         return {}
 
@@ -160,9 +188,18 @@ def normalize_filters(filters=None):
     year = filters.get("year")
     season = filters.get("season")
     episode = filters.get("episode")
+    quality = filters.get("quality")
+
+    # --------------------------------------------------------
+    # LANGUAGE
+    # --------------------------------------------------------
 
     if language:
         output["language"] = str(language).strip()
+
+    # --------------------------------------------------------
+    # YEAR
+    # --------------------------------------------------------
 
     if year not in (None, "", 0):
         try:
@@ -170,8 +207,13 @@ def normalize_filters(filters=None):
 
             if 1960 <= year <= 2026:
                 output["year"] = year
+
         except Exception:
             pass
+
+    # --------------------------------------------------------
+    # SEASON
+    # --------------------------------------------------------
 
     if season not in (None, "", 0):
         try:
@@ -179,8 +221,13 @@ def normalize_filters(filters=None):
 
             if 1 <= season <= 20:
                 output["season"] = season
+
         except Exception:
             pass
+
+    # --------------------------------------------------------
+    # EPISODE
+    # --------------------------------------------------------
 
     if episode not in (None, "", 0):
         try:
@@ -188,28 +235,56 @@ def normalize_filters(filters=None):
 
             if 1 <= episode <= 50:
                 output["episode"] = episode
+
         except Exception:
             pass
+
+    # --------------------------------------------------------
+    # QUALITY
+    # --------------------------------------------------------
+
+    if quality:
+        quality = str(quality).strip()
+
+        if quality:
+            output["quality"] = quality
 
     return output
 
 
 def filter_label(filters=None) -> str:
+    """
+    Returns a readable label for active filters.
+    """
+
     filters = normalize_filters(filters)
 
     parts = []
 
     if filters.get("language"):
-        parts.append(str(filters["language"]))
+        parts.append(
+            str(filters["language"])
+        )
 
     if filters.get("year"):
-        parts.append(str(filters["year"]))
+        parts.append(
+            str(filters["year"])
+        )
+
+    if filters.get("quality"):
+        parts.append(
+            str(filters["quality"])
+        )
 
     if filters.get("season"):
-        parts.append(f"S{int(filters['season']):02d}")
+        parts.append(
+            f"S{int(filters['season']):02d}"
+        )
 
     if filters.get("episode"):
-        parts.append(f"E{int(filters['episode']):02d}")
+        parts.append(
+            f"E{int(filters['episode']):02d}"
+        )
 
     if not parts:
         return "All"
@@ -234,6 +309,7 @@ async def search_movies(
         year
         season
         episode
+        quality
     """
 
     try:
@@ -242,17 +318,26 @@ async def search_movies(
         if not query:
             return [], False
 
-        filters = normalize_filters(filters)
+        filters = normalize_filters(
+            filters
+        )
 
-        page = max(0, int(page))
+        page = max(
+            0,
+            int(page),
+        )
 
-        per_page = int(RESULTS_PER_PAGE or 10)
+        per_page = int(
+            RESULTS_PER_PAGE or 10
+        )
 
         if per_page <= 0:
             per_page = 10
 
         skip = page * per_page
 
+        # One extra result is requested
+        # to determine whether next page exists.
         limit = per_page + 1
 
         results = await search_media(
@@ -267,7 +352,9 @@ async def search_movies(
 
         results = list(results)
 
-        has_next = len(results) > per_page
+        has_next = (
+            len(results) > per_page
+        )
 
         if has_next:
             results = results[:per_page]
@@ -275,7 +362,10 @@ async def search_movies(
         return results, has_next
 
     except Exception:
-        logger.exception("search_movies failed")
+        logger.exception(
+            "search_movies failed"
+        )
+
         return [], False
 
 
@@ -293,7 +383,9 @@ async def advanced_search(
     If nothing is found, searches individual words.
     """
 
-    filters = normalize_filters(filters)
+    filters = normalize_filters(
+        filters
+    )
 
     results, has_next = await search_movies(
         query=query,
@@ -304,7 +396,9 @@ async def advanced_search(
     if results:
         return results, has_next
 
-    words = normalize_query(query).split()
+    words = normalize_query(
+        query
+    ).split()
 
     if not words:
         return [], False
@@ -313,6 +407,7 @@ async def advanced_search(
     seen = set()
 
     for word in words:
+
         word_results, _ = await search_movies(
             query=word,
             page=0,
@@ -320,7 +415,10 @@ async def advanced_search(
         )
 
         for result in word_results:
-            message_id = get_result_message_id(result)
+
+            message_id = get_result_message_id(
+                result
+            )
 
             if message_id is None:
                 continue
@@ -337,14 +435,20 @@ async def advanced_search(
         if len(collected) >= MAX_RESULTS:
             break
 
-    per_page = int(RESULTS_PER_PAGE or 10)
+    per_page = int(
+        RESULTS_PER_PAGE or 10
+    )
 
     start = page * per_page
     end = start + per_page
 
-    page_results = collected[start:end]
+    page_results = collected[
+        start:end
+    ]
 
-    has_next = end < len(collected)
+    has_next = (
+        end < len(collected)
+    )
 
     return page_results, has_next
 
@@ -361,7 +465,9 @@ async def search_exact_title(
     Exact-title style search.
     """
 
-    filters = normalize_filters(filters)
+    filters = normalize_filters(
+        filters
+    )
 
     results, _ = await search_movies(
         query=query,
@@ -369,12 +475,17 @@ async def search_exact_title(
         filters=filters,
     )
 
-    normalized = normalize_query(query)
+    normalized = normalize_query(
+        query
+    )
 
     exact = []
 
     for result in results:
-        title = get_result_title(result)
+
+        title = get_result_title(
+            result
+        )
 
         if normalize_query(title) == normalized:
             exact.append(result)
@@ -391,12 +502,22 @@ async def get_available_filters(
     filters: Optional[dict] = None,
 ):
     """
-    Returns only filter values that actually exist
-    for the current search.
+    Returns only filter values that actually
+    exist for the current search.
+
+    Returns:
+
+        languages
+        years
+        qualities
+        seasons
+        episodes
     """
 
     try:
-        filters = normalize_filters(filters)
+        filters = normalize_filters(
+            filters
+        )
 
         return await get_filter_options(
             query=query,
@@ -404,11 +525,14 @@ async def get_available_filters(
         )
 
     except Exception:
-        logger.exception("get_available_filters failed")
+        logger.exception(
+            "get_available_filters failed"
+        )
 
         return {
             "languages": [],
             "years": [],
+            "qualities": [],
             "seasons": [],
             "episodes": [],
         }
@@ -418,36 +542,79 @@ async def get_available_languages(
     query: str,
     filters: Optional[dict] = None,
 ):
-    options = await get_available_filters(query, filters)
+    options = await get_available_filters(
+        query,
+        filters,
+    )
 
-    return options.get("languages", [])
+    return options.get(
+        "languages",
+        [],
+    )
 
 
 async def get_available_years(
     query: str,
     filters: Optional[dict] = None,
 ):
-    options = await get_available_filters(query, filters)
+    options = await get_available_filters(
+        query,
+        filters,
+    )
 
-    return options.get("years", [])
+    return options.get(
+        "years",
+        [],
+    )
+
+
+async def get_available_qualities(
+    query: str,
+    filters: Optional[dict] = None,
+):
+    """
+    Returns available quality values.
+    """
+
+    options = await get_available_filters(
+        query,
+        filters,
+    )
+
+    return options.get(
+        "qualities",
+        [],
+    )
 
 
 async def get_available_seasons(
     query: str,
     filters: Optional[dict] = None,
 ):
-    options = await get_available_filters(query, filters)
+    options = await get_available_filters(
+        query,
+        filters,
+    )
 
-    return options.get("seasons", [])
+    return options.get(
+        "seasons",
+        [],
+    )
 
 
 async def get_available_episodes(
     query: str,
     filters: Optional[dict] = None,
 ):
-    options = await get_available_filters(query, filters)
+    options = await get_available_filters(
+        query,
+        filters,
+    )
 
-    return options.get("episodes", [])
+    return options.get(
+        "episodes",
+        [],
+    )
 
 
 # ============================================================
@@ -463,7 +630,9 @@ async def create_filtered_search_session(
     Creates a search session with filters saved.
     """
 
-    filters = normalize_filters(filters)
+    filters = normalize_filters(
+        filters
+    )
 
     return await create_search_session(
         user_id=user_id,
@@ -478,10 +647,13 @@ async def set_search_filters(
     filters: Optional[dict] = None,
 ):
     """
-    Updates filters for an existing search session.
+    Updates filters for an existing
+    search session.
     """
 
-    filters = normalize_filters(filters)
+    filters = normalize_filters(
+        filters
+    )
 
     return await update_search_session_filters(
         session_id=session_id,
@@ -514,7 +686,8 @@ async def search_session(
     page: int = 0,
 ):
     """
-    Searches using the query + filters stored in the session.
+    Searches using the query + filters
+    stored in the session.
     """
 
     session = await get_search_session(
@@ -525,7 +698,10 @@ async def search_session(
     if not session:
         return [], False, None
 
-    query = session.get("query", "")
+    query = session.get(
+        "query",
+        "",
+    )
 
     filters = normalize_filters(
         session.get("filters") or {}
@@ -537,7 +713,11 @@ async def search_session(
         filters=filters,
     )
 
-    return results, has_next, filters
+    return (
+        results,
+        has_next,
+        filters,
+    )
 
 
 # ============================================================
@@ -562,9 +742,14 @@ async def apply_language_filter(
     )
 
     if language:
-        filters["language"] = str(language).strip()
+        filters["language"] = (
+            str(language).strip()
+        )
     else:
-        filters.pop("language", None)
+        filters.pop(
+            "language",
+            None,
+        )
 
     return await set_search_filters(
         session_id,
@@ -591,15 +776,71 @@ async def apply_year_filter(
     )
 
     if year in (None, "", 0):
-        filters.pop("year", None)
+
+        filters.pop(
+            "year",
+            None,
+        )
+
     else:
+
         try:
             year = int(year)
 
             if 1960 <= year <= 2026:
                 filters["year"] = year
+
         except Exception:
             return False
+
+    return await set_search_filters(
+        session_id,
+        user_id,
+        filters,
+    )
+
+
+async def apply_quality_filter(
+    session_id: str,
+    user_id: int,
+    quality: Optional[str],
+):
+    """
+    Applies or removes the quality filter.
+    """
+
+    session = await get_search_session(
+        session_id,
+        user_id,
+    )
+
+    if not session:
+        return False
+
+    filters = normalize_filters(
+        session.get("filters") or {}
+    )
+
+    if quality:
+
+        quality = str(
+            quality
+        ).strip()
+
+        if quality:
+            filters["quality"] = quality
+        else:
+            filters.pop(
+                "quality",
+                None,
+            )
+
+    else:
+
+        filters.pop(
+            "quality",
+            None,
+        )
 
     return await set_search_filters(
         session_id,
@@ -626,17 +867,26 @@ async def apply_season_filter(
     )
 
     if season in (None, "", 0):
-        filters.pop("season", None)
+
+        filters.pop(
+            "season",
+            None,
+        )
 
         # Episode belongs to season.
-        filters.pop("episode", None)
+        filters.pop(
+            "episode",
+            None,
+        )
 
     else:
+
         try:
             season = int(season)
 
             if 1 <= season <= 20:
                 filters["season"] = season
+
         except Exception:
             return False
 
@@ -665,14 +915,20 @@ async def apply_episode_filter(
     )
 
     if episode in (None, "", 0):
-        filters.pop("episode", None)
+
+        filters.pop(
+            "episode",
+            None,
+        )
 
     else:
+
         try:
             episode = int(episode)
 
             if 1 <= episode <= 50:
                 filters["episode"] = episode
+
         except Exception:
             return False
 
@@ -704,7 +960,8 @@ async def send_database_file(
     message_id: int,
 ):
     """
-    Sends/copies the requested file from the database channel.
+    Sends/copies the requested file from
+    the database channel.
 
     The caption is:
         - bold
@@ -719,6 +976,7 @@ async def send_database_file(
     from utils.helpers import escape_html
 
     try:
+
         database_chat = await client.get_chat(
             DATABASE_CHANNEL_ID
         )
@@ -748,6 +1006,7 @@ async def send_database_file(
         # ----------------------------------------------------
 
         if not original_caption:
+
             return await client.copy_message(
                 chat_id=user_id,
                 from_chat_id=database_chat.id,
@@ -777,6 +1036,7 @@ async def send_database_file(
         return sent_message
 
     except Exception:
+
         logger.exception(
             "Failed to send database file %s to user %s",
             message_id,
@@ -806,36 +1066,46 @@ async def handle_file_deep_link(
     """
 
     from config import FREE_REQUESTS
+
     from database import (
         get_or_create_user,
         can_make_request,
         consume_request,
         restore_request,
     )
+
     from handlers.fsub import (
         check_all_fsubs,
         send_fsub_message,
     )
 
     try:
+
         if message.chat.type != "private":
             return
 
         user_id = message.from_user.id
 
         try:
-            message_id = int(message_id)
+            message_id = int(
+                message_id
+            )
+
         except Exception:
+
             await message.reply_text(
                 "❌ Invalid file link."
             )
+
             return
 
         # ----------------------------------------------------
         # USER
         # ----------------------------------------------------
 
-        await get_or_create_user(user_id)
+        await get_or_create_user(
+            user_id
+        )
 
         # ----------------------------------------------------
         # FORCE SUBSCRIBE
@@ -847,11 +1117,13 @@ async def handle_file_deep_link(
         )
 
         if not joined:
+
             await send_fsub_message(
                 client,
                 message,
                 deep_link=f"file_{message_id}",
             )
+
             return
 
         # ----------------------------------------------------
@@ -864,9 +1136,11 @@ async def handle_file_deep_link(
         )
 
         if not allowed:
+
             await message.reply_text(
                 "⚠️ You have reached your request limit."
             )
+
             return
 
         # ----------------------------------------------------
@@ -878,9 +1152,11 @@ async def handle_file_deep_link(
         )
 
         if not consumed:
+
             await message.reply_text(
                 "⚠️ Unable to process your request."
             )
+
             return
 
         # ----------------------------------------------------
@@ -888,6 +1164,7 @@ async def handle_file_deep_link(
         # ----------------------------------------------------
 
         try:
+
             sent_message = await send_database_file(
                 client,
                 user_id,
@@ -899,13 +1176,18 @@ async def handle_file_deep_link(
             # ------------------------------------------------
 
             if sent_message:
+
                 import asyncio
 
                 async def delete_later():
-                    await asyncio.sleep(300)
+
+                    await asyncio.sleep(
+                        300
+                    )
 
                     try:
                         await sent_message.delete()
+
                     except Exception:
                         pass
 
@@ -916,10 +1198,17 @@ async def handle_file_deep_link(
             return sent_message
 
         except Exception:
-            # Restore consumed request if delivery fails.
+
+            # Restore consumed request
+            # if delivery fails.
             try:
-                await restore_request(user_id)
+
+                await restore_request(
+                    user_id
+                )
+
             except Exception:
+
                 logger.exception(
                     "Failed restoring request for user %s",
                     user_id,
@@ -930,6 +1219,7 @@ async def handle_file_deep_link(
             )
 
     except Exception:
+
         logger.exception(
             "handle_file_deep_link failed"
         )
@@ -954,19 +1244,23 @@ async def handle_sendall_deep_link(
     """
 
     from config import FREE_REQUESTS
+
     from database import (
         get_or_create_user,
         can_make_request,
         consume_request,
         restore_request,
     )
+
     from handlers.fsub import (
         check_all_fsubs,
         send_fsub_message,
     )
+
     from utils.buttons import file_sent_buttons
 
     try:
+
         if message.chat.type != "private":
             return
 
@@ -974,6 +1268,7 @@ async def handle_sendall_deep_link(
 
         try:
             page = int(page)
+
         except Exception:
             page = 0
 
@@ -988,16 +1283,20 @@ async def handle_sendall_deep_link(
         )
 
         if not results:
+
             await message.reply_text(
                 "❌ Search results expired or no files were found."
             )
+
             return
 
         # ----------------------------------------------------
         # USER
         # ----------------------------------------------------
 
-        await get_or_create_user(user_id)
+        await get_or_create_user(
+            user_id
+        )
 
         # ----------------------------------------------------
         # FORCE SUBSCRIBE
@@ -1009,11 +1308,15 @@ async def handle_sendall_deep_link(
         )
 
         if not joined:
+
             await send_fsub_message(
                 client,
                 message,
-                deep_link=f"sendall_{session_id}_{page}",
+                deep_link=(
+                    f"sendall_{session_id}_{page}"
+                ),
             )
+
             return
 
         # ----------------------------------------------------
@@ -1026,9 +1329,11 @@ async def handle_sendall_deep_link(
         )
 
         if not allowed:
+
             await message.reply_text(
                 "⚠️ You have reached your request limit."
             )
+
             return
 
         # ----------------------------------------------------
@@ -1063,6 +1368,7 @@ async def handle_sendall_deep_link(
                 break
 
             try:
+
                 await send_database_file(
                     client,
                     user_id,
@@ -1072,17 +1378,22 @@ async def handle_sendall_deep_link(
                 sent_count += 1
 
             except Exception:
+
                 try:
+
                     await restore_request(
                         user_id
                     )
+
                 except Exception:
                     pass
 
         if sent_count == 0:
+
             await message.reply_text(
                 "❌ No files could be sent."
             )
+
             return
 
         await message.reply_text(
@@ -1091,6 +1402,7 @@ async def handle_sendall_deep_link(
         )
 
     except Exception:
+
         logger.exception(
             "handle_sendall_deep_link failed"
         )
@@ -1122,14 +1434,20 @@ async def filtered_search(
     year: Optional[int] = None,
     season: Optional[int] = None,
     episode: Optional[int] = None,
+    quality: Optional[str] = None,
     page: int = 0,
 ):
+    """
+    Search using all supported filters.
+    """
+
     filters = normalize_filters(
         {
             "language": language,
             "year": year,
             "season": season,
             "episode": episode,
+            "quality": quality,
         }
     )
 
@@ -1212,6 +1530,7 @@ __all__ = [
     "get_available_filters",
     "get_available_languages",
     "get_available_years",
+    "get_available_qualities",
     "get_available_seasons",
     "get_available_episodes",
 
@@ -1222,6 +1541,7 @@ __all__ = [
 
     "apply_language_filter",
     "apply_year_filter",
+    "apply_quality_filter",
     "apply_season_filter",
     "apply_episode_filter",
     "clear_all_filters",
