@@ -115,12 +115,6 @@ def get_media_information(message):
 
     # --------------------------------------------------------
     # Metadata source
-    #
-    # Use filename first because filenames usually contain
-    # language/year/season/episode information.
-    #
-    # Caption is also included so metadata can be detected
-    # when it exists only in the caption.
     # --------------------------------------------------------
 
     metadata_source = ""
@@ -280,31 +274,93 @@ async def index_message(message):
 
 
 # ============================================================
+# HANDLE DATABASE CHANNEL POST
+# ============================================================
+
+async def handle_database_post(client, message):
+    """
+    Handle a new post from the database channel.
+
+    This function is also imported by bot.py, so keep this
+    exact function name.
+    """
+
+    try:
+
+        if not message:
+            return
+
+        if not message.chat:
+            return
+
+        # ----------------------------------------------------
+        # Only process the configured database channel
+        # ----------------------------------------------------
+
+        if message.chat.id != DATABASE_CHANNEL_ID:
+            return
+
+        # ----------------------------------------------------
+        # Ignore non-media messages
+        # ----------------------------------------------------
+
+        if not is_media_message(message):
+            return
+
+        # ----------------------------------------------------
+        # Index the message
+        # ----------------------------------------------------
+
+        success = await index_message(message)
+
+        if success:
+            logger.info(
+                "Database post indexed successfully: %s",
+                message.id
+            )
+        else:
+            logger.warning(
+                "Database post was not indexed: %s",
+                message.id
+            )
+
+    except FloodWait as e:
+
+        logger.warning(
+            "FloodWait while processing database post: %s seconds",
+            e.value
+        )
+
+        await asyncio.sleep(e.value)
+
+    except RPCError as e:
+
+        logger.error(
+            "Telegram RPC error while processing database post %s: %s",
+            getattr(message, "id", None),
+            e,
+        )
+
+    except Exception as e:
+
+        logger.exception(
+            "Error processing database post %s: %s",
+            getattr(message, "id", None),
+            e,
+        )
+
+
+# ============================================================
 # INDEX NEW DATABASE CHANNEL POSTS
 # ============================================================
 
 @indexer_client.on_message()
 async def new_database_message(client, message):
 
-    try:
-
-        if not message.chat:
-            return
-
-        if message.chat.id != DATABASE_CHANNEL_ID:
-            return
-
-        if not is_media_message(message):
-            return
-
-        await index_message(message)
-
-    except Exception as e:
-
-        logger.exception(
-            "Error processing new database channel message: %s",
-            e
-        )
+    await handle_database_post(
+        client,
+        message
+    )
 
 
 # ============================================================
@@ -400,6 +456,12 @@ async def start_indexer():
         "Starting database channel indexer..."
     )
 
+    if indexer_client.is_connected:
+        logger.info(
+            "Indexer is already connected."
+        )
+        return
+
     await indexer_client.start()
 
     logger.info(
@@ -421,6 +483,7 @@ async def stop_indexer():
     try:
 
         if indexer_client.is_connected:
+
             await indexer_client.stop()
 
             logger.info(
