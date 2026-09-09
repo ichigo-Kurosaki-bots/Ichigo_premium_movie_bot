@@ -12,24 +12,32 @@ from pyrogram.types import (
 # SEARCH RESULT BUTTONS
 # ============================================================
 
-# ============================================================
-# SEARCH RESULT BUTTONS
-# ============================================================
-
 def search_result_buttons(
     results,
     session_id,
     page=0,
     has_next=False,
     bot_username=None,
+    total_pages=None,
 ):
     buttons = []
+
+    # --------------------------------------------------------
+    # SUPPORT total_pages FROM handlers/search.py
+    # --------------------------------------------------------
+
+    if total_pages is not None:
+        try:
+            has_next = int(page) + 1 < int(total_pages)
+        except Exception:
+            pass
 
     # --------------------------------------------------------
     # MOVIE / FILE BUTTONS
     # --------------------------------------------------------
 
     for result in results:
+
         message_id = (
             result.get("message_id")
             or result.get("telegram_message_id")
@@ -52,8 +60,15 @@ def search_result_buttons(
         if len(title) > 55:
             title = title[:52] + "..."
 
+        # ----------------------------------------------------
+        # DEEP LINK
+        # ----------------------------------------------------
+
         if bot_username:
-            username = str(bot_username).lstrip("@")
+
+            username = str(
+                bot_username
+            ).lstrip("@")
 
             url = (
                 f"https://t.me/{username}"
@@ -68,10 +83,13 @@ def search_result_buttons(
             ])
 
         else:
+
             buttons.append([
                 InlineKeyboardButton(
                     f"›› {title}",
-                    callback_data=f"file_{int(message_id)}",
+                    callback_data=(
+                        f"file_{int(message_id)}"
+                    ),
                 )
             ])
 
@@ -82,7 +100,10 @@ def search_result_buttons(
     if results:
 
         if bot_username:
-            username = str(bot_username).lstrip("@")
+
+            username = str(
+                bot_username
+            ).lstrip("@")
 
             sendall_url = (
                 f"https://t.me/{username}"
@@ -95,52 +116,65 @@ def search_result_buttons(
             )
 
         else:
+
             send_all_button = InlineKeyboardButton(
                 "Sᴇɴᴅ Aʟʟ",
-                callback_data=f"sendall_{session_id}_{page}",
+                callback_data=(
+                    f"sendall_{session_id}_{page}"
+                ),
             )
 
     else:
+
         send_all_button = None
 
     # --------------------------------------------------------
     # DIRECT FILTER BUTTONS
     #
-    # Layout:
-    #
     # SEND ALL | LANGUAGES | YEARS
-    # QUALITY  | EPISODES  | SEASONS
+    # QUALITY   | EPISODES  | SEASONS
     # --------------------------------------------------------
 
     if send_all_button:
+
         buttons.append([
             send_all_button,
 
             InlineKeyboardButton(
                 "Lᴀɴɢᴜᴀɢᴇs",
-                callback_data=f"filter_lang_{session_id}_{page}",
+                callback_data=(
+                    f"filter_lang_{session_id}_{page}"
+                ),
             ),
 
             InlineKeyboardButton(
                 "Yᴇᴀʀs",
-                callback_data=f"filter_year_{session_id}_{page}",
+                callback_data=(
+                    f"filter_year_{session_id}_{page}"
+                ),
             ),
         ])
 
         buttons.append([
             InlineKeyboardButton(
                 "Qᴜᴀʟɪᴛʏ",
-                callback_data=f"filter_quality_{session_id}_{page}",
+                callback_data=(
+                    f"filter_quality_{session_id}_{page}"
+                ),
             ),
 
             InlineKeyboardButton(
                 "Eᴘɪsᴏᴅᴇs",
-                callback_data=f"filter_episode_{session_id}_{page}",
+                callback_data=(
+                    f"filter_episode_{session_id}_{page}"
+                ),
             ),
 
             InlineKeyboardButton(
                 "Sᴇᴀsᴏɴs",
-                callback_data=f"filter_season_{session_id}_{page}",
+                callback_data=(
+                    f"filter_season_{session_id}_{page}"
+                ),
             ),
         ])
 
@@ -151,18 +185,24 @@ def search_result_buttons(
     navigation = []
 
     if page > 0:
+
         navigation.append(
             InlineKeyboardButton(
                 "‹ ʙᴀᴄᴋ",
-                callback_data=f"page_{session_id}_{page - 1}",
+                callback_data=(
+                    f"page_{session_id}_{page - 1}"
+                ),
             )
         )
 
     if has_next:
+
         navigation.append(
             InlineKeyboardButton(
                 "ɴᴇxᴛ ›",
-                callback_data=f"page_{session_id}_{page + 1}",
+                callback_data=(
+                    f"page_{session_id}_{page + 1}"
+                ),
             )
         )
 
@@ -183,65 +223,131 @@ def filter_menu_buttons(
 ):
     available = available or {}
 
-    languages = available.get("languages", [])
-    years = available.get("years", [])
-    qualities = available.get("qualities", [])
-    seasons = available.get("seasons", [])
-    episodes = available.get("episodes", [])
+    languages = available.get(
+        "languages",
+        [],
+    )
+
+    years = available.get(
+        "years",
+        [],
+    )
+
+    qualities = available.get(
+        "qualities",
+        [],
+    )
+
+    seasons = available.get(
+        "seasons",
+        [],
+    )
+
+    episodes = available.get(
+        "episodes",
+        [],
+    )
 
     buttons = []
 
+    # --------------------------------------------------------
+    # LANGUAGE
+    # --------------------------------------------------------
+
     if languages:
+
         buttons.append([
             InlineKeyboardButton(
                 "🌐 Lᴀɴɢᴜᴀɢᴇ",
-                callback_data=f"filter_lang_{session_id}_{page}",
+                callback_data=(
+                    f"filter_lang_{session_id}_{page}"
+                ),
             )
         ])
 
+    # --------------------------------------------------------
+    # YEAR
+    # --------------------------------------------------------
+
     if years:
+
         buttons.append([
             InlineKeyboardButton(
                 "📅 Yᴇᴀʀ",
-                callback_data=f"filter_year_{session_id}_{page}",
+                callback_data=(
+                    f"filter_year_{session_id}_{page}"
+                ),
             )
         ])
 
+    # --------------------------------------------------------
+    # QUALITY
+    # --------------------------------------------------------
+
     if qualities:
+
         buttons.append([
             InlineKeyboardButton(
                 "🎞 Qᴜᴀʟɪᴛʏ",
-                callback_data=f"filter_quality_{session_id}_{page}",
+                callback_data=(
+                    f"filter_quality_{session_id}_{page}"
+                ),
             )
         ])
 
+    # --------------------------------------------------------
+    # EPISODE
+    # --------------------------------------------------------
+
     if episodes:
+
         buttons.append([
             InlineKeyboardButton(
                 "🎬 Eᴘɪsᴏᴅᴇ",
-                callback_data=f"filter_episode_{session_id}_{page}",
+                callback_data=(
+                    f"filter_episode_{session_id}_{page}"
+                ),
             )
         ])
 
+    # --------------------------------------------------------
+    # SEASON
+    # --------------------------------------------------------
+
     if seasons:
+
         buttons.append([
             InlineKeyboardButton(
                 "📺 Sᴇᴀsᴏɴ",
-                callback_data=f"filter_season_{session_id}_{page}",
+                callback_data=(
+                    f"filter_season_{session_id}_{page}"
+                ),
             )
         ])
+
+    # --------------------------------------------------------
+    # CLEAR ALL
+    # --------------------------------------------------------
 
     buttons.append([
         InlineKeyboardButton(
             "✖️ Cʟᴇᴀʀ Fɪʟᴛᴇʀs",
-            callback_data=f"filter_clear_{session_id}_{page}",
+            callback_data=(
+                f"filter_clear_{session_id}_{page}"
+            ),
         )
     ])
+
+    # --------------------------------------------------------
+    # BACK
+    # --------------------------------------------------------
 
     buttons.append([
         InlineKeyboardButton(
             "‹ Bᴀᴄᴋ",
-            callback_data=f"filter_back_{session_id}_{page}",
+            callback_data=(
+                f"filter_back_{session_id}_{page}"
+            ),
         )
     ])
 
@@ -259,12 +365,16 @@ def language_filter_buttons(
     current_language=None,
 ):
     buttons = []
+
     languages = languages or []
 
     row = []
 
     for language in languages:
-        language = str(language).strip()
+
+        language = str(
+            language
+        ).strip()
 
         if not language:
             continue
@@ -272,40 +382,60 @@ def language_filter_buttons(
         text = (
             f"✓ {language}"
             if current_language
-            and str(current_language).lower() == language.lower()
+            and str(current_language).lower()
+            == language.lower()
             else language
         )
 
-        # Keep callback compact.
         callback_value = language[:25]
 
         row.append(
             InlineKeyboardButton(
                 text,
                 callback_data=(
-                    f"setlang_{session_id}_{page}_{callback_value}"
+                    f"setlang_"
+                    f"{session_id}_"
+                    f"{page}_"
+                    f"{callback_value}"
                 ),
             )
         )
 
         if len(row) == 2:
+
             buttons.append(row)
             row = []
 
     if row:
         buttons.append(row)
 
+    # --------------------------------------------------------
+    # CLEAR
+    # --------------------------------------------------------
+
     buttons.append([
         InlineKeyboardButton(
             "✖️ Clear Language",
-            callback_data=f"setlang_{session_id}_{page}_clear",
+            callback_data=(
+                f"setlang_"
+                f"{session_id}_"
+                f"{page}_clear"
+            ),
         )
     ])
+
+    # --------------------------------------------------------
+    # BACK
+    # --------------------------------------------------------
 
     buttons.append([
         InlineKeyboardButton(
             "‹ Bᴀᴄᴋ",
-            callback_data=f"filters_{session_id}_{page}",
+            callback_data=(
+                f"filter_back_"
+                f"{session_id}_"
+                f"{page}"
+            ),
         )
     ])
 
@@ -323,13 +453,19 @@ def year_filter_buttons(
     current_year=None,
 ):
     buttons = []
+
     years = years or []
 
     try:
+
         years = sorted(
-            {int(year) for year in years},
+            {
+                int(year)
+                for year in years
+            },
             reverse=True,
         )
+
     except Exception:
         pass
 
@@ -337,43 +473,79 @@ def year_filter_buttons(
 
     for year in years:
 
-        if not 1960 <= int(year) <= 2026:
+        try:
+            year_int = int(year)
+        except Exception:
             continue
 
+        if not 1960 <= year_int <= 2026:
+            continue
+
+        try:
+
+            is_current = (
+                current_year is not None
+                and int(current_year)
+                == year_int
+            )
+
+        except Exception:
+
+            is_current = False
+
         text = (
-            f"✓ {year}"
-            if current_year is not None
-            and int(current_year) == int(year)
-            else str(year)
+            f"✓ {year_int}"
+            if is_current
+            else str(year_int)
         )
 
         row.append(
             InlineKeyboardButton(
                 text,
                 callback_data=(
-                    f"setyear_{session_id}_{page}_{int(year)}"
+                    f"setyear_"
+                    f"{session_id}_"
+                    f"{page}_"
+                    f"{year_int}"
                 ),
             )
         )
 
         if len(row) == 3:
+
             buttons.append(row)
             row = []
 
     if row:
         buttons.append(row)
 
+    # --------------------------------------------------------
+    # CLEAR
+    # --------------------------------------------------------
+
     buttons.append([
         InlineKeyboardButton(
             "✖️ Clear Year",
-            callback_data=f"setyear_{session_id}_{page}_clear",
+            callback_data=(
+                f"setyear_"
+                f"{session_id}_"
+                f"{page}_clear"
+            ),
         )
     ])
+
+    # --------------------------------------------------------
+    # BACK
+    # --------------------------------------------------------
 
     buttons.append([
         InlineKeyboardButton(
             "‹ Bᴀᴄᴋ",
-            callback_data=f"filters_{session_id}_{page}",
+            callback_data=(
+                f"filter_back_"
+                f"{session_id}_"
+                f"{page}"
+            ),
         )
     ])
 
@@ -391,54 +563,85 @@ def quality_filter_buttons(
     current_quality=None,
 ):
     buttons = []
+
     qualities = qualities or []
 
     row = []
 
     for quality in qualities:
 
-        quality = str(quality).strip()
+        quality = str(
+            quality
+        ).strip()
 
         if not quality:
             continue
 
+        is_current = (
+            current_quality
+            and str(current_quality).lower()
+            == quality.lower()
+        )
+
         text = (
             f"✓ {quality}"
-            if current_quality
-            and str(current_quality).lower() == quality.lower()
+            if is_current
             else quality
         )
 
-        # Keep callback data short.
+        # ----------------------------------------------------
+        # Telegram callback data must stay compact.
+        # ----------------------------------------------------
+
         value = quality[:20]
 
         row.append(
             InlineKeyboardButton(
                 text,
                 callback_data=(
-                    f"setquality_{session_id}_{page}_{value}"
+                    f"setquality_"
+                    f"{session_id}_"
+                    f"{page}_"
+                    f"{value}"
                 ),
             )
         )
 
         if len(row) == 2:
+
             buttons.append(row)
             row = []
 
     if row:
         buttons.append(row)
 
+    # --------------------------------------------------------
+    # CLEAR QUALITY
+    # --------------------------------------------------------
+
     buttons.append([
         InlineKeyboardButton(
             "✖️ Clear Quality",
-            callback_data=f"setquality_{session_id}_{page}_clear",
+            callback_data=(
+                f"setquality_"
+                f"{session_id}_"
+                f"{page}_clear"
+            ),
         )
     ])
+
+    # --------------------------------------------------------
+    # BACK
+    # --------------------------------------------------------
 
     buttons.append([
         InlineKeyboardButton(
             "‹ Bᴀᴄᴋ",
-            callback_data=f"filters_{session_id}_{page}",
+            callback_data=(
+                f"filter_back_"
+                f"{session_id}_"
+                f"{page}"
+            ),
         )
     ])
 
@@ -456,12 +659,18 @@ def season_filter_buttons(
     current_season=None,
 ):
     buttons = []
+
     seasons = seasons or []
 
     try:
+
         seasons = sorted(
-            {int(season) for season in seasons}
+            {
+                int(season)
+                for season in seasons
+            }
         )
+
     except Exception:
         pass
 
@@ -469,43 +678,79 @@ def season_filter_buttons(
 
     for season in seasons:
 
-        if not 1 <= int(season) <= 20:
+        try:
+            season_int = int(season)
+        except Exception:
             continue
 
+        if not 1 <= season_int <= 20:
+            continue
+
+        try:
+
+            is_current = (
+                current_season is not None
+                and int(current_season)
+                == season_int
+            )
+
+        except Exception:
+
+            is_current = False
+
         text = (
-            f"✓ S{int(season):02d}"
-            if current_season is not None
-            and int(current_season) == int(season)
-            else f"S{int(season):02d}"
+            f"✓ S{season_int:02d}"
+            if is_current
+            else f"S{season_int:02d}"
         )
 
         row.append(
             InlineKeyboardButton(
                 text,
                 callback_data=(
-                    f"setseason_{session_id}_{page}_{int(season)}"
+                    f"setseason_"
+                    f"{session_id}_"
+                    f"{page}_"
+                    f"{season_int}"
                 ),
             )
         )
 
         if len(row) == 4:
+
             buttons.append(row)
             row = []
 
     if row:
         buttons.append(row)
 
+    # --------------------------------------------------------
+    # CLEAR
+    # --------------------------------------------------------
+
     buttons.append([
         InlineKeyboardButton(
             "✖️ Clear Season",
-            callback_data=f"setseason_{session_id}_{page}_clear",
+            callback_data=(
+                f"setseason_"
+                f"{session_id}_"
+                f"{page}_clear"
+            ),
         )
     ])
+
+    # --------------------------------------------------------
+    # BACK
+    # --------------------------------------------------------
 
     buttons.append([
         InlineKeyboardButton(
             "‹ Bᴀᴄᴋ",
-            callback_data=f"filters_{session_id}_{page}",
+            callback_data=(
+                f"filter_back_"
+                f"{session_id}_"
+                f"{page}"
+            ),
         )
     ])
 
@@ -523,12 +768,18 @@ def episode_filter_buttons(
     current_episode=None,
 ):
     buttons = []
+
     episodes = episodes or []
 
     try:
+
         episodes = sorted(
-            {int(episode) for episode in episodes}
+            {
+                int(episode)
+                for episode in episodes
+            }
         )
+
     except Exception:
         pass
 
@@ -536,43 +787,79 @@ def episode_filter_buttons(
 
     for episode in episodes:
 
-        if not 1 <= int(episode) <= 50:
+        try:
+            episode_int = int(episode)
+        except Exception:
             continue
 
+        if not 1 <= episode_int <= 50:
+            continue
+
+        try:
+
+            is_current = (
+                current_episode is not None
+                and int(current_episode)
+                == episode_int
+            )
+
+        except Exception:
+
+            is_current = False
+
         text = (
-            f"✓ E{int(episode):02d}"
-            if current_episode is not None
-            and int(current_episode) == int(episode)
-            else f"E{int(episode):02d}"
+            f"✓ E{episode_int:02d}"
+            if is_current
+            else f"E{episode_int:02d}"
         )
 
         row.append(
             InlineKeyboardButton(
                 text,
                 callback_data=(
-                    f"setepisode_{session_id}_{page}_{int(episode)}"
+                    f"setepisode_"
+                    f"{session_id}_"
+                    f"{page}_"
+                    f"{episode_int}"
                 ),
             )
         )
 
         if len(row) == 5:
+
             buttons.append(row)
             row = []
 
     if row:
         buttons.append(row)
 
+    # --------------------------------------------------------
+    # CLEAR
+    # --------------------------------------------------------
+
     buttons.append([
         InlineKeyboardButton(
             "✖️ Clear Episode",
-            callback_data=f"setepisode_{session_id}_{page}_clear",
+            callback_data=(
+                f"setepisode_"
+                f"{session_id}_"
+                f"{page}_clear"
+            ),
         )
     ])
+
+    # --------------------------------------------------------
+    # BACK
+    # --------------------------------------------------------
 
     buttons.append([
         InlineKeyboardButton(
             "‹ Bᴀᴄᴋ",
-            callback_data=f"filters_{session_id}_{page}",
+            callback_data=(
+                f"filter_back_"
+                f"{session_id}_"
+                f"{page}"
+            ),
         )
     ])
 
@@ -592,63 +879,118 @@ def active_filter_buttons(
 
     buttons = []
 
-    language = filters.get("language")
-    year = filters.get("year")
-    quality = filters.get("quality")
-    season = filters.get("season")
-    episode = filters.get("episode")
+    language = filters.get(
+        "language"
+    )
+
+    year = filters.get(
+        "year"
+    )
+
+    quality = filters.get(
+        "quality"
+    )
+
+    season = filters.get(
+        "season"
+    )
+
+    episode = filters.get(
+        "episode"
+    )
 
     if language:
+
         buttons.append([
             InlineKeyboardButton(
                 f"🌐 {language}",
-                callback_data=f"setlang_{session_id}_{page}_clear",
+                callback_data=(
+                    f"setlang_"
+                    f"{session_id}_"
+                    f"{page}_clear"
+                ),
             )
         ])
 
     if year:
+
         buttons.append([
             InlineKeyboardButton(
                 f"📅 {year}",
-                callback_data=f"setyear_{session_id}_{page}_clear",
+                callback_data=(
+                    f"setyear_"
+                    f"{session_id}_"
+                    f"{page}_clear"
+                ),
             )
         ])
 
     if quality:
+
         buttons.append([
             InlineKeyboardButton(
                 f"🎞 {quality}",
-                callback_data=f"setquality_{session_id}_{page}_clear",
+                callback_data=(
+                    f"setquality_"
+                    f"{session_id}_"
+                    f"{page}_clear"
+                ),
             )
         ])
 
     if season:
+
         buttons.append([
             InlineKeyboardButton(
                 f"📺 S{int(season):02d}",
-                callback_data=f"setseason_{session_id}_{page}_clear",
+                callback_data=(
+                    f"setseason_"
+                    f"{session_id}_"
+                    f"{page}_clear"
+                ),
             )
         ])
 
     if episode:
+
         buttons.append([
             InlineKeyboardButton(
                 f"🎬 E{int(episode):02d}",
-                callback_data=f"setepisode_{session_id}_{page}_clear",
+                callback_data=(
+                    f"setepisode_"
+                    f"{session_id}_"
+                    f"{page}_clear"
+                ),
             )
         ])
+
+    # --------------------------------------------------------
+    # CLEAR ALL
+    # --------------------------------------------------------
 
     buttons.append([
         InlineKeyboardButton(
             "✖️ Cʟᴇᴀʀ Aʟʟ",
-            callback_data=f"filter_clear_{session_id}_{page}",
+            callback_data=(
+                f"filter_clear_"
+                f"{session_id}_"
+                f"{page}"
+            ),
         )
     ])
+
+    # --------------------------------------------------------
+    # BACK
+    # --------------------------------------------------------
 
     buttons.append([
         InlineKeyboardButton(
             "‹ Bᴀᴄᴋ",
-            callback_data=f"filter_back_{session_id}_{page}",
+            callback_data=(
+                f"filter_back_"
+                f"{session_id}_"
+                f"{page}"
+            ),
         )
     ])
 
@@ -660,6 +1002,7 @@ def active_filter_buttons(
 # ============================================================
 
 def premium_buttons():
+
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
@@ -681,31 +1024,35 @@ def premium_buttons():
         ],
     ])
 
+
 # ============================================================
-# PREMIUM PLAN CONFIRM BUTTONS
+# PREMIUM PLAN CONFIRM
 # ============================================================
 
 def plan_confirm_buttons(amount):
+
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
                 "💳 Pᴀʏ Nᴏᴡ",
-                callback_data=f"pay_{amount}"
+                callback_data=f"pay_{amount}",
             )
         ],
         [
             InlineKeyboardButton(
                 "‹ Bᴀᴄᴋ Tᴏ Pʟᴀɴs",
-                callback_data="premium"
+                callback_data="premium",
             )
-        ]
+        ],
     ])
+
 
 # ============================================================
 # FILE SENT BUTTONS
 # ============================================================
 
 def file_sent_buttons():
+
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
@@ -724,15 +1071,22 @@ def open_bot_button(
     bot_username,
     start_parameter=None,
 ):
-    username = str(bot_username).lstrip("@")
+    username = str(
+        bot_username
+    ).lstrip("@")
 
     if start_parameter:
+
         url = (
             f"https://t.me/{username}"
             f"?start={start_parameter}"
         )
+
     else:
-        url = f"https://t.me/{username}"
+
+        url = (
+            f"https://t.me/{username}"
+        )
 
     return InlineKeyboardMarkup([
         [
@@ -752,15 +1106,22 @@ def open_bot_close_buttons(
     bot_username,
     start_parameter=None,
 ):
-    username = str(bot_username).lstrip("@")
+    username = str(
+        bot_username
+    ).lstrip("@")
 
     if start_parameter:
+
         url = (
             f"https://t.me/{username}"
             f"?start={start_parameter}"
         )
+
     else:
-        url = f"https://t.me/{username}"
+
+        url = (
+            f"https://t.me/{username}"
+        )
 
     return InlineKeyboardMarkup([
         [
@@ -783,6 +1144,7 @@ def open_bot_close_buttons(
 # ============================================================
 
 def close_button():
+
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
@@ -797,7 +1159,10 @@ def close_button():
 # BACK BUTTON
 # ============================================================
 
-def back_button(callback_data="close"):
+def back_button(
+    callback_data="close",
+):
+
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
@@ -807,11 +1172,13 @@ def back_button(callback_data="close"):
         ]
     ])
 
+
 # ============================================================
 # ACCOUNT BUTTONS
 # ============================================================
 
 def account_buttons():
+
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
@@ -833,11 +1200,13 @@ def account_buttons():
         ],
     ])
 
+
 # ============================================================
 # HELP BUTTONS
 # ============================================================
 
 def help_buttons():
+
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
@@ -865,11 +1234,13 @@ def help_buttons():
         ],
     ])
 
+
 # ============================================================
 # HOME BUTTONS
 # ============================================================
 
 def home_buttons():
+
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
@@ -891,7 +1262,7 @@ def home_buttons():
 
 
 # ============================================================
-# FORCE SUB BUTTONS
+# FORCE SUB CHANNEL BUTTON
 # ============================================================
 
 def fsub_channel_button(
@@ -904,16 +1275,27 @@ def fsub_channel_button(
     )
 
 
+# ============================================================
+# FORCE SUB TRY AGAIN
+# ============================================================
+
 def fsub_try_again_button(
     deep_link,
 ):
     return InlineKeyboardButton(
         "• Tʀʏ Aɢᴀɪɴ •",
-        callback_data=f"fsub_check_{deep_link}",
+        callback_data=(
+            f"fsub_check_{deep_link}"
+        ),
     )
 
 
+# ============================================================
+# FORCE SUB CLOSE
+# ============================================================
+
 def fsub_close_button():
+
     return InlineKeyboardButton(
         "• Cʟᴏsᴇ •",
         callback_data="fsub_close",
@@ -933,7 +1315,12 @@ def force_sub_buttons(
     channels = channels or []
 
     for channel in channels:
-        if isinstance(channel, dict):
+
+        if isinstance(
+            channel,
+            dict,
+        ):
+
             name = (
                 channel.get("name")
                 or channel.get("title")
@@ -948,6 +1335,7 @@ def force_sub_buttons(
             )
 
             if url:
+
                 buttons.append([
                     fsub_channel_button(
                         name,
@@ -955,8 +1343,13 @@ def force_sub_buttons(
                     )
                 ])
 
-        elif isinstance(channel, (list, tuple)):
+        elif isinstance(
+            channel,
+            (list, tuple),
+        ):
+
             if len(channel) >= 2:
+
                 buttons.append([
                     fsub_channel_button(
                         str(channel[0]),
@@ -965,6 +1358,7 @@ def force_sub_buttons(
                 ])
 
     if deep_link:
+
         buttons.append([
             fsub_try_again_button(
                 deep_link
@@ -988,14 +1382,18 @@ def pagination_buttons(
     has_next=False,
 ):
     buttons = []
+
     row = []
 
     if page > 0:
+
         row.append(
             InlineKeyboardButton(
                 "‹",
                 callback_data=(
-                    f"page_{session_id}_{page - 1}"
+                    f"page_"
+                    f"{session_id}_"
+                    f"{page - 1}"
                 ),
             )
         )
@@ -1008,11 +1406,14 @@ def pagination_buttons(
     )
 
     if has_next:
+
         row.append(
             InlineKeyboardButton(
                 "›",
                 callback_data=(
-                    f"page_{session_id}_{page + 1}"
+                    f"page_"
+                    f"{session_id}_"
+                    f"{page + 1}"
                 ),
             )
         )
@@ -1036,21 +1437,27 @@ def filter_page_buttons(
     row = []
 
     if page > 0:
+
         row.append(
             InlineKeyboardButton(
                 "‹",
                 callback_data=(
-                    f"page_{session_id}_{page - 1}"
+                    f"page_"
+                    f"{session_id}_"
+                    f"{page - 1}"
                 ),
             )
         )
 
     if has_next:
+
         row.append(
             InlineKeyboardButton(
                 "›",
                 callback_data=(
-                    f"page_{session_id}_{page + 1}"
+                    f"page_"
+                    f"{session_id}_"
+                    f"{page + 1}"
                 ),
             )
         )
@@ -1062,7 +1469,8 @@ def filter_page_buttons(
         InlineKeyboardButton(
             "• Fɪʟᴛᴇʀs •",
             callback_data=(
-                f"filters_{session_id}_{page}"
+                f"filter_menu_"
+                f"{session_id}"
             ),
         )
     ])
@@ -1080,12 +1488,17 @@ def no_results_buttons(
     buttons = []
 
     if bot_username:
-        username = str(bot_username).lstrip("@")
+
+        username = str(
+            bot_username
+        ).lstrip("@")
 
         buttons.append([
             InlineKeyboardButton(
-                "• Sᴇᴀʀᴄh Aɢᴀɪɴ •",
-                url=f"https://t.me/{username}",
+                "• Sᴇᴀʀᴄʜ Aɢᴀɪɴ •",
+                url=(
+                    f"https://t.me/{username}"
+                ),
             )
         ])
 
@@ -1103,7 +1516,10 @@ def no_results_buttons(
 # CALLBACK-SAFE BUTTON
 # ============================================================
 
-def noop_button(text="•"):
+def noop_button(
+    text="•",
+):
+
     return InlineKeyboardButton(
         text,
         callback_data="noop",
