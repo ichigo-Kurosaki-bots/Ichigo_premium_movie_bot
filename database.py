@@ -57,7 +57,6 @@ async def init_database():
         serverSelectionTimeoutMS=10000
     )
 
-    # Test MongoDB connection.
     await mongo_client.admin.command("ping")
 
     db = mongo_client[DB_NAME]
@@ -116,6 +115,23 @@ async def init_database():
         "search_key"
     )
 
+    # FILTER INDEXES
+    await media_collection.create_index(
+        "language"
+    )
+
+    await media_collection.create_index(
+        "year"
+    )
+
+    await media_collection.create_index(
+        "season"
+    )
+
+    await media_collection.create_index(
+        "episode"
+    )
+
     await media_collection.create_index(
         [
             ("channel_id", 1),
@@ -137,13 +153,6 @@ async def init_database():
         "user_id"
     )
 
-    logger.info(
-        "MongoDB connected successfully."
-    )
-
-    logger.info(
-        "MongoDB indexes ready."
-    )
     # --------------------------------------------------------
     # REDEEM CODE INDEX
     # --------------------------------------------------------
@@ -160,6 +169,14 @@ async def init_database():
     await banned_users_collection.create_index(
         "user_id",
         unique=True
+    )
+
+    logger.info(
+        "MongoDB connected successfully."
+    )
+
+    logger.info(
+        "MongoDB indexes ready."
     )
 
 
@@ -191,6 +208,7 @@ async def create_user(
     first_name="",
     username=""
 ):
+
     now = datetime.utcnow()
 
     first_name = first_name or ""
@@ -227,7 +245,7 @@ async def create_user(
     )
 
     return await get_user(user_id)
-    
+
 
 async def get_user(user_id):
 
@@ -255,15 +273,14 @@ async def update_user(
         update["username"] = username
 
     await users_collection.update_one(
-
         {
             "user_id": user_id
         },
-
         {
             "$set": update
         }
     )
+
 
 # ============================================================
 # TOKEN SYSTEM
@@ -318,10 +335,6 @@ async def claim_daily_tokens(user_id):
         "last_token_claim"
     )
 
-    # --------------------------------------------------------
-    # CHECK IF ALREADY CLAIMED TODAY
-    # --------------------------------------------------------
-
     if last_claim:
 
         if last_claim.date() == now.date():
@@ -336,10 +349,6 @@ async def claim_daily_tokens(user_id):
                     ) or 0
                 )
             }
-
-    # --------------------------------------------------------
-    # GIVE 5 TOKENS
-    # --------------------------------------------------------
 
     result = await users_collection.find_one_and_update(
 
@@ -383,7 +392,6 @@ async def claim_daily_tokens(user_id):
 
     if not result:
 
-        # Check current balance so the UI can still show it.
         current = await get_token_balance(
             user_id
         )
@@ -484,6 +492,7 @@ async def redeem_tokens_for_premium(
         "requests": 20
     }
 
+
 # ============================================================
 # CHAT STATISTICS
 # ============================================================
@@ -527,7 +536,8 @@ async def count_chats():
     return await chats_collection.count_documents(
         {}
     )
-    
+
+
 # ============================================================
 # REQUEST SYSTEM
 # ============================================================
@@ -607,9 +617,6 @@ async def restore_request(user_id):
     result = await users_collection.update_one(
         {
             "user_id": user_id,
-            "total_requests_used": {
-                "$gt": 0
-            }
         },
         {
             "$inc": {
@@ -623,6 +630,7 @@ async def restore_request(user_id):
     )
 
     return result.matched_count > 0
+
 
 # ============================================================
 # MEDIA INDEX
@@ -686,6 +694,7 @@ async def count_media():
         {}
     )
 
+
 # ============================================================
 # MEDIA STORAGE STATISTICS
 # ============================================================
@@ -743,7 +752,8 @@ async def get_media_storage_stats():
 
 async def create_search_session(
     user_id,
-    query
+    query,
+    filters=None
 ):
 
     import secrets
@@ -757,6 +767,8 @@ async def create_search_session(
         "user_id": user_id,
 
         "query": query,
+
+        "filters": filters or {},
 
         "created_at":
             datetime.utcnow()
@@ -782,6 +794,77 @@ async def get_search_session(
             "user_id": user_id
         }
     )
+
+
+async def update_search_session_filters(
+    session_id,
+    user_id,
+    filters=None
+):
+    """
+    Update the filters currently selected for a search session.
+
+    Supported filter fields:
+        language
+        year
+        season
+        episode
+    """
+
+    filters = filters or {}
+
+    allowed_fields = {
+        "language",
+        "year",
+        "season",
+        "episode"
+    }
+
+    clean_filters = {}
+
+    for key, value in filters.items():
+
+        if key not in allowed_fields:
+            continue
+
+        if value is None:
+            continue
+
+        clean_filters[key] = value
+
+    result = await search_sessions_collection.update_one(
+        {
+            "session_id": session_id,
+            "user_id": user_id
+        },
+        {
+            "$set": {
+                "filters": clean_filters,
+                "updated_at": datetime.utcnow()
+            }
+        }
+    )
+
+    return result.matched_count > 0
+
+
+async def get_search_session_filters(
+    session_id,
+    user_id
+):
+
+    session = await get_search_session(
+        session_id,
+        user_id
+    )
+
+    if not session:
+        return {}
+
+    return session.get(
+        "filters",
+        {}
+    ) or {}
 
 
 async def delete_search_session(
@@ -813,20 +896,6 @@ async def count_premium_users():
         {
             "premium": True
         }
-    )
-
-
-async def count_media():
-
-    return await media_collection.count_documents(
-        {}
-    )
-
-
-async def count_chats():
-
-    return await chats_collection.count_documents(
-        {}
     )
 
 
@@ -988,6 +1057,37 @@ async def save_indexer_state(
     )
 
 
+async def update_indexer_state(
+    last_message_id=None,
+    indexed_count=None
+):
+    """
+    Update indexer state without requiring both values.
+    """
+
+    update = {
+        "updated_at": datetime.utcnow()
+    }
+
+    if last_message_id is not None:
+        update["last_message_id"] = last_message_id
+
+    if indexed_count is not None:
+        update["indexed_count"] = indexed_count
+
+    await settings_collection.update_one(
+        {
+            "_id": "indexer"
+        },
+        {
+            "$set": update
+        },
+        upsert=True
+    )
+
+    return True
+
+
 async def reset_indexer():
 
     await settings_collection.update_one(
@@ -1011,6 +1111,7 @@ async def reset_indexer():
         upsert=True
     )
 
+
 # ============================================================
 # SEARCH MEDIA
 # ============================================================
@@ -1018,11 +1119,18 @@ async def reset_indexer():
 async def search_media(
     query,
     skip=0,
-    limit=10
+    limit=10,
+    filters=None
 ):
     """
     Search indexed media by title, filename,
     search key, or caption.
+
+    Optional filters:
+        language
+        year
+        season
+        episode
     """
 
     if not query:
@@ -1035,8 +1143,6 @@ async def search_media(
 
     import re
 
-    # Escape user input so it is treated as normal
-    # search text rather than a raw regular expression.
     pattern = re.escape(query)
 
     regex = {
@@ -1044,23 +1150,97 @@ async def search_media(
         "$options": "i"
     }
 
+    # --------------------------------------------------------
+    # BASE SEARCH
+    # --------------------------------------------------------
+
+    search_filter = {
+        "$or": [
+            {
+                "title": regex
+            },
+            {
+                "file_name": regex
+            },
+            {
+                "search_key": regex
+            },
+            {
+                "caption": regex
+            }
+        ]
+    }
+
+    # --------------------------------------------------------
+    # FILTERS
+    # --------------------------------------------------------
+
+    filters = filters or {}
+
+    if filters.get("language"):
+
+        language = str(
+            filters["language"]
+        ).strip()
+
+        if language:
+
+            search_filter["language"] = {
+                "$regex": re.escape(language),
+                "$options": "i"
+            }
+
+    if filters.get("year") is not None:
+
+        try:
+
+            search_filter["year"] = int(
+                filters["year"]
+            )
+
+        except (
+            TypeError,
+            ValueError
+        ):
+
+            pass
+
+    if filters.get("season") is not None:
+
+        try:
+
+            search_filter["season"] = int(
+                filters["season"]
+            )
+
+        except (
+            TypeError,
+            ValueError
+        ):
+
+            pass
+
+    if filters.get("episode") is not None:
+
+        try:
+
+            search_filter["episode"] = int(
+                filters["episode"]
+            )
+
+        except (
+            TypeError,
+            ValueError
+        ):
+
+            pass
+
+    # --------------------------------------------------------
+    # QUERY
+    # --------------------------------------------------------
+
     cursor = media_collection.find(
-        {
-            "$or": [
-                {
-                    "title": regex
-                },
-                {
-                    "file_name": regex
-                },
-                {
-                    "search_key": regex
-                },
-                {
-                    "caption": regex
-                }
-            ]
-        }
+        search_filter
     ).sort(
         "message_id",
         -1
@@ -1073,6 +1253,454 @@ async def search_media(
     return await cursor.to_list(
         length=int(limit)
     )
+
+
+# ============================================================
+# FILTER OPTIONS
+# ============================================================
+
+async def get_filter_options(
+    query,
+    filters=None
+):
+    """
+    Return only filter values that actually exist
+    for the current search.
+
+    Returns:
+
+        {
+            "languages": [...],
+            "years": [...],
+            "seasons": [...],
+            "episodes": [...]
+        }
+
+    Existing filters are respected.
+
+    Example:
+
+        Search -> Iron Man
+        Language -> Hindi
+
+    Then years/seasons/episodes are calculated only
+    from Hindi Iron Man results.
+    """
+
+    if not query:
+        return {
+            "languages": [],
+            "years": [],
+            "seasons": [],
+            "episodes": []
+        }
+
+    query = str(query).strip()
+
+    if not query:
+        return {
+            "languages": [],
+            "years": [],
+            "seasons": [],
+            "episodes": []
+        }
+
+    import re
+
+    pattern = re.escape(query)
+
+    regex = {
+        "$regex": pattern,
+        "$options": "i"
+    }
+
+    base_filter = {
+        "$or": [
+            {
+                "title": regex
+            },
+            {
+                "file_name": regex
+            },
+            {
+                "search_key": regex
+            },
+            {
+                "caption": regex
+            }
+        ]
+    }
+
+    filters = filters or {}
+
+    # --------------------------------------------------------
+    # APPLY CURRENT FILTERS
+    # --------------------------------------------------------
+
+    if filters.get("language"):
+
+        language = str(
+            filters["language"]
+        ).strip()
+
+        if language:
+
+            base_filter["language"] = {
+                "$regex": re.escape(language),
+                "$options": "i"
+            }
+
+    if filters.get("year") is not None:
+
+        try:
+
+            base_filter["year"] = int(
+                filters["year"]
+            )
+
+        except (
+            TypeError,
+            ValueError
+        ):
+
+            pass
+
+    if filters.get("season") is not None:
+
+        try:
+
+            base_filter["season"] = int(
+                filters["season"]
+            )
+
+        except (
+            TypeError,
+            ValueError
+        ):
+
+            pass
+
+    if filters.get("episode") is not None:
+
+        try:
+
+            base_filter["episode"] = int(
+                filters["episode"]
+            )
+
+        except (
+            TypeError,
+            ValueError
+        ):
+
+            pass
+
+    # --------------------------------------------------------
+    # LANGUAGES
+    # --------------------------------------------------------
+
+    language_pipeline_filter = dict(
+        base_filter
+    )
+
+    language_pipeline = [
+        {
+            "$match": language_pipeline_filter
+        },
+        {
+            "$match": {
+                "language": {
+                    "$nin": [
+                        None,
+                        ""
+                    ]
+                }
+            }
+        },
+        {
+            "$group": {
+                "_id": "$language"
+            }
+        },
+        {
+            "$sort": {
+                "_id": 1
+            }
+        }
+    ]
+
+    language_result = await media_collection.aggregate(
+        language_pipeline
+    ).to_list(
+        length=None
+    )
+
+    languages = []
+
+    for item in language_result:
+
+        value = item.get("_id")
+
+        if value:
+            languages.append(
+                str(value)
+            )
+
+    # --------------------------------------------------------
+    # YEARS
+    # --------------------------------------------------------
+
+    year_pipeline = [
+        {
+            "$match": base_filter
+        },
+        {
+            "$match": {
+                "year": {
+                    "$gte": 1960,
+                    "$lte": 2026
+                }
+            }
+        },
+        {
+            "$group": {
+                "_id": "$year"
+            }
+        },
+        {
+            "$sort": {
+                "_id": 1
+            }
+        }
+    ]
+
+    year_result = await media_collection.aggregate(
+        year_pipeline
+    ).to_list(
+        length=None
+    )
+
+    years = []
+
+    for item in year_result:
+
+        value = item.get("_id")
+
+        if value is not None:
+
+            try:
+
+                value = int(value)
+
+                if 1960 <= value <= 2026:
+                    years.append(value)
+
+            except (
+                TypeError,
+                ValueError
+            ):
+
+                continue
+
+    # --------------------------------------------------------
+    # SEASONS
+    # --------------------------------------------------------
+
+    season_pipeline = [
+        {
+            "$match": base_filter
+        },
+        {
+            "$match": {
+                "season": {
+                    "$gte": 1,
+                    "$lte": 20
+                }
+            }
+        },
+        {
+            "$group": {
+                "_id": "$season"
+            }
+        },
+        {
+            "$sort": {
+                "_id": 1
+            }
+        }
+    ]
+
+    season_result = await media_collection.aggregate(
+        season_pipeline
+    ).to_list(
+        length=None
+    )
+
+    seasons = []
+
+    for item in season_result:
+
+        value = item.get("_id")
+
+        if value is not None:
+
+            try:
+
+                value = int(value)
+
+                if 1 <= value <= 20:
+                    seasons.append(value)
+
+            except (
+                TypeError,
+                ValueError
+            ):
+
+                continue
+
+    # --------------------------------------------------------
+    # EPISODES
+    # --------------------------------------------------------
+
+    episode_pipeline = [
+        {
+            "$match": base_filter
+        },
+        {
+            "$match": {
+                "episode": {
+                    "$gte": 1,
+                    "$lte": 50
+                }
+            }
+        },
+        {
+            "$group": {
+                "_id": "$episode"
+            }
+        },
+        {
+            "$sort": {
+                "_id": 1
+            }
+        }
+    ]
+
+    episode_result = await media_collection.aggregate(
+        episode_pipeline
+    ).to_list(
+        length=None
+    )
+
+    episodes = []
+
+    for item in episode_result:
+
+        value = item.get("_id")
+
+        if value is not None:
+
+            try:
+
+                value = int(value)
+
+                if 1 <= value <= 50:
+                    episodes.append(value)
+
+            except (
+                TypeError,
+                ValueError
+            ):
+
+                continue
+
+    return {
+        "languages": languages,
+        "years": years,
+        "seasons": seasons,
+        "episodes": episodes
+    }
+
+
+# ============================================================
+# AVAILABLE YEARS
+# ============================================================
+
+async def get_available_years(
+    query,
+    filters=None
+):
+
+    options = await get_filter_options(
+        query,
+        filters
+    )
+
+    return options.get(
+        "years",
+        []
+    )
+
+
+# ============================================================
+# AVAILABLE LANGUAGES
+# ============================================================
+
+async def get_available_languages(
+    query,
+    filters=None
+):
+
+    options = await get_filter_options(
+        query,
+        filters
+    )
+
+    return options.get(
+        "languages",
+        []
+    )
+
+
+# ============================================================
+# AVAILABLE SEASONS
+# ============================================================
+
+async def get_available_seasons(
+    query,
+    filters=None
+):
+
+    options = await get_filter_options(
+        query,
+        filters
+    )
+
+    return options.get(
+        "seasons",
+        []
+    )
+
+
+# ============================================================
+# AVAILABLE EPISODES
+# ============================================================
+
+async def get_available_episodes(
+    query,
+    filters=None
+):
+
+    options = await get_filter_options(
+        query,
+        filters
+    )
+
+    return options.get(
+        "episodes",
+        []
+    )
+
 
 # ============================================================
 # BROADCAST
@@ -1100,6 +1728,7 @@ async def get_all_user_ids():
         for user in users
         if user.get("user_id") is not None
     ]
+
 
 # ============================================================
 # FORCE SUBSCRIBE
@@ -1181,6 +1810,7 @@ async def remove_fsub_channel(
 
     return result.modified_count > 0
 
+
 # ============================================================
 # TRENDING SEARCHES
 # ============================================================
@@ -1200,16 +1830,8 @@ async def record_search(query):
     if not query:
         return False
 
-    # --------------------------------------------------------
-    # NEVER RECORD TELEGRAM COMMANDS
-    # --------------------------------------------------------
-
     if query.startswith("/"):
         return False
-
-    # --------------------------------------------------------
-    # RECORD REAL SEARCH
-    # --------------------------------------------------------
 
     await settings_collection.update_one(
         {
@@ -1254,10 +1876,6 @@ async def get_trending_searches(limit=29):
     if not queries:
         return []
 
-    # --------------------------------------------------------
-    # REMOVE COMMANDS AND INVALID VALUES
-    # --------------------------------------------------------
-
     valid_queries = {}
 
     for query, count in queries.items():
@@ -1270,16 +1888,11 @@ async def get_trending_searches(limit=29):
         if query.startswith("/"):
             continue
 
-        # Only accept numeric counts.
         if isinstance(count, (int, float)):
             valid_queries[query] = int(count)
 
     if not valid_queries:
         return []
-
-    # --------------------------------------------------------
-    # SORT BY SEARCH COUNT
-    # --------------------------------------------------------
 
     sorted_queries = sorted(
         valid_queries.items(),
@@ -1288,6 +1901,7 @@ async def get_trending_searches(limit=29):
     )
 
     return sorted_queries[:int(limit)]
+
 
 # ============================================================
 # REDEEM CODE SYSTEM
@@ -1298,18 +1912,16 @@ async def create_redeem_code(
     amount,
     created_by
 ):
-    """
-    Create a new redeem code.
-
-    The code can only be redeemed once.
-    """
 
     if not code:
         return False
 
     try:
         amount = int(amount)
-    except (TypeError, ValueError):
+    except (
+        TypeError,
+        ValueError
+    ):
         return False
 
     if amount <= 0:
@@ -1375,22 +1987,6 @@ async def redeem_code(
     code,
     user_id
 ):
-    """
-    Redeem a code exactly once.
-
-    Returns:
-        {
-            "success": True,
-            "amount": amount
-        }
-
-    or:
-
-        {
-            "success": False,
-            "reason": "..."
-        }
-    """
 
     if not code:
 
@@ -1502,7 +2098,10 @@ async def ban_user(
 
     try:
         user_id = int(user_id)
-    except (TypeError, ValueError):
+    except (
+        TypeError,
+        ValueError
+    ):
 
         return False
 
@@ -1537,7 +2136,10 @@ async def unban_user(user_id):
 
     try:
         user_id = int(user_id)
-    except (TypeError, ValueError):
+    except (
+        TypeError,
+        ValueError
+    ):
 
         return False
 
@@ -1554,7 +2156,10 @@ async def is_user_banned(user_id):
 
     try:
         user_id = int(user_id)
-    except (TypeError, ValueError):
+    except (
+        TypeError,
+        ValueError
+    ):
 
         return False
 
@@ -1571,7 +2176,10 @@ async def get_banned_user(user_id):
 
     try:
         user_id = int(user_id)
-    except (TypeError, ValueError):
+    except (
+        TypeError,
+        ValueError
+    ):
 
         return None
 
