@@ -1,223 +1,12 @@
-import re
+# ============================================================
+# utils/buttons.py
+# ============================================================
 
 from pyrogram.types import (
+    InlineKeyboardMarkup,
     InlineKeyboardButton,
-    InlineKeyboardMarkup
 )
 
-from config import PREMIUM_PLANS
-
-
-# ============================================================
-# HOME BUTTONS
-# ============================================================
-
-def home_buttons():
-
-    return InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "• Sᴇᴀʀᴄʜ Mᴏᴠɪᴇs •",
-                    callback_data="search_help"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
-                    callback_data="premium_plans"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "• Mʏ Aᴄᴄᴏᴜɴᴛ •",
-                    callback_data="my_account"
-                ),
-                InlineKeyboardButton(
-                    "• ʜᴇʟᴘ •",
-                    callback_data="help"
-                )
-            ]
-        ]
-    )
-
-
-# ============================================================
-# START BUTTONS
-# ============================================================
-
-def start_buttons():
-
-    return InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "• ᴀᴅᴅ ᴍᴇ ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ •",
-                    url="https://t.me/PremiumMovieBot?startgroup=true"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "• ᴀʙᴏᴜᴛ •",
-                    callback_data="about"
-                ),
-                InlineKeyboardButton(
-                    "• ᴜᴘᴅᴀᴛᴇs •",
-                    url="https://t.me/Aero_Unity"
-                )
-            ]
-        ]
-    )
-
-
-# ============================================================
-# PREMIUM BUTTONS
-# ============================================================
-
-def premium_buttons():
-
-    buttons = []
-    row = []
-
-    for amount, plan in PREMIUM_PLANS.items():
-
-        requests = plan.get(
-            "requests",
-            0
-        )
-
-        row.append(
-            InlineKeyboardButton(
-                f"₹{amount} • {requests} 🎬",
-                callback_data=f"plan_{amount}"
-            )
-        )
-
-        if len(row) == 2:
-
-            buttons.append(row)
-            row = []
-
-    if row:
-        buttons.append(row)
-
-    buttons.append(
-        [
-            InlineKeyboardButton(
-                "• ʙᴀᴄᴋ •",
-                callback_data="home"
-            )
-        ]
-    )
-
-    return InlineKeyboardMarkup(
-        buttons
-    )
-
-
-# ============================================================
-# PLAN CONFIRMATION
-# ============================================================
-
-def plan_confirm_buttons(amount):
-
-    return InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "• Pᴀʏᴍᴇɴᴛ Iɴsᴛʀᴜᴄᴛɪᴏɴs •",
-                    callback_data=f"pay_{amount}"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "• Aʟʟ Pʟᴀɴs •",
-                    callback_data="premium_plans"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "• ʜᴏᴍᴇ •",
-                    callback_data="home"
-                )
-            ]
-        ]
-    )
-
-
-# ============================================================
-# ACCOUNT
-# ============================================================
-
-def account_buttons():
-
-    return InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
-                    callback_data="premium_plans"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "• ʜᴏᴍᴇ •",
-                    callback_data="home"
-                )
-            ]
-        ]
-    )
-
-
-# ============================================================
-# HELP
-# ============================================================
-
-def help_buttons():
-
-    return InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
-                    callback_data="premium_plans"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "• ʜᴏᴍᴇ •",
-                    callback_data="home"
-                )
-            ]
-        ]
-    )
-
-def extract_episode_info(text):
-    if not text:
-        return None
-
-    match = re.search(
-        r'\bS(\d{1,3})E(\d{1,4})\b',
-        str(text),
-        re.IGNORECASE
-    )
-
-    if match:
-        return (
-            f"S{int(match.group(1)):02d}"
-            f"E{int(match.group(2)):02d}"
-        )
-
-    match = re.search(
-        r'\b(?:EP|EPISODE|E)[\s._-]*(\d{1,4})\b',
-        str(text),
-        re.IGNORECASE
-    )
-
-    if match:
-        return f"EP {int(match.group(1))}"
-
-    return None
 
 # ============================================================
 # SEARCH RESULT BUTTONS
@@ -228,103 +17,100 @@ def search_result_buttons(
     session_id,
     page=0,
     has_next=False,
-    bot_username=None
+    bot_username=None,
 ):
+    """
+    Search result buttons.
+
+    In groups:
+        Movie buttons open the bot in PM using a deep link.
+
+    In PM:
+        The same buttons can also use deep links.
+
+    Deep link format:
+        https://t.me/BOT_USERNAME?start=file_MESSAGE_ID
+    """
 
     buttons = []
 
-    # --------------------------------------------------------
-    # FILE BUTTONS
-    # --------------------------------------------------------
-
-    for item in results:
-
-        message_id = item.get(
-            "message_id"
+    for result in results:
+        message_id = (
+            result.get("message_id")
+            or result.get("telegram_message_id")
+            or result.get("msg_id")
         )
 
         if not message_id:
             continue
 
         title = (
-            item.get("title")
-            or item.get("file_name")
+            result.get("title")
+            or result.get("file_name")
+            or result.get("filename")
+            or result.get("name")
             or "Unknown File"
         )
 
-        title = str(title)
+        title = str(title).strip()
 
+        # Keep button text reasonable.
         if len(title) > 55:
             title = title[:52] + "..."
 
-        # ----------------------------------------------------
-        # OPEN BOT IN PM
-        # ----------------------------------------------------
-
         if bot_username:
+            username = str(bot_username).lstrip("@")
 
-            file_url = (
-                f"https://t.me/{bot_username}"
-                f"?start=file_{message_id}"
+            url = (
+                f"https://t.me/{username}"
+                f"?start=file_{int(message_id)}"
             )
 
-            buttons.append(
-                [
-                    InlineKeyboardButton(
-                        f"›› {title}",
-                        url=file_url
-                    )
-                ]
-            )
+            buttons.append([
+                InlineKeyboardButton(
+                    f"›› {title}",
+                    url=url,
+                )
+            ])
 
         else:
-
-            # Fallback
-            buttons.append(
-                [
-                    InlineKeyboardButton(
-                        f"›› {title}",
-                        callback_data=f"file_{message_id}"
-                    )
-                ]
-            )
+            buttons.append([
+                InlineKeyboardButton(
+                    f"›› {title}",
+                    callback_data=f"file_{int(message_id)}",
+                )
+            ])
 
     # --------------------------------------------------------
-    # SEND ALL + PREMIUM
+    # SEND ALL
     # --------------------------------------------------------
 
     if results:
 
         if bot_username:
+            username = str(bot_username).lstrip("@")
 
-            send_all_url = (
-                f"https://t.me/{bot_username}"
+            sendall_url = (
+                f"https://t.me/{username}"
                 f"?start=sendall_{session_id}_{page}"
             )
 
-            send_all_button = InlineKeyboardButton(
-                "• sᴇɴᴅ ᴀʟʟ •",
-                url=send_all_url
-            )
+            buttons.append([
+                InlineKeyboardButton(
+                    "• sᴇɴᴅ ᴀʟʟ •",
+                    url=sendall_url,
+                )
+            ])
 
         else:
-
-            send_all_button = InlineKeyboardButton(
-                "• sᴇɴᴅ ᴀʟʟ •",
-                callback_data=(
-                    f"sendall_{session_id}_{page}"
-                )
-            )
-
-        buttons.append(
-            [
-                send_all_button,
+            buttons.append([
                 InlineKeyboardButton(
-                    "• Pʀᴇᴍɪᴜᴍ Pʟᴀɴs •",
-                    callback_data="premium_plans"
+                    "• sᴇɴᴅ ᴀʟʟ •",
+                    callback_data=(
+                        f"sendall_{session_id}_{page}"
+                    ),
                 )
-            ]
-        )
+            ])
 
     # --------------------------------------------------------
     # PAGINATION
@@ -333,102 +119,873 @@ def search_result_buttons(
     navigation = []
 
     if page > 0:
-
         navigation.append(
             InlineKeyboardButton(
-                "• ʙᴀᴄᴋ •",
-                callback_data=(
-                    f"searchpage_{session_id}_{page - 1}"
-                )
+                "‹ ʙᴀᴄᴋ",
+                callback_data=f"page_{session_id}_{page - 1}",
             )
         )
 
     if has_next:
-
         navigation.append(
             InlineKeyboardButton(
-                "• ɴᴇxᴛ •",
-                callback_data=(
-                    f"searchpage_{session_id}_{page + 1}"
-                )
+                "ɴᴇxᴛ ›",
+                callback_data=f"page_{session_id}_{page + 1}",
             )
         )
 
     if navigation:
         buttons.append(navigation)
 
-    return InlineKeyboardMarkup(
-        buttons
-    )
+    # --------------------------------------------------------
+    # FILTER BUTTON
+    # --------------------------------------------------------
+
+    buttons.append([
+        InlineKeyboardButton(
+            "⚙️ Fɪʟᴛᴇʀs",
+            callback_data=f"filters_{session_id}_{page}",
+        )
+    ])
+
+    return InlineKeyboardMarkup(buttons)
 
 
 # ============================================================
-# SENT FILE BUTTONS
+# FILTER MENU
+# ============================================================
+
+def filter_menu_buttons(
+    session_id,
+    page=0,
+    available=None,
+):
+    """
+    Main filter menu.
+
+    Only shows filter categories for which matching
+    values actually exist.
+    """
+
+    available = available or {}
+
+    languages = available.get(
+        "languages",
+        [],
+    )
+
+    years = available.get(
+        "years",
+        [],
+    )
+
+    seasons = available.get(
+        "seasons",
+        [],
+    )
+
+    episodes = available.get(
+        "episodes",
+        [],
+    )
+
+    buttons = []
+
+    # --------------------------------------------------------
+    # LANGUAGE
+    # --------------------------------------------------------
+
+    if languages:
+        buttons.append([
+            InlineKeyboardButton(
+                "🌐 Lᴀɴɢᴜᴀɢᴇ",
+                callback_data=(
+                    f"filter_lang_{session_id}_{page}"
+                ),
+            )
+        ])
+
+    # --------------------------------------------------------
+    # YEAR
+    # --------------------------------------------------------
+
+    if years:
+        buttons.append([
+            InlineKeyboardButton(
+                "📅 Yᴇᴀʀ",
+                callback_data=(
+                    f"filter_year_{session_id}_{page}"
+                ),
+            )
+        ])
+
+    # --------------------------------------------------------
+    # SEASON
+    # --------------------------------------------------------
+
+    if seasons:
+        buttons.append([
+            InlineKeyboardButton(
+                "📺 Sᴇᴀsᴏɴ",
+                callback_data=(
+                    f"filter_season_{session_id}_{page}"
+                ),
+            )
+        ])
+
+    # --------------------------------------------------------
+    # EPISODE
+    # --------------------------------------------------------
+
+    if episodes:
+        buttons.append([
+            InlineKeyboardButton(
+                "🎞 Eᴘɪsᴏᴅᴇ",
+                callback_data=(
+                    f"filter_episode_{session_id}_{page}"
+                ),
+            )
+        ])
+
+    # --------------------------------------------------------
+    # CLEAR FILTERS
+    # --------------------------------------------------------
+
+    buttons.append([
+        InlineKeyboardButton(
+            "✖️ Cʟᴇᴀʀ Fɪʟᴛᴇʀs",
+            callback_data=(
+                f"filter_clear_{session_id}_{page}"
+            ),
+        )
+    ])
+
+    buttons.append([
+        InlineKeyboardButton(
+            "‹ Bᴀᴄᴋ",
+            callback_data=(
+                f"filter_back_{session_id}_{page}"
+            ),
+        )
+    ])
+
+    return InlineKeyboardMarkup(buttons)
+
+
+# ============================================================
+# LANGUAGE FILTER BUTTONS
+# ============================================================
+
+def language_filter_buttons(
+    session_id,
+    languages,
+    page=0,
+):
+    buttons = []
+
+    languages = languages or []
+
+    row = []
+
+    for language in languages:
+
+        language = str(language).strip()
+
+        if not language:
+            continue
+
+        row.append(
+            InlineKeyboardButton(
+                language,
+                callback_data=(
+                    f"setlang_{session_id}_{page}_"
+                    f"{language[:30]}"
+                ),
+            )
+        )
+
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+
+    if row:
+        buttons.append(row)
+
+    buttons.append([
+        InlineKeyboardButton(
+            "✖️ Clear Language",
+            callback_data=(
+                f"setlang_{session_id}_{page}_clear"
+            ),
+        )
+    ])
+
+    buttons.append([
+        InlineKeyboardButton(
+            "‹ Bᴀᴄᴋ",
+            callback_data=(
+                f"filters_{session_id}_{page}"
+            ),
+        )
+    ])
+
+    return InlineKeyboardMarkup(buttons)
+
+
+# ============================================================
+# YEAR FILTER BUTTONS
+# ============================================================
+
+def year_filter_buttons(
+    session_id,
+    years,
+    page=0,
+):
+    buttons = []
+
+    years = years or []
+
+    row = []
+
+    # Newest years first.
+    try:
+        years = sorted(
+            [int(year) for year in years],
+            reverse=True,
+        )
+    except Exception:
+        pass
+
+    for year in years:
+
+        if not 1960 <= int(year) <= 2026:
+            continue
+
+        row.append(
+            InlineKeyboardButton(
+                str(year),
+                callback_data=(
+                    f"setyear_{session_id}_{page}_"
+                    f"{int(year)}"
+                ),
+            )
+        )
+
+        if len(row) == 3:
+            buttons.append(row)
+            row = []
+
+    if row:
+        buttons.append(row)
+
+    buttons.append([
+        InlineKeyboardButton(
+            "✖️ Clear Year",
+            callback_data=(
+                f"setyear_{session_id}_{page}_clear"
+            ),
+        )
+    ])
+
+    buttons.append([
+        InlineKeyboardButton(
+            "‹ Bᴀᴄᴋ",
+            callback_data=(
+                f"filters_{session_id}_{page}"
+            ),
+        )
+    ])
+
+    return InlineKeyboardMarkup(buttons)
+
+
+# ============================================================
+# SEASON FILTER BUTTONS
+# ============================================================
+
+def season_filter_buttons(
+    session_id,
+    seasons,
+    page=0,
+):
+    buttons = []
+
+    seasons = seasons or []
+
+    try:
+        seasons = sorted(
+            [int(season) for season in seasons]
+        )
+    except Exception:
+        pass
+
+    row = []
+
+    for season in seasons:
+
+        if not 1 <= int(season) <= 20:
+            continue
+
+        row.append(
+            InlineKeyboardButton(
+                f"S{int(season):02d}",
+                callback_data=(
+                    f"setseason_{session_id}_{page}_"
+                    f"{int(season)}"
+                ),
+            )
+        )
+
+        if len(row) == 4:
+            buttons.append(row)
+            row = []
+
+    if row:
+        buttons.append(row)
+
+    buttons.append([
+        InlineKeyboardButton(
+            "✖️ Clear Season",
+            callback_data=(
+                f"setseason_{session_id}_{page}_clear"
+            ),
+        )
+    ])
+
+    buttons.append([
+        InlineKeyboardButton(
+            "‹ Bᴀᴄᴋ",
+            callback_data=(
+                f"filters_{session_id}_{page}"
+            ),
+        )
+    ])
+
+    return InlineKeyboardMarkup(buttons)
+
+
+# ============================================================
+# EPISODE FILTER BUTTONS
+# ============================================================
+
+def episode_filter_buttons(
+    session_id,
+    episodes,
+    page=0,
+):
+    buttons = []
+
+    episodes = episodes or []
+
+    try:
+        episodes = sorted(
+            [int(episode) for episode in episodes]
+        )
+    except Exception:
+        pass
+
+    row = []
+
+    for episode in episodes:
+
+        if not 1 <= int(episode) <= 50:
+            continue
+
+        row.append(
+            InlineKeyboardButton(
+                f"E{int(episode):02d}",
+                callback_data=(
+                    f"setepisode_{session_id}_{page}_"
+                    f"{int(episode)}"
+                ),
+            )
+        )
+
+        if len(row) == 5:
+            buttons.append(row)
+            row = []
+
+    if row:
+        buttons.append(row)
+
+    buttons.append([
+        InlineKeyboardButton(
+            "✖️ Clear Episode",
+            callback_data=(
+                f"setepisode_{session_id}_{page}_clear"
+            ),
+        )
+    ])
+
+    buttons.append([
+        InlineKeyboardButton(
+            "‹ Bᴀᴄᴋ",
+            callback_data=(
+                f"filters_{session_id}_{page}"
+            ),
+        )
+    ])
+
+    return InlineKeyboardMarkup(buttons)
+
+
+# ============================================================
+# ACTIVE FILTER BUTTONS
+# ============================================================
+
+def active_filter_buttons(
+    session_id,
+    page=0,
+    filters=None,
+):
+    """
+    Displays currently selected filters.
+    """
+
+    filters = filters or {}
+
+    buttons = []
+
+    language = filters.get("language")
+    year = filters.get("year")
+    season = filters.get("season")
+    episode = filters.get("episode")
+
+    if language:
+        buttons.append([
+            InlineKeyboardButton(
+                f"🌐 {language}",
+                callback_data=(
+                    f"setlang_{session_id}_{page}_clear"
+                ),
+            )
+        ])
+
+    if year:
+        buttons.append([
+            InlineKeyboardButton(
+                f"📅 {year}",
+                callback_data=(
+                    f"setyear_{session_id}_{page}_clear"
+                ),
+            )
+        ])
+
+    if season:
+        buttons.append([
+            InlineKeyboardButton(
+                f"📺 S{int(season):02d}",
+                callback_data=(
+                    f"setseason_{session_id}_{page}_clear"
+                ),
+            )
+        ])
+
+    if episode:
+        buttons.append([
+            InlineKeyboardButton(
+                f"🎞 E{int(episode):02d}",
+                callback_data=(
+                    f"setepisode_{session_id}_{page}_clear"
+                ),
+            )
+        ])
+
+    buttons.append([
+        InlineKeyboardButton(
+            "✖️ Cʟᴇᴀʀ Aʟʟ",
+            callback_data=(
+                f"filter_clear_{session_id}_{page}"
+            ),
+        )
+    ])
+
+    buttons.append([
+        InlineKeyboardButton(
+            "‹ Bᴀᴄᴋ",
+            callback_data=(
+                f"filter_back_{session_id}_{page}"
+            ),
+        )
+    ])
+
+    return InlineKeyboardMarkup(buttons)
+
+
+# ============================================================
+# PREMIUM BUTTONS
+# ============================================================
+
+def premium_buttons():
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "💎 Gᴇᴛ Pʀᴇᴍɪᴜᴍ",
+                callback_data="premium_plans",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "💳 Rᴇᴅᴇᴇᴍ Cᴏᴅᴇ",
+                callback_data="redeem",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "‹ Bᴀᴄᴋ",
+                callback_data="close",
+            )
+        ],
+    ])
+
+
+# ============================================================
+# FILE SENT BUTTONS
 # ============================================================
 
 def file_sent_buttons():
-
-    return InlineKeyboardMarkup(
+    return InlineKeyboardMarkup([
         [
-            [
-                InlineKeyboardButton(
-                    "• ᴜᴘᴅᴀᴛᴇs •",
-                    url="https://t.me/Aero_Unity"
-                )
-            ]
+            InlineKeyboardButton(
+                "📢 Uᴘᴅᴀᴛᴇs",
+                url="https://t.me/Aero_Unity",
+            )
+        ],
+    ])
+
+
+# ============================================================
+# OPEN BOT BUTTON
+# ============================================================
+
+def open_bot_button(
+    bot_username,
+    start_parameter=None,
+):
+    username = str(bot_username).lstrip("@")
+
+    if start_parameter:
+        url = (
+            f"https://t.me/{username}"
+            f"?start={start_parameter}"
+        )
+    else:
+        url = f"https://t.me/{username}"
+
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🤖 Oᴘᴇɴ Bᴏᴛ",
+                url=url,
+            )
         ]
+    ])
+
+
+# ============================================================
+# OPEN BOT + CLOSE
+# ============================================================
+
+def open_bot_close_buttons(
+    bot_username,
+    start_parameter=None,
+):
+    username = str(bot_username).lstrip("@")
+
+    if start_parameter:
+        url = (
+            f"https://t.me/{username}"
+            f"?start={start_parameter}"
+        )
+    else:
+        url = f"https://t.me/{username}"
+
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🤖 Oᴘᴇɴ Bᴏᴛ",
+                url=url,
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "• Cʟᴏsᴇ •",
+                callback_data="close",
+            )
+        ],
+    ])
+
+
+# ============================================================
+# CLOSE BUTTON
+# ============================================================
+
+def close_button():
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "• Cʟᴏsᴇ •",
+                callback_data="close",
+            )
+        ]
+    ])
+
+
+# ============================================================
+# BACK BUTTON
+# ============================================================
+
+def back_button(callback_data="close"):
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "‹ Bᴀᴄᴋ",
+                callback_data=callback_data,
+            )
+        ]
+    ])
+
+
+# ============================================================
+# HOME BUTTONS
+# ============================================================
+
+def home_buttons():
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔎 Sᴇᴀʀᴄ",
+                callback_data="search",
+            ),
+            InlineKeyboardButton(
+                "• Pʀᴇᴍɪᴜᴍ •",
+                callback_data="premium",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "• Uᴘᴅᴀᴛᴇs •",
+                url="https://t.me/Aero_Unity",
+            )
+        ],
+    ])
+
+
+# ============================================================
+# FORCE SUB BUTTONS
+# ============================================================
+
+def fsub_channel_button(
+    channel_name,
+    channel_url,
+):
+    return InlineKeyboardButton(
+        f"📢 {channel_name}",
+        url=channel_url,
+    )
+
+
+def fsub_try_again_button(
+    deep_link,
+):
+    return InlineKeyboardButton(
+        "• Tʀʏ Aɢᴀɪɴ •",
+        callback_data=f"fsub_check_{deep_link}",
+    )
+
+
+def fsub_close_button():
+    return InlineKeyboardButton(
+        "• Cʟᴏsᴇ •",
+        callback_data="fsub_close",
     )
 
 
 # ============================================================
-# FILE BUTTONS
+# FORCE SUB KEYBOARD
 # ============================================================
 
-def file_buttons():
+def force_sub_buttons(
+    channels=None,
+    deep_link=None,
+):
+    buttons = []
 
-    return InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "• ᴜᴘᴅᴀᴛᴇs •",
-                    url="https://t.me/Aero_Unity"
-                )
-            ]
-        ]
+    channels = channels or []
+
+    for channel in channels:
+        if isinstance(channel, dict):
+            name = (
+                channel.get("name")
+                or channel.get("title")
+                or channel.get("username")
+                or "Join Channel"
+            )
+
+            url = (
+                channel.get("url")
+                or channel.get("invite_link")
+                or channel.get("link")
+            )
+
+            if url:
+                buttons.append([
+                    fsub_channel_button(
+                        name,
+                        url,
+                    )
+                ])
+
+        elif isinstance(channel, (list, tuple)):
+            if len(channel) >= 2:
+                buttons.append([
+                    fsub_channel_button(
+                        str(channel[0]),
+                        str(channel[1]),
+                    )
+                ])
+
+    if deep_link:
+        buttons.append([
+            fsub_try_again_button(
+                deep_link
+            )
+        ])
+
+    buttons.append([
+        fsub_close_button()
+    ])
+
+    return InlineKeyboardMarkup(buttons)
+
+
+# ============================================================
+# PAGINATION ONLY
+# ============================================================
+
+def pagination_buttons(
+    session_id,
+    page=0,
+    has_next=False,
+):
+    buttons = []
+    row = []
+
+    if page > 0:
+        row.append(
+            InlineKeyboardButton(
+                "‹",
+                callback_data=(
+                    f"page_{session_id}_{page - 1}"
+                ),
+            )
+        )
+
+    row.append(
+        InlineKeyboardButton(
+            f"• {page + 1} •",
+            callback_data="noop",
+        )
     )
 
+    if has_next:
+        row.append(
+            InlineKeyboardButton(
+                "›",
+                callback_data=(
+                    f"page_{session_id}_{page + 1}"
+                ),
+            )
+        )
 
-# ============================================================
-# BACK
-# ============================================================
+    buttons.append(row)
 
-def back_button():
-
-    return InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "• ʙᴀᴄᴋ •",
-                    callback_data="home"
-                )
-            ]
-        ]
-    )
+    return InlineKeyboardMarkup(buttons)
 
 
 # ============================================================
-# CANCEL
+# FILTER PAGE NAVIGATION
 # ============================================================
 
-def cancel_button():
+def filter_page_buttons(
+    session_id,
+    page=0,
+    has_next=False,
+):
+    buttons = []
 
-    return InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "• ᴄᴀɴᴄᴇʟ •",
-                    callback_data="home"
-                )
-            ]
-        ]
+    row = []
+
+    if page > 0:
+        row.append(
+            InlineKeyboardButton(
+                "‹",
+                callback_data=(
+                    f"page_{session_id}_{page - 1}"
+                ),
+            )
+        )
+
+    if has_next:
+        row.append(
+            InlineKeyboardButton(
+                "›",
+                callback_data=(
+                    f"page_{session_id}_{page + 1}"
+                ),
+            )
+        )
+
+    if row:
+        buttons.append(row)
+
+    buttons.append([
+        InlineKeyboardButton(
+            "• Fɪʟᴛᴇʀs •",
+            callback_data=(
+                f"filters_{session_id}_{page}"
+            ),
+        )
+    ])
+
+    return InlineKeyboardMarkup(buttons)
+
+
+# ============================================================
+# NO RESULTS
+# ============================================================
+
+def no_results_buttons(
+    bot_username=None,
+):
+    buttons = []
+
+    if bot_username:
+        username = str(bot_username).lstrip("@")
+
+        buttons.append([
+            InlineKeyboardButton(
+                "• Sᴇᴀʀᴄh Aɢᴀɪɴ •",
+                url=f"https://t.me/{username}",
+            )
+        ])
+
+    buttons.append([
+        InlineKeyboardButton(
+            "• Uᴘᴅᴀᴛᴇs •",
+            url="https://t.me/Aero_Unity",
+        )
+    ])
+
+    return InlineKeyboardMarkup(buttons)
+
+
+# ============================================================
+# CALLBACK-SAFE BUTTON
+# ============================================================
+
+def noop_button(text="•"):
+    return InlineKeyboardButton(
+        text,
+        callback_data="noop",
     )
