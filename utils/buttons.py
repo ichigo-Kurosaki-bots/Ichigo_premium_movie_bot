@@ -549,6 +549,52 @@ def episode_filter_buttons(
 
     return InlineKeyboardMarkup(buttons)
 
+# ============================================================
+# QUALITY FILTER BUTTONS
+# ============================================================
+
+def quality_filter_buttons(session_id, qualities, page=0):
+    buttons = []
+
+    qualities = qualities or []
+
+    row = []
+
+    for quality in qualities:
+        quality = str(quality).strip()
+
+        if not quality:
+            continue
+
+        row.append(
+            InlineKeyboardButton(
+                quality,
+                callback_data=f"setquality_{session_id}_{page}_{quality[:20]}",
+            )
+        )
+
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+
+    if row:
+        buttons.append(row)
+
+    buttons.append([
+        InlineKeyboardButton(
+            "✖️ Clear Quality",
+            callback_data=f"setquality_{session_id}_{page}_clear",
+        )
+    ])
+
+    buttons.append([
+        InlineKeyboardButton(
+            "‹ Bᴀᴄᴋ",
+            callback_data=f"filters_{session_id}_{page}",
+        )
+    ])
+
+    return InlineKeyboardMarkup(buttons)
 
 # ============================================================
 # ACTIVE FILTER BUTTONS
