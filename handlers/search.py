@@ -49,6 +49,7 @@ from utils.buttons import (
     language_filter_buttons,
     year_filter_buttons,
     season_filter_buttons,
+    quality_filter_buttons,
     episode_filter_buttons
 )
 
