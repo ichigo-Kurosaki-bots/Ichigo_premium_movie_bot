@@ -184,23 +184,29 @@ async def send_fsub_message(
     deep_link=None
 ):
 
+    user = message.from_user
+
+    if not user:
+        return None
+
     # --------------------------------------------------------
-    # Automatically load FSub channels when caller does not
-    # provide them.
+    # If caller does not provide channels, automatically find
+    # ONLY the channels this user has not joined.
     # --------------------------------------------------------
 
     if channels is None:
-        channels = await get_fsub_channels()
+
+        channels = await check_all_fsubs(
+            client,
+            user.id
+        )
 
     if not channels:
         return None
 
-    user = message.from_user
-
     first_name = (
         user.first_name
-        if user
-        else "User"
+        or "User"
     )
 
     text = (
@@ -426,15 +432,8 @@ def register_fsub_callback_handler(app):
             )
 
             # ------------------------------------------------
-            # KEEP THE MESSAGE ALIVE WHILE THE REQUEST
-            # IS BEING PROCESSED.
-            #
-            # IMPORTANT:
-            # The previous version deleted this message
-            # BEFORE passing it to search.py.
-            #
-            # search.py may use message.reply_*(), so deleting
-            # it first could cause delivery problems.
+            # KEEP FSUB MESSAGE ALIVE WHILE REQUEST IS
+            # PROCESSED.
             # ------------------------------------------------
 
             if deep_link:
@@ -590,7 +589,6 @@ def register_fsub_callback_handler(app):
             # NORMAL /START
             # ------------------------------------------------
 
-            # Delete the FSub message first for normal start.
             try:
 
                 await callback_query.message.delete()
@@ -619,7 +617,7 @@ def register_fsub_callback_handler(app):
         )
 
         # ----------------------------------------------------
-        # KEEP ORIGINAL REQUEST
+        # SHOW ONLY CHANNELS NOT YET JOINED
         # ----------------------------------------------------
 
         if deep_link:
