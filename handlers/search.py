@@ -503,7 +503,7 @@ async def send_database_file(
 
         clickable_caption = (
             '<a href="https://t.me/Aero_Unity">'
-            f'{escape_html(original_caption)}'
+            f'<b>{escape_html(original_caption)}</b>'
             '</a>'
         )
 
