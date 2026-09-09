@@ -771,6 +771,37 @@ def account_buttons():
         ],
     ])
 
+# ============================================================
+# HELP BUTTONS
+# ============================================================
+
+def help_buttons():
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "📖 Hᴏᴡ Tᴏ Uѕᴇ",
+                callback_data="help_usage",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔍 Sᴇᴀʀᴄʜ Hᴇʟᴘ",
+                callback_data="help_search",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "💎 Pʀᴇᴍɪᴜᴍ",
+                callback_data="premium",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "‹ Bᴀᴄᴋ",
+                callback_data="close",
+            )
+        ],
+    ])
 
 # ============================================================
 # HOME BUTTONS
