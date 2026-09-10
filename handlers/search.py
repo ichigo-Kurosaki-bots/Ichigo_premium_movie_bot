@@ -25,6 +25,7 @@ from premium import can_use_movie, get_remaining_requests
 
 from search import (
     search_movies,
+    advanced_search,
     get_filter_options,
 )
 
@@ -1123,10 +1124,10 @@ def register_search_handlers(app):
 
         try:
 
-            results, total_pages = await search_movies(
-                query,
-                page=1,
-                filters={},
+            results, has_next = await advanced_search(
+                query=query,
+                page=0,
+                filters={}
             )
 
         except Exception as e:
