@@ -1124,7 +1124,6 @@ async def reset_indexer():
         upsert=True
     )
 
-
 # ============================================================
 # SEARCH MEDIA
 # ============================================================
@@ -1136,15 +1135,24 @@ async def search_media(
     filters=None
 ):
     """
-    Search indexed media by:
+    Robust media search.
 
+    Searches:
         title
         file_name
+        filename
+        name
         search_key
+        title_key
         caption
 
-    Optional filters:
+    The search supports:
+        - Full phrase matching
+        - Individual word matching
+        - Different spacing/punctuation
+        - Case-insensitive search
 
+    Optional filters:
         language
         year
         quality
@@ -1162,48 +1170,111 @@ async def search_media(
 
     import re
 
-    pattern = re.escape(query)
+    filters = filters or {}
 
-    regex = {
-        "$regex": pattern,
+    # --------------------------------------------------------
+    # NORMALIZE SEARCH QUERY
+    # --------------------------------------------------------
+
+    normalized_query = query.lower()
+
+    normalized_query = re.sub(
+        r"[^a-z0-9\u0900-\u097f\u0b80-\u0bff\u0c00-\u0c7f\u0d00-\u0d7f\s]",
+        " ",
+        normalized_query
+    )
+
+    normalized_query = re.sub(
+        r"\s+",
+        " ",
+        normalized_query
+    ).strip()
+
+    if not normalized_query:
+        return []
+
+    words = [
+        word.strip()
+        for word in normalized_query.split()
+        if word.strip()
+    ]
+
+    # --------------------------------------------------------
+    # SEARCH CONDITIONS
+    # --------------------------------------------------------
+
+    search_conditions = []
+
+    # Full phrase
+    escaped_phrase = re.escape(
+        normalized_query
+    )
+
+    phrase_regex = {
+        "$regex": escaped_phrase,
         "$options": "i"
     }
 
+    searchable_fields = [
+        "title",
+        "file_name",
+        "filename",
+        "name",
+        "search_key",
+        "title_key",
+        "caption"
+    ]
+
+    # Full phrase search
+    for field in searchable_fields:
+
+        search_conditions.append({
+            field: phrase_regex
+        })
+
     # --------------------------------------------------------
-    # BASE SEARCH
+    # WORD SEARCH
+    #
+    # Example:
+    # "Pushpa 2 The Rule"
+    #
+    # Each word can match independently.
+    # --------------------------------------------------------
+
+    for word in words:
+
+        if len(word) < 2:
+            continue
+
+        word_regex = {
+            "$regex": re.escape(word),
+            "$options": "i"
+        }
+
+        for field in searchable_fields:
+
+            search_conditions.append({
+                field: word_regex
+            })
+
+    # --------------------------------------------------------
+    # BASE FILTER
     # --------------------------------------------------------
 
     search_filter = {
-        "$or": [
-            {
-                "title": regex
-            },
-            {
-                "file_name": regex
-            },
-            {
-                "search_key": regex
-            },
-            {
-                "caption": regex
-            }
-        ]
+        "$or": search_conditions
     }
-
-    # --------------------------------------------------------
-    # FILTERS
-    # --------------------------------------------------------
-
-    filters = filters or {}
 
     # --------------------------------------------------------
     # LANGUAGE
     # --------------------------------------------------------
 
-    if filters.get("language"):
+    language = filters.get("language")
+
+    if language:
 
         language = str(
-            filters["language"]
+            language
         ).strip()
 
         if language:
@@ -1236,10 +1307,12 @@ async def search_media(
     # QUALITY
     # --------------------------------------------------------
 
-    if filters.get("quality"):
+    quality = filters.get("quality")
+
+    if quality:
 
         quality = str(
-            filters["quality"]
+            quality
         ).strip()
 
         if quality:
@@ -1288,23 +1361,59 @@ async def search_media(
             pass
 
     # --------------------------------------------------------
-    # QUERY
+    # PAGINATION
     # --------------------------------------------------------
 
-    cursor = media_collection.find(
-        search_filter
-    ).sort(
-        "message_id",
-        -1
-    ).skip(
-        int(skip)
-    ).limit(
-        int(limit)
+    try:
+        skip = max(
+            0,
+            int(skip)
+        )
+    except Exception:
+        skip = 0
+
+    try:
+        limit = max(
+            1,
+            int(limit)
+        )
+    except Exception:
+        limit = 10
+
+    # --------------------------------------------------------
+    # SEARCH
+    # --------------------------------------------------------
+
+    logger.info(
+        "Searching media: query=%r skip=%s limit=%s filters=%s",
+        query,
+        skip,
+        limit,
+        filters
     )
 
-    return await cursor.to_list(
-        length=int(limit)
+    cursor = (
+        media_collection
+        .find(search_filter)
+        .sort(
+            "message_id",
+            -1
+        )
+        .skip(skip)
+        .limit(limit)
     )
+
+    results = await cursor.to_list(
+        length=limit
+    )
+
+    logger.info(
+        "Search returned %s result(s) for %r",
+        len(results),
+        query
+    )
+
+    return results
 
 
 # ============================================================
