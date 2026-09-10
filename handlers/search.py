@@ -3,6 +3,7 @@ import html
 import logging
 from urllib.parse import quote, unquote
 
+from pyrogram.enums import ParseMode
 from pyrogram import filters
 from pyrogram.errors import FloodWait, RPCError
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -775,7 +776,7 @@ async def handle_file_deep_link(
 
         await message.reply_text(
             "❌ <b>File not found.</b>",
-            parse_mode="HTML"
+            parse_mode=ParseMode.HTML
         )
 
         return
@@ -789,7 +790,7 @@ async def handle_file_deep_link(
         await message.reply_text(
             "❌ <b>No requests remaining.</b>\n\n"
             "💎 Upgrade your plan to continue.",
-            parse_mode="HTML",
+            parse_mode=ParseMode.HTML,
             reply_markup=premium_buttons()
         )
 
@@ -932,7 +933,7 @@ async def handle_sendall_deep_link(
         await message.reply_text(
             "❌ <b>Search session expired.</b>\n"
             "Please search again.",
-            parse_mode="HTML"
+            parse_mode=ParseMode.HTML
         )
 
         return
@@ -957,7 +958,7 @@ async def handle_sendall_deep_link(
 
         await message.reply_text(
             "❌ No files found on this page.",
-            parse_mode="HTML"
+            parse_mode=ParseMode.HTML
         )
 
         return
@@ -1045,7 +1046,7 @@ async def handle_sendall_deep_link(
 
     await message.reply_text(
         text,
-        parse_mode="HTML"
+        parse_mode=ParseMode.HTML
     )
 
 
@@ -1111,7 +1112,7 @@ async def refresh_filtered_results(
 
         await callback_query.message.edit_text(
             text,
-            parse_mode="HTML",
+            parse_mode=ParseMode.HTML
             reply_markup=markup
         )
 
@@ -1339,7 +1340,7 @@ def register_search_handlers(app):
 
         await message.reply_text(
             text,
-            parse_mode="HTML",
+            parse_mode=ParseMode.HTML,
             reply_markup=markup
         )
 
@@ -1936,7 +1937,7 @@ def register_search_handlers(app):
                 "📥 <b>Get File</b>\n\n"
                 "Tap the button below to "
                 "continue in private chat.",
-                parse_mode="HTML",
+                parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup(
                     [
                         [
@@ -2044,7 +2045,7 @@ def register_search_handlers(app):
                 "📦 <b>Send All Files</b>\n\n"
                 "Open the bot in private chat "
                 "to receive the files.",
-                parse_mode="HTML",
+                parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup(
                     [
                         [
