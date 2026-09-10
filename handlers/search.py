@@ -1,24 +1,16 @@
 import asyncio
 import html
 import logging
-import os
-import re
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 from pyrogram import filters
-from pyrogram.enums import ChatMemberStatus
 from pyrogram.errors import FloodWait, RPCError
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from config import (
-    DATABASE_CHANNEL_ID,
-    OWNER_ID,
-    ADMIN_IDS,
-)
+from config import DATABASE_CHANNEL_ID
 
 from database import (
     create_user,
-    get_user,
     consume_request,
     restore_request,
     create_search_session,
@@ -35,10 +27,10 @@ from handlers.fsub import (
     send_fsub_message,
 )
 
-from handlers.premium import (
-    can_use_movie,
-    get_remaining_requests,
-)
+# IMPORTANT:
+# Your premium.py does NOT contain can_use_movie.
+# So we only import the function that actually exists.
+from premium import get_remaining_requests
 
 
 logger = logging.getLogger(__name__)
@@ -48,25 +40,11 @@ logger = logging.getLogger(__name__)
 # HELPERS
 # ============================================================
 
-def is_admin(user_id):
-    try:
-        return (
-            int(user_id) == int(OWNER_ID)
-            or int(user_id) in [
-                int(x) for x in ADMIN_IDS
-            ]
-        )
-    except Exception:
-        return False
-
-
 def escape_html(text):
     if text is None:
         return ""
 
-    return html.escape(
-        str(text)
-    )
+    return html.escape(str(text))
 
 
 def clean_query(text):
@@ -74,12 +52,7 @@ def clean_query(text):
         return ""
 
     text = str(text).strip()
-
-    text = re.sub(
-        r"\s+",
-        " ",
-        text
-    )
+    text = " ".join(text.split())
 
     return text.strip()
 
@@ -94,8 +67,43 @@ async def get_bot_username(client):
     return me.username
 
 
-def get_bot_username_sync_safe(client):
-    return ""
+# ============================================================
+# REQUEST CHECK
+# ============================================================
+# Uses the functions that actually exist in your project.
+#
+# Free user:
+#     remaining_requests > 0
+#
+# Premium user:
+#     remaining_requests > 0
+#
+# consume_request() performs the actual deduction.
+# ============================================================
+
+async def has_requests(user_id):
+
+    try:
+        remaining = await get_remaining_requests(
+            user_id
+        )
+
+        if remaining is None:
+            return True
+
+        return int(remaining) > 0
+
+    except Exception as e:
+
+        logger.warning(
+            "Request balance check failed for %s: %s",
+            user_id,
+            e
+        )
+
+        # Do not block the user here.
+        # consume_request() is the final protection.
+        return True
 
 
 # ============================================================
@@ -126,7 +134,7 @@ def build_sendall_deep_link(
 
 
 # ============================================================
-# SEARCH BUTTONS
+# SEARCH RESULT BUTTONS
 # ============================================================
 
 def search_result_buttons(
@@ -225,9 +233,7 @@ def search_result_buttons(
         ]
     )
 
-    return InlineKeyboardMarkup(
-        buttons
-    )
+    return InlineKeyboardMarkup(buttons)
 
 
 # ============================================================
@@ -255,7 +261,7 @@ def premium_buttons():
 
 
 # ============================================================
-# PAGINATION
+# PAGINATION BUTTONS
 # ============================================================
 
 def pagination_buttons(
@@ -301,21 +307,16 @@ def pagination_buttons(
             )
         )
 
-    if row:
-        buttons.append(row)
+    buttons.append(row)
 
-    return InlineKeyboardMarkup(
-        buttons
-    )
+    return InlineKeyboardMarkup(buttons)
 
 
 # ============================================================
 # FILTER MENU
 # ============================================================
 
-def filter_menu_buttons(
-    session_id
-):
+def filter_menu_buttons(session_id):
 
     return InlineKeyboardMarkup(
         [
@@ -365,7 +366,7 @@ def filter_menu_buttons(
                     callback_data=(
                         f"clear_filters_{session_id}"
                     )
-                )
+                ]
             ],
             [
                 InlineKeyboardButton(
@@ -380,7 +381,7 @@ def filter_menu_buttons(
 
 
 # ============================================================
-# OPTION BUTTONS
+# FILTER OPTION BUTTONS
 # ============================================================
 
 def option_buttons(
@@ -428,9 +429,7 @@ def option_buttons(
         ]
     )
 
-    return InlineKeyboardMarkup(
-        buttons
-    )
+    return InlineKeyboardMarkup(buttons)
 
 
 # ============================================================
@@ -447,18 +446,12 @@ def build_search_text(
 
     filters_data = filters_data or {}
 
-    lines = []
-
-    lines.append(
-        "🔎 <b>SEARCH RESULTS</b>"
-    )
-
-    lines.append("")
-
-    lines.append(
+    lines = [
+        "🔎 <b>SEARCH RESULTS</b>",
+        "",
         f"🎬 <b>Query:</b> "
-        f"<code>{escape_html(query)}</code>"
-    )
+        f"<code>{escape_html(query)}</code>",
+    ]
 
     active_filters = []
 
@@ -470,13 +463,9 @@ def build_search_text(
         "episode"
     ]:
 
-        value = filters_data.get(
-            key
-        )
+        value = filters_data.get(key)
 
-        if value is not None and str(
-            value
-        ).strip():
+        if value is not None and str(value).strip():
 
             active_filters.append(
                 f"{key.title()}: "
@@ -494,15 +483,13 @@ def build_search_text(
 
     if not results:
 
-        lines.append(
-            "❌ <b>No results found.</b>"
-        )
-
-        lines.append("")
-
-        lines.append(
-            "Try another movie, series, "
-            "anime or drama name."
+        lines.extend(
+            [
+                "❌ <b>No results found.</b>",
+                "",
+                "Try another movie, series, "
+                "anime or drama name."
+            ]
         )
 
         return "\n".join(lines)
@@ -526,12 +513,9 @@ def build_search_text(
             or "Unknown File"
         )
 
-        title = escape_html(
-            title
-        )
-
         lines.append(
-            f"<b>{index}.</b> {title}"
+            f"<b>{index}.</b> "
+            f"{escape_html(title)}"
         )
 
     lines.append("")
@@ -552,7 +536,7 @@ def build_search_text(
 
 
 # ============================================================
-# SEARCH
+# SEARCH MOVIES
 # ============================================================
 
 async def search_movies(
@@ -568,23 +552,29 @@ async def search_movies(
 
     filters = filters or {}
 
-    results = await search_media(
-        query=query,
-        skip=page * 10,
-        limit=11,
-        filters=filters
-    )
+    try:
 
-    has_next = (
-        len(results) > 10
-    )
+        results = await search_media(
+            query=query,
+            skip=page * 10,
+            limit=11,
+            filters=filters
+        )
+
+    except Exception as e:
+
+        logger.exception(
+            "search_media failed: %s",
+            e
+        )
+
+        return [], False
+
+    has_next = len(results) > 10
 
     results = results[:10]
 
-    return (
-        results,
-        has_next
-    )
+    return results, has_next
 
 
 # ============================================================
@@ -597,9 +587,7 @@ async def advanced_search(
     filters=None
 ):
 
-    query = clean_query(
-        query
-    )
+    query = clean_query(query)
 
     filters = filters or {}
 
@@ -611,22 +599,19 @@ async def advanced_search(
     # --------------------------------------------------------
 
     results, has_next = await search_movies(
-        query,
+        query=query,
         page=page,
         filters=filters
     )
 
     if results:
-        return (
-            results,
-            has_next
-        )
+        return results, has_next
 
     # --------------------------------------------------------
     # FALLBACK
     #
-    # Only use fallback when the complete query
-    # gives no results.
+    # Search individual words only if the complete
+    # query returned nothing.
     # --------------------------------------------------------
 
     words = [
@@ -637,10 +622,7 @@ async def advanced_search(
 
     if len(words) <= 1:
 
-        return (
-            [],
-            False
-        )
+        return [], False
 
     unique = {}
 
@@ -674,44 +656,29 @@ async def advanced_search(
             if message_id is None:
                 continue
 
-            unique[
-                str(message_id)
-            ] = media
+            unique[str(message_id)] = media
 
-    combined = list(
-        unique.values()
-    )
+    combined = list(unique.values())
 
     combined.sort(
         key=lambda item: int(
-            item.get(
-                "message_id",
-                0
-            ) or 0
+            item.get("message_id", 0) or 0
         ),
         reverse=True
     )
 
     start = page * 10
-
     end = start + 11
 
-    page_results = combined[
-        start:end
-    ]
+    page_results = combined[start:end]
 
-    has_next = (
-        len(page_results) > 10
-    )
+    has_next = len(page_results) > 10
 
-    return (
-        page_results[:10],
-        has_next
-    )
+    return page_results[:10], has_next
 
 
 # ============================================================
-# SESSION
+# SEARCH SESSION
 # ============================================================
 
 async def create_session_for_search(
@@ -744,11 +711,8 @@ async def send_database_file(
         try:
 
             return await client.copy_message(
-
                 chat_id=message.chat.id,
-
                 from_chat_id=DATABASE_CHANNEL_ID,
-
                 message_id=int(message_id)
             )
 
@@ -781,12 +745,7 @@ async def handle_file_deep_link(
     message_id
 ):
 
-    # --------------------------------------------------------
-    # PRIVATE ONLY
-    # --------------------------------------------------------
-
     if not message.chat:
-
         return
 
     if message.chat.type != "private":
@@ -800,13 +759,12 @@ async def handle_file_deep_link(
     user = message.from_user
 
     if not user:
-
         return
 
     user_id = user.id
 
     # --------------------------------------------------------
-    # CREATE USER
+    # USER
     # --------------------------------------------------------
 
     await create_user(
@@ -826,21 +784,11 @@ async def handle_file_deep_link(
 
     if not_joined:
 
-        bot_username = (
-            await get_bot_username(
-                client
-            )
-        )
-
-        deep_link = (
-            f"file_{int(message_id)}"
-        )
-
         await send_fsub_message(
             client,
             message,
             not_joined,
-            deep_link=deep_link
+            deep_link=f"file_{int(message_id)}"
         )
 
         return
@@ -869,12 +817,14 @@ async def handle_file_deep_link(
             )
 
             if results:
-
                 media = results[0]
 
-        except Exception:
+        except Exception as e:
 
-            media = None
+            logger.warning(
+                "Media fallback failed: %s",
+                e
+            )
 
     if not media:
 
@@ -886,45 +836,26 @@ async def handle_file_deep_link(
         return
 
     # --------------------------------------------------------
-    # REQUEST LIMIT
+    # REQUEST CHECK
     # --------------------------------------------------------
 
-    try:
-
-        allowed = await can_use_movie(
-            user_id
-        )
-
-    except Exception:
-
-        allowed = True
+    allowed = await has_requests(
+        user_id
+    )
 
     if not allowed:
 
-        remaining = 0
-
-        try:
-
-            remaining = await get_remaining_requests(
-                user_id
-            )
-        except Exception:
-            pass
-
         await message.reply_text(
-
             "❌ <b>No requests remaining.</b>\n\n"
             "💎 Upgrade your plan to continue.",
-
             parse_mode="html",
-
             reply_markup=premium_buttons()
         )
 
         return
 
     # --------------------------------------------------------
-    # CONSUME REQUEST
+    # CONSUME
     # --------------------------------------------------------
 
     consumed = await consume_request(
@@ -934,12 +865,9 @@ async def handle_file_deep_link(
     if not consumed:
 
         await message.reply_text(
-
             "❌ <b>No requests remaining.</b>\n\n"
             "💎 Please upgrade your plan.",
-
             parse_mode="html",
-
             reply_markup=premium_buttons()
         )
 
@@ -1002,11 +930,12 @@ async def handle_file_deep_link(
         try:
 
             await message.reply_text(
-                f"✅ <b>File sent successfully.</b>\n\n"
+                "✅ <b>File sent successfully.</b>\n\n"
                 f"🎟 Remaining requests: "
                 f"<b>{remaining}</b>",
                 parse_mode="html"
             )
+
         except Exception:
             pass
 
@@ -1023,7 +952,6 @@ async def handle_sendall_deep_link(
 ):
 
     if not message.chat:
-
         return
 
     if message.chat.type != "private":
@@ -1037,7 +965,6 @@ async def handle_sendall_deep_link(
     user = message.from_user
 
     if not user:
-
         return
 
     user_id = user.id
@@ -1053,7 +980,7 @@ async def handle_sendall_deep_link(
     )
 
     # --------------------------------------------------------
-    # FSUB
+    # FORCE SUB
     # --------------------------------------------------------
 
     not_joined = await check_all_fsubs(
@@ -1063,15 +990,13 @@ async def handle_sendall_deep_link(
 
     if not_joined:
 
-        deep_link = (
-            f"sendall_{session_id}_{int(page)}"
-        )
-
         await send_fsub_message(
             client,
             message,
             not_joined,
-            deep_link=deep_link
+            deep_link=(
+                f"sendall_{session_id}_{int(page)}"
+            )
         )
 
         return
@@ -1129,7 +1054,6 @@ async def handle_sendall_deep_link(
     # --------------------------------------------------------
 
     sent_count = 0
-
     failed_count = 0
 
     for media in results:
@@ -1139,30 +1063,35 @@ async def handle_sendall_deep_link(
         )
 
         if message_id is None:
+
             failed_count += 1
             continue
 
-        try:
+        # ----------------------------------------------------
+        # CHECK BALANCE
+        # ----------------------------------------------------
 
-            allowed = await can_use_movie(
-                user_id
-            )
-
-        except Exception:
-
-            allowed = True
+        allowed = await has_requests(
+            user_id
+        )
 
         if not allowed:
-
             break
+
+        # ----------------------------------------------------
+        # CONSUME
+        # ----------------------------------------------------
 
         consumed = await consume_request(
             user_id
         )
 
         if not consumed:
-
             break
+
+        # ----------------------------------------------------
+        # SEND
+        # ----------------------------------------------------
 
         try:
 
@@ -1193,8 +1122,6 @@ async def handle_sendall_deep_link(
             await restore_request(
                 user_id
             )
-
-            continue
 
     # --------------------------------------------------------
     # RESULT
@@ -1312,7 +1239,7 @@ async def refresh_filtered_results(
 def register_search_handlers(app):
 
     # ========================================================
-    # DEEP LINK START
+    # START DEEP LINK
     # ========================================================
 
     @app.on_message(
@@ -1336,9 +1263,7 @@ def register_search_handlers(app):
         # FILE
         # ----------------------------------------------------
 
-        if payload.startswith(
-            "file_"
-        ):
+        if payload.startswith("file_"):
 
             try:
 
@@ -1369,13 +1294,9 @@ def register_search_handlers(app):
         # SEND ALL
         # ----------------------------------------------------
 
-        if payload.startswith(
-            "sendall_"
-        ):
+        if payload.startswith("sendall_"):
 
-            parts = payload.split(
-                "_"
-            )
+            parts = payload.split("_")
 
             if len(parts) < 3:
 
@@ -1389,9 +1310,7 @@ def register_search_handlers(app):
 
             try:
 
-                page = int(
-                    parts[2]
-                )
+                page = int(parts[2])
 
             except Exception:
 
@@ -1407,7 +1326,7 @@ def register_search_handlers(app):
             return
 
     # ========================================================
-    # PRIVATE SEARCH TEXT
+    # PRIVATE SEARCH
     # ========================================================
 
     @app.on_message(
@@ -1435,7 +1354,14 @@ def register_search_handlers(app):
             return
 
         # ----------------------------------------------------
-        # CREATE USER
+        # IGNORE ALL COMMANDS
+        # ----------------------------------------------------
+
+        if query.startswith("/"):
+            return
+
+        # ----------------------------------------------------
+        # USER
         # ----------------------------------------------------
 
         user = message.from_user
@@ -1504,16 +1430,14 @@ def register_search_handlers(app):
 
         try:
 
-            await record_search(
-                query
-            )
+            await record_search(query)
 
         except Exception:
 
             pass
 
         # ----------------------------------------------------
-        # CREATE SESSION
+        # SESSION
         # ----------------------------------------------------
 
         try:
@@ -1595,9 +1519,7 @@ def register_search_handlers(app):
                 )
             )
 
-            page = int(
-                page_text
-            )
+            page = int(page_text)
 
         except Exception:
 
@@ -1608,12 +1530,9 @@ def register_search_handlers(app):
 
             return
 
-        if page < 0:
-            page = 0
+        page = max(0, page)
 
-        user_id = (
-            callback_query.from_user.id
-        )
+        user_id = callback_query.from_user.id
 
         session = await get_search_session(
             session_id,
@@ -1650,15 +1569,11 @@ def register_search_handlers(app):
         callback_query
     ):
 
-        session_id = (
-            callback_query.data[
-                len("filters_"):
-            ]
-        )
+        session_id = callback_query.data[
+            len("filters_"):
+        ]
 
-        user_id = (
-            callback_query.from_user.id
-        )
+        user_id = callback_query.from_user.id
 
         session = await get_search_session(
             session_id,
@@ -1683,13 +1598,12 @@ def register_search_handlers(app):
             )
 
         except Exception:
-
             pass
 
         await callback_query.answer()
 
     # ========================================================
-    # FILTER OPTION LOADER
+    # SHOW FILTER OPTIONS
     # ========================================================
 
     async def show_filter_options(
@@ -1698,9 +1612,7 @@ def register_search_handlers(app):
         session_id
     ):
 
-        user_id = (
-            callback_query.from_user.id
-        )
+        user_id = callback_query.from_user.id
 
         session = await get_search_session(
             session_id,
@@ -1793,11 +1705,9 @@ def register_search_handlers(app):
         callback_query
     ):
 
-        session_id = (
-            callback_query.data[
-                len("filter_language_"):
-            ]
-        )
+        session_id = callback_query.data[
+            len("filter_language_"):
+        ]
 
         await show_filter_options(
             callback_query,
@@ -1819,11 +1729,9 @@ def register_search_handlers(app):
         callback_query
     ):
 
-        session_id = (
-            callback_query.data[
-                len("filter_year_"):
-            ]
-        )
+        session_id = callback_query.data[
+            len("filter_year_"):
+        ]
 
         await show_filter_options(
             callback_query,
@@ -1845,11 +1753,9 @@ def register_search_handlers(app):
         callback_query
     ):
 
-        session_id = (
-            callback_query.data[
-                len("filter_quality_"):
-            ]
-        )
+        session_id = callback_query.data[
+            len("filter_quality_"):
+        ]
 
         await show_filter_options(
             callback_query,
@@ -1871,11 +1777,9 @@ def register_search_handlers(app):
         callback_query
     ):
 
-        session_id = (
-            callback_query.data[
-                len("filter_season_"):
-            ]
-        )
+        session_id = callback_query.data[
+            len("filter_season_"):
+        ]
 
         await show_filter_options(
             callback_query,
@@ -1897,11 +1801,9 @@ def register_search_handlers(app):
         callback_query
     ):
 
-        session_id = (
-            callback_query.data[
-                len("filter_episode_"):
-            ]
-        )
+        session_id = callback_query.data[
+            len("filter_episode_"):
+        ]
 
         await show_filter_options(
             callback_query,
@@ -1937,9 +1839,7 @@ def register_search_handlers(app):
             )
 
             filter_name = parts[0]
-
             session_id = parts[1]
-
             value = parts[2]
 
         except Exception:
@@ -1951,11 +1851,7 @@ def register_search_handlers(app):
 
             return
 
-        from urllib.parse import unquote
-
-        value = unquote(
-            value
-        )
+        value = unquote(value)
 
         if filter_name not in [
             "language",
@@ -1972,9 +1868,7 @@ def register_search_handlers(app):
 
             return
 
-        user_id = (
-            callback_query.from_user.id
-        )
+        user_id = callback_query.from_user.id
 
         session = await get_search_session(
             session_id,
@@ -2003,9 +1897,7 @@ def register_search_handlers(app):
 
             try:
 
-                value = int(
-                    value
-                )
+                value = int(value)
 
             except Exception:
 
@@ -2016,9 +1908,7 @@ def register_search_handlers(app):
 
                 return
 
-        filters_data[
-            filter_name
-        ] = value
+        filters_data[filter_name] = value
 
         await update_search_session_filters(
             session_id=session_id,
@@ -2051,15 +1941,11 @@ def register_search_handlers(app):
         callback_query
     ):
 
-        session_id = (
-            callback_query.data[
-                len("clear_filters_"):
-            ]
-        )
+        session_id = callback_query.data[
+            len("clear_filters_"):
+        ]
 
-        user_id = (
-            callback_query.from_user.id
-        )
+        user_id = callback_query.from_user.id
 
         session = await get_search_session(
             session_id,
@@ -2106,15 +1992,11 @@ def register_search_handlers(app):
         callback_query
     ):
 
-        session_id = (
-            callback_query.data[
-                len("back_search_"):
-            ]
-        )
+        session_id = callback_query.data[
+            len("back_search_"):
+        ]
 
-        user_id = (
-            callback_query.from_user.id
-        )
+        user_id = callback_query.from_user.id
 
         session = await get_search_session(
             session_id,
@@ -2166,9 +2048,7 @@ def register_search_handlers(app):
                 )
             )
 
-            message_id = int(
-                message_id
-            )
+            message_id = int(message_id)
 
         except Exception:
 
@@ -2185,19 +2065,25 @@ def register_search_handlers(app):
                 client
             )
 
+            if not bot_username:
+
+                await callback_query.answer(
+                    "Bot username unavailable.",
+                    show_alert=True
+                )
+
+                return
+
             deep_link = build_file_deep_link(
                 bot_username,
                 message_id
             )
 
             await callback_query.message.reply_text(
-
                 "📥 <b>Get File</b>\n\n"
                 "Tap the button below to "
                 "continue in private chat.",
-
                 parse_mode="html",
-
                 reply_markup=InlineKeyboardMarkup(
                     [
                         [
@@ -2253,9 +2139,7 @@ def register_search_handlers(app):
                 )
             )
 
-            page = int(
-                page_text
-            )
+            page = int(page_text)
 
         except Exception:
 
@@ -2266,9 +2150,7 @@ def register_search_handlers(app):
 
             return
 
-        user_id = (
-            callback_query.from_user.id
-        )
+        user_id = callback_query.from_user.id
 
         session = await get_search_session(
             session_id,
@@ -2290,6 +2172,15 @@ def register_search_handlers(app):
                 client
             )
 
+            if not bot_username:
+
+                await callback_query.answer(
+                    "Bot username unavailable.",
+                    show_alert=True
+                )
+
+                return
+
             deep_link = build_sendall_deep_link(
                 bot_username,
                 session_id,
@@ -2297,13 +2188,10 @@ def register_search_handlers(app):
             )
 
             await callback_query.message.reply_text(
-
                 "📦 <b>Send All Files</b>\n\n"
                 "Open the bot in private chat "
                 "to receive the files.",
-
                 parse_mode="html",
-
                 reply_markup=InlineKeyboardMarkup(
                     [
                         [
