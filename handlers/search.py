@@ -1,14 +1,43 @@
+# ============================================================
+# handlers/search.py
+# Premium Movie Bot - Search Handler
+# ============================================================
+#
+# Features:
+# - Private movie search
+# - Group search
+# - Force-sub protection
+# - Deep-link file delivery
+# - FSub Try Again support
+# - Search pagination
+# - Search filters
+# - Send All
+# - Search sessions
+# - Premium/free request handling
+#
+# ============================================================
+
 import asyncio
+import html
 import logging
 import os
+import re
 import urllib.parse
-import urllib.request
-import json
+from typing import Optional
 
 from pyrogram import filters
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.enums import ChatMemberStatus
+from pyrogram.errors import FloodWait, RPCError
+from pyrogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
 
-from config import DATABASE_CHANNEL_ID
+from config import (
+    DATABASE_CHANNEL_ID,
+    OWNER_ID,
+    ADMIN_IDS,
+)
 
 from database import (
     get_user,
@@ -19,213 +48,395 @@ from database import (
     get_search_session,
     update_search_session_filters,
     record_search,
-)
-
-from premium import can_use_movie, get_remaining_requests
-
-from search import (
-    search_movies,
-    advanced_search,
+    search_media,
     get_filter_options,
 )
 
-from utils.buttons import (
-    search_result_buttons,
-    premium_buttons,
-    file_sent_buttons,
-    filter_menu_buttons,
-    language_filter_buttons,
-    year_filter_buttons,
-    season_filter_buttons,
-    quality_filter_buttons,
-    episode_filter_buttons,
+from premium import (
+    can_use_movie,
+    get_remaining_requests,
 )
-
-from utils.helpers import escape_html
 
 from handlers.fsub import (
     check_all_fsubs,
     send_fsub_message,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
 # ============================================================
-# CONFIG
+# BASIC HELPERS
 # ============================================================
 
-FILE_DELETE_AFTER = 300
+def is_admin(user_id: int) -> bool:
+    try:
+        return (
+            int(user_id) == int(OWNER_ID)
+            or int(user_id) in [int(x) for x in ADMIN_IDS]
+        )
+    except Exception:
+        return False
 
-TMDB_API_KEY = os.getenv("TMDB_API_KEY", "")
+
+def escape_html(text) -> str:
+    if text is None:
+        return ""
+    return html.escape(str(text))
+
+
+def clean_query(text: str) -> str:
+    if not text:
+        return ""
+
+    text = text.strip()
+
+    # Remove bot username from commands/messages if present.
+    text = re.sub(r"@\w+", "", text)
+
+    # Normalize whitespace.
+    text = re.sub(r"\s+", " ", text)
+
+    return text.strip()
+
+
+def get_bot_username(client) -> str:
+    try:
+        me = client.me
+
+        if me and getattr(me, "username", None):
+            return me.username
+
+    except Exception:
+        pass
+
+    return ""
+
+
+async def get_bot_username_async(client) -> str:
+    try:
+        me = await client.get_me()
+
+        if me and me.username:
+            return me.username
+
+    except Exception as e:
+        logger.warning("Failed to get bot username: %s", e)
+
+    return ""
 
 
 # ============================================================
-# FILTER HELPERS
+# DEEP LINK HELPERS
 # ============================================================
 
-def normalize_filters(filters_data=None):
+def build_file_deep_link(bot_username: str, message_id: int) -> str:
     """
-    Normalize search filters.
+    Creates:
 
-    Supported:
-        language
-        year
-        quality
-        season
-        episode
+    https://t.me/BOT_USERNAME?start=file_12345
     """
 
-    if not filters_data:
-        return {}
+    bot_username = str(bot_username).lstrip("@").strip()
 
-    result = {}
+    return (
+        f"https://t.me/{bot_username}"
+        f"?start=file_{int(message_id)}"
+    )
 
-    for key in (
-        "language",
-        "year",
-        "quality",
-        "season",
-        "episode",
-    ):
-        value = filters_data.get(key)
 
-        if value is None:
+def build_sendall_deep_link(
+    bot_username: str,
+    session_id: str,
+    page: int = 0,
+) -> str:
+    """
+    Creates:
+
+    https://t.me/BOT_USERNAME?start=sendall_SESSION_PAGE
+    """
+
+    bot_username = str(bot_username).lstrip("@").strip()
+
+    return (
+        f"https://t.me/{bot_username}"
+        f"?start=sendall_{session_id}_{int(page)}"
+    )
+
+
+# ============================================================
+# SEARCH BUTTONS
+# ============================================================
+
+def search_result_buttons(
+    results,
+    bot_username: str,
+):
+    buttons = []
+
+    for item in results:
+        message_id = item.get("message_id")
+
+        if not message_id:
             continue
 
-        value = str(value).strip()
+        title = (
+            item.get("title")
+            or item.get("file_name")
+            or item.get("filename")
+            or item.get("name")
+            or "File"
+        )
+
+        title = str(title)
+
+        if len(title) > 45:
+            title = title[:42] + "..."
+
+        url = build_file_deep_link(
+            bot_username,
+            int(message_id),
+        )
+
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    f"🎬 {title}",
+                    url=url,
+                )
+            ]
+        )
+
+    return buttons
+
+
+def premium_buttons(
+    bot_username: str,
+    results,
+    session_id: Optional[str] = None,
+):
+    buttons = search_result_buttons(
+        results,
+        bot_username,
+    )
+
+    if session_id:
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    "📦 Send All",
+                    url=build_sendall_deep_link(
+                        bot_username,
+                        session_id,
+                        0,
+                    ),
+                )
+            ]
+        )
+
+    return buttons
+
+
+def pagination_buttons(
+    page: int,
+    has_next: bool,
+    session_id: Optional[str] = None,
+):
+    buttons = []
+
+    row = []
+
+    if page > 0:
+        row.append(
+            InlineKeyboardButton(
+                "⬅️ Previous",
+                callback_data=f"search_page_{page - 1}",
+            )
+        )
+
+    if has_next:
+        row.append(
+            InlineKeyboardButton(
+                "Next ➡️",
+                callback_data=f"search_page_{page + 1}",
+            )
+        )
+
+    if row:
+        buttons.append(row)
+
+    if session_id:
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    "🔎 Filters",
+                    callback_data=f"search_filters_{session_id}",
+                ),
+                InlineKeyboardButton(
+                    "📦 Send All",
+                    callback_data=f"search_sendall_{session_id}_{page}",
+                ),
+            ]
+        )
+
+    return buttons
+
+
+def filter_menu_buttons(
+    session_id: str,
+):
+    return [
+        [
+            InlineKeyboardButton(
+                "🌐 Language",
+                callback_data=f"filter_language_{session_id}",
+            ),
+            InlineKeyboardButton(
+                "📅 Year",
+                callback_data=f"filter_year_{session_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "🎞 Quality",
+                callback_data=f"filter_quality_{session_id}",
+            ),
+            InlineKeyboardButton(
+                "📺 Season",
+                callback_data=f"filter_season_{session_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "🎬 Episode",
+                callback_data=f"filter_episode_{session_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "🔄 Clear Filters",
+                callback_data=f"filter_clear_{session_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "⬅️ Back",
+                callback_data=f"search_back_{session_id}",
+            ),
+        ],
+    ]
+
+
+def option_buttons(
+    session_id: str,
+    filter_name: str,
+    options,
+):
+    buttons = []
+
+    for option in options:
+        if option is None:
+            continue
+
+        value = str(option).strip()
 
         if not value:
             continue
 
-        if value.lower() == "clear":
-            continue
+        # Callback data must remain reasonably small.
+        if len(value) > 40:
+            value = value[:40]
 
-        result[key] = value
-
-    return result
-
-
-def filters_to_text(filters_data=None):
-    """
-    Convert active filters into readable text.
-    """
-
-    filters_data = normalize_filters(filters_data)
-
-    if not filters_data:
-        return "No filters applied"
-
-    parts = []
-
-    if filters_data.get("language"):
-        parts.append(
-            f"Language: {filters_data['language']}"
-        )
-
-    if filters_data.get("year"):
-        parts.append(
-            f"Year: {filters_data['year']}"
-        )
-
-    if filters_data.get("quality"):
-        parts.append(
-            f"Quality: {filters_data['quality']}"
-        )
-
-    if filters_data.get("season"):
-        parts.append(
-            f"Season: {filters_data['season']}"
-        )
-
-    if filters_data.get("episode"):
-        parts.append(
-            f"Episode: {filters_data['episode']}"
-        )
-
-    return " • ".join(parts)
-
-
-# ============================================================
-# TMDB
-# ============================================================
-
-async def get_tmdb_metadata(title):
-    """
-    Fetch basic TMDB metadata.
-    """
-
-    if not TMDB_API_KEY:
-        return None
-
-    if not title:
-        return None
-
-    try:
-
-        encoded_title = urllib.parse.quote(title)
-
-        url = (
-            "https://api.themoviedb.org/3/search/multi"
-            f"?api_key={TMDB_API_KEY}"
-            f"&query={encoded_title}"
-        )
-
-        def fetch():
-
-            with urllib.request.urlopen(
-                url,
-                timeout=8,
-            ) as response:
-
-                return json.loads(
-                    response.read().decode("utf-8")
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    value,
+                    callback_data=(
+                        f"setfilter_"
+                        f"{filter_name}_"
+                        f"{session_id}_"
+                        f"{value}"
+                    ),
                 )
-
-        data = await asyncio.to_thread(fetch)
-
-        results = data.get(
-            "results",
-            [],
+            ]
         )
 
-        if not results:
-            return None
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                "⬅️ Back",
+                callback_data=f"search_filters_{session_id}",
+            )
+        ]
+    )
 
-        item = results[0]
+    return buttons
 
-        return {
-            "title": (
-                item.get("title")
-                or item.get("name")
-                or title
-            ),
-            "overview": item.get(
-                "overview",
-                "",
-            ),
-            "poster_path": item.get(
-                "poster_path"
-            ),
-            "vote_average": item.get(
-                "vote_average"
-            ),
-            "release_date": (
-                item.get("release_date")
-                or item.get("first_air_date")
-                or ""
-            ),
-        }
 
-    except Exception as e:
+def language_filter_buttons(
+    session_id: str,
+    options,
+):
+    return option_buttons(
+        session_id,
+        "language",
+        options,
+    )
 
-        logger.warning(
-            "TMDB metadata error: %s",
-            e,
-        )
 
-        return None
+def year_filter_buttons(
+    session_id: str,
+    options,
+):
+    return option_buttons(
+        session_id,
+        "year",
+        options,
+    )
+
+
+def season_filter_buttons(
+    session_id: str,
+    options,
+):
+    return option_buttons(
+        session_id,
+        "season",
+        options,
+    )
+
+
+def quality_filter_buttons(
+    session_id: str,
+    options,
+):
+    return option_buttons(
+        session_id,
+        "quality",
+        options,
+    )
+
+
+def episode_filter_buttons(
+    session_id: str,
+    options,
+):
+    return option_buttons(
+        session_id,
+        "episode",
+        options,
+    )
+
+
+def file_sent_buttons():
+    return [
+        [
+            InlineKeyboardButton(
+                "🏠 Home",
+                callback_data="search_home",
+            )
+        ]
+    ]
 
 
 # ============================================================
@@ -233,93 +444,239 @@ async def get_tmdb_metadata(title):
 # ============================================================
 
 def build_search_text(
-    query,
+    query: str,
     results,
-    page,
-    total_pages,
+    page: int,
+    has_next: bool,
     filters_data=None,
 ):
-    """
-    Build search result message.
-    """
+    query = escape_html(query)
 
-    filters_data = normalize_filters(
-        filters_data
-    )
-
-    text = ""
-
-    text += (
+    text = (
         "🔎 <b>Search Results</b>\n\n"
+        f"🎬 <b>Query:</b> <code>{query}</code>\n"
+        f"📄 <b>Page:</b> {page}"
     )
 
-    text += (
-        f"🎬 <b>Query:</b> "
-        f"<code>{escape_html(query)}</code>\n"
-    )
+    if has_next:
+        text += "\n➡️ <b>More results are available.</b>"
 
     if filters_data:
+        active = []
 
-        text += (
-            f"🎛 <b>Filters:</b> "
-            f"{escape_html(filters_to_text(filters_data))}\n"
-        )
+        for key, value in filters_data.items():
+            if value is None:
+                continue
 
-    text += "\n"
+            if isinstance(value, list) and not value:
+                continue
 
-    if results:
+            active.append(
+                f"{key}: {escape_html(value)}"
+            )
 
-        text += (
-            f"📄 <b>Page:</b> "
-            f"{page}/{total_pages}\n\n"
-        )
+        if active:
+            text += (
+                "\n\n🎛 <b>Active Filters:</b>\n"
+                + "\n".join(
+                    f"• {x}" for x in active
+                )
+            )
+
+    text += (
+        "\n\n"
+        f"📦 <b>Results on this page:</b> {len(results)}"
+    )
 
     return text
 
 
 # ============================================================
-# DELETE MESSAGE LATER
+# SEARCH WRAPPER
 # ============================================================
 
-async def delete_file_later(
-    client,
-    chat_id,
-    message_id,
-    delay=FILE_DELETE_AFTER,
+async def search_movies(
+    query: str,
+    page: int = 0,
+    filters=None,
 ):
     """
-    Delete a sent file after a delay.
+    Search database.
+
+    Returns:
+
+        results, has_next
+
+    Page is ZERO based.
     """
 
+    if filters is None:
+        filters = {}
+
     try:
+        skip = max(0, int(page)) * 10
 
-        await asyncio.sleep(delay)
+        results = await search_media(
+            query=query,
+            skip=skip,
+            limit=11,
+            filters=filters,
+        )
 
+        if not results:
+            return [], False
+
+        has_next = len(results) > 10
+
+        if has_next:
+            results = results[:10]
+
+        return results, has_next
+
+    except Exception as e:
+        logger.exception(
+            "search_movies error: %s",
+            e,
+        )
+        return [], False
+
+
+async def advanced_search(
+    query: str,
+    page: int = 0,
+    filters=None,
+):
+    """
+    Phrase-first / robust search.
+
+    First search the complete query.
+
+    If nothing is found, search individual words so that
+    a movie with a slightly different indexed title can still
+    be found.
+    """
+
+    if filters is None:
+        filters = {}
+
+    query = clean_query(query)
+
+    if not query:
+        return [], False
+
+    # --------------------------------------------------------
+    # 1. Full query
+    # --------------------------------------------------------
+
+    results, has_next = await search_movies(
+        query=query,
+        page=page,
+        filters=filters,
+    )
+
+    if results:
+        return results, has_next
+
+    # --------------------------------------------------------
+    # 2. Word-by-word fallback
+    # --------------------------------------------------------
+
+    words = [
+        word.strip()
+        for word in query.split()
+        if len(word.strip()) >= 2
+    ]
+
+    if not words:
+        return [], False
+
+    combined = []
+    seen = set()
+
+    # Search words individually.
+    for word in words:
         try:
-
-            await client.delete_messages(
-                chat_id,
-                message_id,
+            word_results, _ = await search_movies(
+                query=word,
+                page=0,
+                filters=filters,
             )
 
-        except Exception as e:
+            for item in word_results:
+                message_id = item.get("message_id")
 
+                if message_id in seen:
+                    continue
+
+                seen.add(message_id)
+                combined.append(item)
+
+        except Exception as e:
             logger.warning(
-                "Could not delete message %s: %s",
-                message_id,
+                "Word search failed for %s: %s",
+                word,
                 e,
             )
 
-    except asyncio.CancelledError:
+    # Keep deterministic ordering.
+    combined.sort(
+        key=lambda x: int(
+            x.get("message_id", 0)
+        ),
+        reverse=True,
+    )
 
-        pass
+    start = max(0, int(page)) * 10
+    end = start + 11
 
-    except Exception as e:
+    page_results = combined[start:end]
 
-        logger.exception(
-            "delete_file_later error: %s",
-            e,
+    has_next = len(page_results) > 10
+
+    if has_next:
+        page_results = page_results[:10]
+
+    return page_results, has_next
+
+
+# ============================================================
+# SESSION HELPERS
+# ============================================================
+
+async def create_session_for_search(
+    user_id: int,
+    query: str,
+    filters_data=None,
+):
+    if filters_data is None:
+        filters_data = {}
+
+    try:
+        session_id = await create_search_session(
+            user_id=user_id,
+            query=query,
+            filters=filters_data,
         )
+
+        return session_id
+
+    except TypeError:
+        # Compatibility with implementations that use
+        # positional parameters.
+        try:
+            session_id = await create_search_session(
+                user_id,
+                query,
+                filters_data,
+            )
+
+            return session_id
+
+        except Exception:
+            raise
+
+    except Exception:
+        raise
 
 
 # ============================================================
@@ -328,85 +685,58 @@ async def delete_file_later(
 
 async def send_database_file(
     client,
-    chat_id,
-    database_message_id,
+    message,
+    media,
 ):
     """
-    Copy a file from the private database channel
-    to the requested user's PM.
+    Copy a file from the private database channel.
+
+    The bot sends the original Telegram message so that the
+    original media is preserved without downloading/reuploading.
     """
 
-    try:
+    if not media:
+        return False
 
-        sent = await client.copy_message(
-            chat_id=chat_id,
+    message_id = media.get("message_id")
+
+    if not message_id:
+        return False
+
+    try:
+        copied = await client.copy_message(
+            chat_id=message.chat.id,
             from_chat_id=DATABASE_CHANNEL_ID,
-            message_id=int(database_message_id),
+            message_id=int(message_id),
         )
 
-        if sent:
+        return copied is not None
 
-            asyncio.create_task(
-                delete_file_later(
-                    client,
-                    chat_id,
-                    sent.id,
-                )
+    except FloodWait as e:
+        await asyncio.sleep(e.value)
+
+        try:
+            copied = await client.copy_message(
+                chat_id=message.chat.id,
+                from_chat_id=DATABASE_CHANNEL_ID,
+                message_id=int(message_id),
             )
 
-        return sent
+            return copied is not None
+
+        except Exception as retry_error:
+            logger.exception(
+                "Retry copy_message failed: %s",
+                retry_error,
+            )
+            return False
 
     except Exception as e:
-
         logger.exception(
-            "Failed to send database file: %s",
+            "Database file delivery failed: %s",
             e,
         )
-
-        return None
-
-
-# ============================================================
-# DELETE MULTIPLE FILES
-# ============================================================
-
-async def delete_files_and_warning_later(
-    client,
-    chat_id,
-    message_ids,
-    delay=FILE_DELETE_AFTER,
-):
-    """
-    Delete multiple delivered files after delay.
-    """
-
-    try:
-
-        await asyncio.sleep(delay)
-
-        for message_id in message_ids:
-
-            try:
-
-                await client.delete_messages(
-                    chat_id,
-                    message_id,
-                )
-
-            except Exception:
-
-                pass
-
-    except asyncio.CancelledError:
-
-        pass
-
-    except Exception as e:
-
-        logger.warning(
-            "Delete multiple files error: %s",
-            e,
-        )
+        return False
 
 
 # ============================================================
@@ -416,481 +746,411 @@ async def delete_files_and_warning_later(
 async def handle_file_deep_link(
     client,
     message,
-    file_id,
+    message_id: int,
 ):
     """
-    Handle:
+    Handles:
 
-        /start file_<message_id>
+        /start file_12345
+
+    Flow:
+
+        User clicks result in group
+                    ↓
+        Bot opens in PM
+                    ↓
+        FSub check
+                    ↓
+        If joined → send file
+                    ↓
+        If not joined → FSub screen
     """
 
     if not message.from_user:
         return
 
+    if message.chat.type.value != "private":
+        return
+
     user_id = message.from_user.id
 
+    try:
+        message_id = int(message_id)
+    except Exception:
+        await message.reply_text(
+            "❌ Invalid file ID."
+        )
+        return
+
     # --------------------------------------------------------
-    # FORCE SUB
+    # FSub
     # --------------------------------------------------------
 
-    joined = await check_all_fsubs(
+    not_joined = await check_all_fsubs(
         client,
         user_id,
     )
 
-    if not joined:
-
+    if not_joined:
         await send_fsub_message(
             client,
             message,
-            deep_link=f"file_{file_id}",
+            not_joined,
+            deep_link=f"file_{message_id}",
         )
-
         return
 
     # --------------------------------------------------------
-    # USER
+    # Database lookup
     # --------------------------------------------------------
 
-    user = await get_user(
-        user_id
-    )
+    media = None
 
-    if not user:
+    try:
+        media = await search_media(
+            query=str(message_id),
+            skip=0,
+            limit=100,
+            filters={},
+        )
 
-        await create_user(
-            user_id=user_id,
-            username=(
-                message.from_user.username
-                if message.from_user
-                else None
-            ),
+        # Exact message ID match.
+        exact = None
+
+        for item in media:
+            if int(
+                item.get("message_id", 0)
+            ) == int(message_id):
+                exact = item
+                break
+
+        media = exact
+
+    except Exception as e:
+        logger.warning(
+            "Media lookup through search failed: %s",
+            e,
         )
 
     # --------------------------------------------------------
-    # PREMIUM / FREE REQUEST
+    # Fallback direct Mongo collection
     # --------------------------------------------------------
 
-    allowed = await can_use_movie(
-        user_id
-    )
+    if media is None:
+        try:
+            from database import media_collection
+
+            if media_collection is not None:
+                media = await media_collection.find_one(
+                    {
+                        "channel_id": DATABASE_CHANNEL_ID,
+                        "message_id": int(message_id),
+                    }
+                )
+
+                if media is None:
+                    media = await media_collection.find_one(
+                        {
+                            "message_id": int(message_id),
+                        }
+                    )
+
+        except Exception as e:
+            logger.exception(
+                "Direct media lookup failed: %s",
+                e,
+            )
+
+    if not media:
+        await message.reply_text(
+            "❌ <b>File not found.</b>\n\n"
+            "The requested file may have been removed "
+            "from the database.",
+        )
+        return
+
+    # --------------------------------------------------------
+    # Request limit
+    # --------------------------------------------------------
+
+    try:
+        allowed = await can_use_movie(
+            user_id
+        )
+
+    except TypeError:
+        allowed = await can_use_movie(
+            user_id=user_id
+        )
+
+    except Exception as e:
+        logger.warning(
+            "can_use_movie error: %s",
+            e,
+        )
+        allowed = True
 
     if not allowed:
+        await message.reply_text(
+            "❌ <b>No requests available.</b>\n\n"
+            "Please upgrade your plan or wait for "
+            "your requests to reset.",
+        )
+        return
 
+    # --------------------------------------------------------
+    # Consume request
+    # --------------------------------------------------------
+
+    consumed = False
+
+    try:
+        consumed = await consume_request(
+            user_id
+        )
+
+    except TypeError:
+        try:
+            consumed = await consume_request(
+                user_id=user_id
+            )
+        except Exception as e:
+            logger.warning(
+                "consume_request error: %s",
+                e,
+            )
+
+    except Exception as e:
+        logger.warning(
+            "consume_request error: %s",
+            e,
+        )
+
+    # --------------------------------------------------------
+    # Send file
+    # --------------------------------------------------------
+
+    sent = await send_database_file(
+        client,
+        message,
+        media,
+    )
+
+    if not sent:
+
+        # Restore request if we consumed it.
+        if consumed:
+            try:
+                await restore_request(
+                    user_id
+                )
+            except TypeError:
+                try:
+                    await restore_request(
+                        user_id=user_id
+                    )
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+        await message.reply_text(
+            "❌ <b>Failed to send the file.</b>\n\n"
+            "Please try again later.",
+        )
+        return
+
+    # --------------------------------------------------------
+    # Remaining request information
+    # --------------------------------------------------------
+
+    try:
         remaining = await get_remaining_requests(
             user_id
         )
 
         await message.reply_text(
-            "❌ <b>Request limit reached.</b>\n\n"
-            f"🎬 Remaining requests: <b>{remaining}</b>\n\n"
-            "⭐ Upgrade to Premium for more access.",
-            reply_markup=premium_buttons(),
-        )
-
-        return
-
-    # --------------------------------------------------------
-    # CONSUME REQUEST
-    # --------------------------------------------------------
-
-    consumed = await consume_request(
-        user_id
-    )
-
-    if not consumed:
-
-        await message.reply_text(
-            "❌ You cannot request this file right now."
-        )
-
-        return
-
-    # --------------------------------------------------------
-    # SEND FILE
-    # --------------------------------------------------------
-
-    sent = await send_database_file(
-        client,
-        message.chat.id,
-        file_id,
-    )
-
-    if not sent:
-
-        try:
-
-            await restore_request(
-                user_id
-            )
-
-        except Exception:
-
-            pass
-
-        await message.reply_text(
-            "❌ <b>File delivery failed.</b>\n"
-            "Please try again later."
-        )
-
-        return
-
-    # --------------------------------------------------------
-    # RECORD
-    # --------------------------------------------------------
-
-    try:
-
-        await record_search(
-            user_id,
-            str(file_id),
+            f"✅ <b>File sent successfully!</b>\n\n"
+            f"🎟 <b>Remaining requests:</b> {remaining}",
+            reply_markup=InlineKeyboardMarkup(
+                file_sent_buttons()
+            ),
         )
 
     except Exception:
-
-        pass
-
-    remaining = await get_remaining_requests(
-        user_id
-    )
-
-    try:
-
         await message.reply_text(
-            "✅ <b>File sent successfully!</b>\n\n"
-            f"⏳ Auto-delete: "
-            f"<b>{FILE_DELETE_AFTER // 60} minutes</b>\n"
-            f"🎬 Remaining requests: "
-            f"<b>{remaining}</b>",
-            reply_markup=file_sent_buttons(),
+            "✅ <b>File sent successfully!</b>",
+            reply_markup=InlineKeyboardMarkup(
+                file_sent_buttons()
+            ),
         )
-
-    except Exception:
-
-        pass
 
 
 # ============================================================
-# SEND ALL DEEP LINK
+# SEND ALL
 # ============================================================
 
 async def handle_sendall_deep_link(
     client,
     message,
-    session_id,
-    page=0,
+    session_id: str,
+    page: int = 0,
 ):
     """
-    Handle:
+    Handles:
 
-        /start sendall_<session_id>_<page>
+        /start sendall_SESSION_PAGE
     """
 
     if not message.from_user:
         return
 
+    if message.chat.type.value != "private":
+        return
+
     user_id = message.from_user.id
 
     # --------------------------------------------------------
-    # FORCE SUB
+    # FSub
     # --------------------------------------------------------
 
-    joined = await check_all_fsubs(
+    not_joined = await check_all_fsubs(
         client,
         user_id,
     )
 
-    if not joined:
-
+    if not_joined:
         await send_fsub_message(
             client,
             message,
+            not_joined,
             deep_link=(
-                f"sendall_{session_id}_{page}"
+                f"sendall_{session_id}_{int(page)}"
             ),
         )
-
         return
 
     # --------------------------------------------------------
-    # SESSION
+    # Session
     # --------------------------------------------------------
 
     session = await get_search_session(
-        session_id
+        session_id,
+        user_id,
     )
 
     if not session:
-
         await message.reply_text(
             "❌ <b>Search session expired.</b>\n\n"
-            "Please search again."
+            "Please search again.",
         )
-
         return
 
-    query = session.get(
-        "query",
-        "",
-    )
-
-    filters_data = normalize_filters(
-        session.get(
-            "filters",
-            {},
-        )
-    )
+    query = session.get("query", "")
+    filters_data = session.get(
+        "filters",
+        {},
+    ) or {}
 
     # --------------------------------------------------------
-    # SEARCH
+    # Search
+    # --------------------------------------------------------
+
+    results, has_next = await search_movies(
+        query=query,
+        page=int(page),
+        filters=filters_data,
+    )
+
+    if not results:
+        await message.reply_text(
+            "❌ No files found on this page."
+        )
+        return
+
+    # --------------------------------------------------------
+    # Request check
     # --------------------------------------------------------
 
     try:
-
-        results, total_pages = await search_movies(
-            query,
-            page=int(page) + 1,
-            filters=filters_data,
-        )
-
-    except Exception as e:
-
-        logger.exception(
-            "SEND ALL search error: %s",
-            e,
-        )
-
-        await message.reply_text(
-            "❌ Could not load search results."
-        )
-
-        return
-
-    if not results:
-
-        await message.reply_text(
-            "❌ No files found."
-        )
-
-        return
-
-    # --------------------------------------------------------
-    # USER
-    # --------------------------------------------------------
-
-    user = await get_user(
-        user_id
-    )
-
-    if not user:
-
-        await create_user(
-            user_id=user_id,
-            username=(
-                message.from_user.username
-                if message.from_user
-                else None
-            ),
-        )
-
-    # --------------------------------------------------------
-    # SEND FILES
-    # --------------------------------------------------------
-
-    sent_ids = []
-
-    for item in results:
-
-        database_message_id = (
-            item.get("message_id")
-            or item.get("telegram_message_id")
-            or item.get("_id")
-        )
-
-        if not database_message_id:
-            continue
-
         allowed = await can_use_movie(
             user_id
         )
+    except Exception:
+        allowed = True
 
-        if not allowed:
-            break
-
-        consumed = await consume_request(
-            user_id
+    if not allowed:
+        await message.reply_text(
+            "❌ <b>No requests available.</b>"
         )
+        return
+
+    # --------------------------------------------------------
+    # Send files one by one
+    # --------------------------------------------------------
+
+    sent_count = 0
+
+    for media in results:
+
+        consumed = False
+
+        try:
+            consumed = await consume_request(
+                user_id
+            )
+        except Exception:
+            consumed = True
 
         if not consumed:
             break
 
         sent = await send_database_file(
             client,
-            message.chat.id,
-            database_message_id,
+            message,
+            media,
         )
 
         if sent:
-
-            sent_ids.append(
-                sent.id
-            )
+            sent_count += 1
 
         else:
-
             try:
-
                 await restore_request(
                     user_id
                 )
-
             except Exception:
-
                 pass
 
-    # --------------------------------------------------------
-    # DELETE
-    # --------------------------------------------------------
-
-    if sent_ids:
-
-        asyncio.create_task(
-            delete_files_and_warning_later(
-                client,
-                message.chat.id,
-                sent_ids,
-            )
-        )
-
-    # --------------------------------------------------------
-    # RESULT MESSAGE
-    # --------------------------------------------------------
-
-    if not sent_ids:
-
-        await message.reply_text(
-            "❌ No files could be delivered."
-        )
-
-        return
-
-    remaining = await get_remaining_requests(
-        user_id
-    )
-
     await message.reply_text(
-        "✅ <b>Files sent successfully!</b>\n\n"
-        f"📦 Files sent: <b>{len(sent_ids)}</b>\n"
-        f"⏳ Auto-delete: "
-        f"<b>{FILE_DELETE_AFTER // 60} minutes</b>\n"
-        f"🎬 Remaining requests: "
-        f"<b>{remaining}</b>",
-        reply_markup=file_sent_buttons(),
+        "📦 <b>Send All Complete</b>\n\n"
+        f"✅ Files sent: <b>{sent_count}</b>\n"
+        f"📄 Page: <b>{int(page) + 1}</b>",
     )
 
 
 # ============================================================
-# FILTER MENU
-# ============================================================
-
-async def show_filter_menu(
-    client,
-    callback_query,
-    session_id,
-    page=0,
-):
-    """
-    Show the main filter menu.
-    """
-
-    session = await get_search_session(
-        session_id
-    )
-
-    if not session:
-
-        await callback_query.answer(
-            "Search session expired.",
-            show_alert=True,
-        )
-
-        return
-
-    query = session.get(
-        "query",
-        "",
-    )
-
-    current_filters = normalize_filters(
-        session.get(
-            "filters",
-            {},
-        )
-    )
-
-    filters_data = await get_filter_options(
-        query,
-        filters=current_filters,
-    )
-
-    text = (
-        "🎛 <b>Search Filters</b>\n\n"
-        f"🔎 <b>Query:</b> "
-        f"<code>{escape_html(query)}</code>\n\n"
-    )
-
-    if current_filters:
-
-        text += (
-            "✅ <b>Active Filters</b>\n"
-            f"{escape_html(filters_to_text(current_filters))}\n\n"
-        )
-
-    else:
-
-        text += (
-            "ℹ️ No filters selected.\n\n"
-        )
-
-    text += "Select a filter:"
-
-    await callback_query.message.edit_text(
-        text,
-        reply_markup=filter_menu_buttons(
-            session_id,
-            page=page,
-            available=filters_data,
-        ),
-    )
-
-    await callback_query.answer()
-
-
-# ============================================================
-# REFRESH FILTERED RESULTS
+# FILTERED RESULTS
 # ============================================================
 
 async def refresh_filtered_results(
     client,
     callback_query,
-    session_id,
-    page=0,
+    session_id: str,
+    page: int = 0,
 ):
-    """
-    Refresh search results after changing filters.
-    """
+    user_id = callback_query.from_user.id
 
     session = await get_search_session(
-        session_id
+        session_id,
+        user_id,
     )
 
     if not session:
-
         await callback_query.answer(
-            "Search session expired.",
+            "❌ Search session expired.",
             show_alert=True,
         )
-
         return
 
     query = session.get(
@@ -898,395 +1158,589 @@ async def refresh_filtered_results(
         "",
     )
 
-    filters_data = normalize_filters(
-        session.get(
-            "filters",
-            {},
-        )
+    filters_data = session.get(
+        "filters",
+        {},
+    ) or {}
+
+    # IMPORTANT:
+    #
+    # search_movies returns:
+    #
+    #     results, has_next
+    #
+    # NOT:
+    #
+    #     results, total_pages
+    #
+
+    results, has_next = await search_movies(
+        query=query,
+        page=int(page),
+        filters=filters_data,
     )
 
-    try:
-
-        results, total_pages = await search_movies(
-            query,
-            page=int(page) + 1,
-            filters=filters_data,
-        )
-
-    except Exception as e:
-
-        logger.exception(
-            "Filtered search error: %s",
-            e,
-        )
-
-        await callback_query.answer(
-            "Search failed.",
-            show_alert=True,
-        )
-
-        return
-
-    # --------------------------------------------------------
-    # NO RESULTS
-    # --------------------------------------------------------
-
     if not results:
-
-        available = await get_filter_options(
-            query,
-            filters=filters_data,
-        )
-
-        text = (
-            "❌ <b>No results found.</b>\n\n"
-            f"🔎 <b>Query:</b> "
-            f"<code>{escape_html(query)}</code>\n"
-        )
-
-        if filters_data:
-
-            text += (
-                f"🎛 <b>Filters:</b> "
-                f"{escape_html(filters_to_text(filters_data))}\n"
-            )
-
-        text += (
-            "\nTry changing or clearing your filters."
-        )
-
         await callback_query.message.edit_text(
-            text,
-            reply_markup=filter_menu_buttons(
-                session_id,
-                page=0,
-                available=available,
+            "❌ <b>No results found with these filters.</b>",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "🎛 Filters",
+                            callback_data=(
+                                f"search_filters_{session_id}"
+                            ),
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "🔄 Clear Filters",
+                            callback_data=(
+                                f"filter_clear_{session_id}"
+                            ),
+                        )
+                    ],
+                ]
             ),
         )
-
-        await callback_query.answer()
-
         return
 
-    # --------------------------------------------------------
-    # BUILD TEXT
-    # --------------------------------------------------------
+    bot_username = await get_bot_username_async(
+        client
+    )
 
     text = build_search_text(
         query,
         results,
         int(page) + 1,
-        total_pages,
+        has_next,
         filters_data,
     )
 
-    # --------------------------------------------------------
-    # BOT USERNAME
-    # --------------------------------------------------------
-
-    try:
-
-        bot_username = (
-            client.me.username
-            if client.me
-            else None
-        )
-
-    except Exception:
-
-        bot_username = None
-
-    # --------------------------------------------------------
-    # BUTTONS
-    # --------------------------------------------------------
-
-    has_next = (
-        int(page) + 1 < int(total_pages)
+    buttons = search_result_buttons(
+        results,
+        bot_username,
     )
 
-    keyboard = search_result_buttons(
-        results,
-        session_id,
-        page=int(page),
-        has_next=has_next,
-        bot_username=bot_username,
+    buttons.extend(
+        pagination_buttons(
+            int(page),
+            has_next,
+            session_id,
+        )
     )
 
     await callback_query.message.edit_text(
         text,
-        reply_markup=keyboard,
+        reply_markup=InlineKeyboardMarkup(
+            buttons
+        ),
     )
 
-    await callback_query.answer()
-
 
 # ============================================================
-# REGISTER SEARCH HANDLERS
+# PRIVATE MOVIE SEARCH
 # ============================================================
+
+@app_search_handler = None
+
 
 def register_search_handlers(app):
 
+    global app_search_handler
+    app_search_handler = app
+
     # ========================================================
-    # SEARCH COMMAND / TEXT
+    # START / DEEP LINK HANDLER
     # ========================================================
 
     @app.on_message(
         filters.private
+        & filters.command("start")
+    )
+    async def search_start_deep_link(
+        client,
+        message,
+    ):
+        """
+        Deep links are normally handled by fsub.py.
+
+        This handler exists only as a safe fallback for file
+        and sendall payloads.
+        """
+
+        text = message.text or ""
+
+        parts = text.split(
+            maxsplit=1
+        )
+
+        if len(parts) < 2:
+            return
+
+        payload = parts[1].strip()
+
+        if payload.startswith("file_"):
+
+            try:
+                message_id = int(
+                    payload.split(
+                        "_",
+                        1,
+                    )[1]
+                )
+
+            except Exception:
+                await message.reply_text(
+                    "❌ Invalid file link."
+                )
+                return
+
+            await handle_file_deep_link(
+                client,
+                message,
+                message_id,
+            )
+
+            return
+
+        if payload.startswith("sendall_"):
+
+            parts = payload.split("_")
+
+            if len(parts) < 3:
+                await message.reply_text(
+                    "❌ Invalid send-all link."
+                )
+                return
+
+            session_id = parts[1]
+
+            try:
+                page = int(parts[2])
+            except Exception:
+                page = 0
+
+            await handle_sendall_deep_link(
+                client,
+                message,
+                session_id,
+                page,
+            )
+
+            return
+
+    # ========================================================
+    # MOVIE SEARCH
+    # ========================================================
+    #
+    # IMPORTANT:
+    #
+    # Do NOT allow this handler to process slash commands.
+    #
+    # The old:
+    #
+    # ~filters.command([
+    #     "start",
+    #     "help",
+    #     "premium",
+    #     "account"
+    # ])
+    #
+    # was unsafe because every other command could still
+    # reach movie_search_handler.
+    #
+    # This custom filter rejects ANY message beginning with /.
+    # ========================================================
+
+    non_command_private_text = filters.create(
+        lambda _, __, message: (
+            message is not None
+            and message.from_user is not None
+            and message.chat is not None
+            and getattr(
+                message.chat.type,
+                "value",
+                str(message.chat.type),
+            ) == "private"
+            and bool(
+                message.text
+            )
+            and not message.text.strip().startswith("/")
+        )
+    )
+
+    @app.on_message(
+        filters.private
         & filters.text
-        & ~filters.command([
-            "start",
-            "premium",
-            "alive",
-            "channel",
-            "activate",
-            "deactivate",
-            "indexstatus",
-            "stats",
-            "premiumuser",
-            "gentoken",
-            "token",
-            "id",
-            "user",
-            "font",
-            "trendlist",
-            "broadcast",
-            "maintenance",
-            "ban",
-            "unban",
-            "banlist",
-            "addpremium",
-            "removepremium",
-            "generatecode",
-            "codes",
-            "addfsub",
-            "fsublist",
-            "delfsub",
-            "redeem",
-            "plans",
-            "myplan",
-            "resetindex"
-        ])
+        & non_command_private_text
     )
     async def movie_search_handler(
         client,
         message,
     ):
+        user = message.from_user
 
-        if not message.from_user:
+        if not user:
             return
 
-        query = message.text.strip()
+        user_id = user.id
+
+        query = clean_query(
+            message.text or ""
+        )
 
         if not query:
             return
 
-        user_id = message.from_user.id
-
         # ----------------------------------------------------
-        # USER
-        # ----------------------------------------------------
-
-        user = await get_user(
-            user_id
-        )
-
-        if not user:
-
-            await create_user(
-                user_id=user_id,
-                username=(
-                    message.from_user.username
-                    if message.from_user
-                    else None
-                ),
-            )
-
-        # ----------------------------------------------------
-        # FORCE SUB
-        # ----------------------------------------------------
-
-        joined = await check_all_fsubs(
-            client,
-            user_id,
-        )
-
-        if not joined:
-
-            await send_fsub_message(
-                client,
-                message,
-            )
-
-            return
-
-        # ----------------------------------------------------
-        # PREMIUM / FREE
-        # ----------------------------------------------------
-
-        allowed = await can_use_movie(
-            user_id
-        )
-
-        if not allowed:
-
-            remaining = await get_remaining_requests(
-                user_id
-            )
-
-            await message.reply_text(
-                "❌ <b>Request limit reached.</b>\n\n"
-                f"🎬 Remaining requests: "
-                f"<b>{remaining}</b>\n\n"
-                "⭐ Upgrade to Premium.",
-                reply_markup=premium_buttons(),
-            )
-
-            return
-
-        # ----------------------------------------------------
-        # SEARCH
+        # User
         # ----------------------------------------------------
 
         try:
+            existing_user = await get_user(
+                user_id
+            )
 
+            if not existing_user:
+                await create_user(
+                    user_id
+                )
+
+        except Exception as e:
+            logger.warning(
+                "User initialization error: %s",
+                e,
+            )
+
+        # ----------------------------------------------------
+        # FSub
+        # ----------------------------------------------------
+
+        try:
+            not_joined = await check_all_fsubs(
+                client,
+                user_id,
+            )
+
+            if not_joined:
+                await send_fsub_message(
+                    client,
+                    message,
+                    not_joined,
+                    deep_link=None,
+                )
+                return
+
+        except Exception as e:
+            logger.exception(
+                "FSub search check failed: %s",
+                e,
+            )
+
+        # ----------------------------------------------------
+        # Request permission
+        # ----------------------------------------------------
+
+        try:
+            allowed = await can_use_movie(
+                user_id
+            )
+
+        except TypeError:
+            try:
+                allowed = await can_use_movie(
+                    user_id=user_id
+                )
+            except Exception:
+                allowed = True
+
+        except Exception as e:
+            logger.warning(
+                "can_use_movie error: %s",
+                e,
+            )
+            allowed = True
+
+        if not allowed:
+            try:
+                remaining = await get_remaining_requests(
+                    user_id
+                )
+            except Exception:
+                remaining = 0
+
+            await message.reply_text(
+                "❌ <b>No movie requests available.</b>\n\n"
+                f"🎟 Remaining: <b>{remaining}</b>\n\n"
+                "Upgrade your plan to continue.",
+            )
+            return
+
+        # ----------------------------------------------------
+        # Search
+        # ----------------------------------------------------
+
+        try:
             results, has_next = await advanced_search(
                 query=query,
                 page=0,
-                filters={}
+                filters={},
             )
 
         except Exception as e:
-
             logger.exception(
-                "Search error: %s",
+                "Advanced search failed: %s",
                 e,
             )
 
             await message.reply_text(
-                "❌ Search failed. Please try again."
+                "❌ <b>Search failed.</b>\n\n"
+                "Please try again.",
             )
-
             return
 
         if not results:
-
             await message.reply_text(
                 "❌ <b>No results found.</b>\n\n"
-                f"🔎 <code>{escape_html(query)}</code>"
+                f"🔎 Search: <code>"
+                f"{escape_html(query)}"
+                f"</code>"
             )
-
             return
 
         # ----------------------------------------------------
-        # SESSION
+        # Record search
         # ----------------------------------------------------
 
-        session_id = await create_search_session(
-            user_id=user_id,
-            query=query,
-            filters={},
-        )
+        try:
+            await record_search(
+                user_id,
+                query,
+            )
+        except TypeError:
+            try:
+                await record_search(
+                    user_id=user_id,
+                    query=query,
+                )
+            except Exception:
+                pass
+        except Exception:
+            pass
 
         # ----------------------------------------------------
-        # TEXT
+        # Create session
+        # ----------------------------------------------------
+
+        try:
+            session_id = await create_session_for_search(
+                user_id,
+                query,
+                {},
+            )
+
+        except Exception as e:
+            logger.exception(
+                "Search session creation failed: %s",
+                e,
+            )
+            session_id = None
+
+        # ----------------------------------------------------
+        # Build result text
         # ----------------------------------------------------
 
         text = build_search_text(
             query,
             results,
             1,
-            total_pages,
+            has_next,
             {},
         )
 
         # ----------------------------------------------------
-        # BOT USERNAME
+        # Buttons
         # ----------------------------------------------------
 
-        try:
-
-            bot_username = (
-                client.me.username
-                if client.me
-                else None
-            )
-
-        except Exception:
-
-            bot_username = None
-
-        # ----------------------------------------------------
-        # BUTTONS
-        # ----------------------------------------------------
-
-        has_next = (
-            int(total_pages) > 1
+        bot_username = await get_bot_username_async(
+            client
         )
 
-        keyboard = search_result_buttons(
+        buttons = search_result_buttons(
             results,
-            session_id,
-            page=0,
-            has_next=has_next,
-            bot_username=bot_username,
+            bot_username,
         )
+
+        buttons.extend(
+            pagination_buttons(
+                page=0,
+                has_next=has_next,
+                session_id=session_id,
+            )
+        )
+
+        # ----------------------------------------------------
+        # Send results
+        # ----------------------------------------------------
 
         await message.reply_text(
             text,
-            reply_markup=keyboard,
+            reply_markup=InlineKeyboardMarkup(
+                buttons
+            ),
+            disable_web_page_preview=True,
         )
 
-        try:
-
-            await record_search(
-                user_id,
-                query,
-            )
-
-        except Exception:
-
-            pass
 
     # ========================================================
-    # FILTER MENU
-    # Supports:
-    #
-    # filter_menu_SESSION
-    # filter_menu_SESSION_PAGE
+    # SEARCH PAGINATION
     # ========================================================
 
     @app.on_callback_query(
         filters.regex(
-            r"^filter_menu_[a-fA-F0-9]+(?:_\d+)?$"
+            r"^search_page_-?\d+$"
         )
     )
-    async def filter_menu_callback(
+    async def search_page_callback(
         client,
         callback_query,
     ):
+        user_id = callback_query.from_user.id
 
-        parts = callback_query.data.split("_")
+        try:
+            page = int(
+                callback_query.data.split(
+                    "_"
+                )[-1]
+            )
+        except Exception:
+            await callback_query.answer(
+                "Invalid page.",
+                show_alert=True,
+            )
+            return
 
-        session_id = parts[2]
+        # We need session ID from message.
+        #
+        # Pagination callback normally needs the session.
+        # If session ID was not embedded in old callback,
+        # attempt to use stored session mapping.
+        #
+        # Current buttons use search_page_<page>, so recover
+        # the latest user session.
 
-        if len(parts) >= 4:
+        session = None
 
-            try:
-                page = int(parts[3])
+        try:
+            from database import search_sessions_collection
 
-            except ValueError:
-                page = 0
+            if search_sessions_collection is not None:
+                session = await search_sessions_collection.find_one(
+                    {
+                        "user_id": user_id,
+                    },
+                    sort=[
+                        (
+                            "created_at",
+                            -1,
+                        )
+                    ],
+                )
 
-        else:
+        except Exception:
+            pass
 
-            page = 0
+        if not session:
+            await callback_query.answer(
+                "❌ Search session expired.",
+                show_alert=True,
+            )
+            return
 
-        await show_filter_menu(
+        session_id = str(
+            session.get("_id")
+        )
+
+        await callback_query.answer()
+
+        await refresh_filtered_results(
             client,
             callback_query,
             session_id,
             page,
         )
+
+
+    # ========================================================
+    # FILTER MENU
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^search_filters_.+"
+        )
+    )
+    async def search_filters_callback(
+        client,
+        callback_query,
+    ):
+        session_id = callback_query.data[
+            "search_filters_".__len__():
+        ]
+
+        session = await get_search_session(
+            session_id,
+            callback_query.from_user.id,
+        )
+
+        if not session:
+            await callback_query.answer(
+                "❌ Session expired.",
+                show_alert=True,
+            )
+            return
+
+        await callback_query.answer()
+
+        await callback_query.message.edit_text(
+            "🎛 <b>Search Filters</b>\n\n"
+            "Choose a filter:",
+            reply_markup=InlineKeyboardMarkup(
+                filter_menu_buttons(
+                    session_id
+                )
+            ),
+        )
+
+
+    # ========================================================
+    # BACK TO SEARCH
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^search_back_.+"
+        )
+    )
+    async def search_back_callback(
+        client,
+        callback_query,
+    ):
+        session_id = callback_query.data[
+            "search_back_".__len__():
+        ]
+
+        await callback_query.answer()
+
+        await refresh_filtered_results(
+            client,
+            callback_query,
+            session_id,
+            0,
+        )
+
 
     # ========================================================
     # LANGUAGE FILTER
@@ -1294,68 +1748,63 @@ def register_search_handlers(app):
 
     @app.on_callback_query(
         filters.regex(
-            r"^filter_lang_[a-fA-F0-9]+_\d+$"
+            r"^filter_language_.+"
         )
     )
     async def language_filter_callback(
         client,
         callback_query,
     ):
+        session_id = callback_query.data[
+            "filter_language_".__len__():
+        ]
 
-        parts = callback_query.data.split("_")
-
-        session_id = parts[2]
-        page = int(parts[3])
+        user_id = callback_query.from_user.id
 
         session = await get_search_session(
-            session_id
+            session_id,
+            user_id,
         )
 
         if not session:
-
             await callback_query.answer(
-                "Search session expired.",
+                "❌ Session expired.",
                 show_alert=True,
             )
-
             return
 
-        query = session.get(
-            "query",
-            "",
-        )
+        options = []
 
-        current_filters = normalize_filters(
-            session.get(
-                "filters",
-                {},
+        try:
+            data = await get_filter_options(
+                session.get("query", ""),
+                session.get("filters", {}) or {},
             )
-        )
 
-        options = await get_filter_options(
-            query,
-            filters=current_filters,
-        )
+            options = (
+                data.get("languages")
+                or data.get("language")
+                or []
+            )
 
-        languages = options.get(
-            "languages",
-            [],
-        )
+        except Exception as e:
+            logger.warning(
+                "Language options error: %s",
+                e,
+            )
+
+        await callback_query.answer()
 
         await callback_query.message.edit_text(
-            "🌐 <b>Select Language</b>\n\n"
-            "Choose a language:",
-            reply_markup=language_filter_buttons(
-                session_id,
-                languages,
-                page=page,
-                current_language=current_filters.get(
-                    "language"
-                ),
+            "🌐 <b>Select Language</b>",
+            reply_markup=InlineKeyboardMarkup(
+                language_filter_buttons(
+                    session_id,
+                    options,
+                )
             ),
         )
 
-        await callback_query.answer()
 
     # ========================================================
     # YEAR FILTER
@@ -1363,68 +1812,60 @@ def register_search_handlers(app):
 
     @app.on_callback_query(
         filters.regex(
-            r"^filter_year_[a-fA-F0-9]+_\d+$"
+            r"^filter_year_.+"
         )
     )
     async def year_filter_callback(
         client,
         callback_query,
     ):
+        session_id = callback_query.data[
+            "filter_year_".__len__():
+        ]
 
-        parts = callback_query.data.split("_")
-
-        session_id = parts[2]
-        page = int(parts[3])
+        user_id = callback_query.from_user.id
 
         session = await get_search_session(
-            session_id
+            session_id,
+            user_id,
         )
 
         if not session:
-
             await callback_query.answer(
-                "Search session expired.",
+                "❌ Session expired.",
                 show_alert=True,
             )
-
             return
 
-        query = session.get(
-            "query",
-            "",
-        )
+        options = []
 
-        current_filters = normalize_filters(
-            session.get(
-                "filters",
-                {},
+        try:
+            data = await get_filter_options(
+                session.get("query", ""),
+                session.get("filters", {}) or {},
             )
-        )
 
-        options = await get_filter_options(
-            query,
-            filters=current_filters,
-        )
+            options = (
+                data.get("years")
+                or data.get("year")
+                or []
+            )
 
-        years = options.get(
-            "years",
-            [],
-        )
+        except Exception:
+            pass
+
+        await callback_query.answer()
 
         await callback_query.message.edit_text(
-            "📅 <b>Select Year</b>\n\n"
-            "Choose a year:",
-            reply_markup=year_filter_buttons(
-                session_id,
-                years,
-                page=page,
-                current_year=current_filters.get(
-                    "year"
-                ),
+            "📅 <b>Select Year</b>",
+            reply_markup=InlineKeyboardMarkup(
+                year_filter_buttons(
+                    session_id,
+                    options,
+                )
             ),
         )
 
-        await callback_query.answer()
 
     # ========================================================
     # QUALITY FILTER
@@ -1432,77 +1873,58 @@ def register_search_handlers(app):
 
     @app.on_callback_query(
         filters.regex(
-            r"^filter_quality_[a-fA-F0-9]+_\d+$"
+            r"^filter_quality_.+"
         )
     )
     async def quality_filter_callback(
         client,
         callback_query,
     ):
-
-        parts = callback_query.data.split("_")
-
-        session_id = parts[2]
-        page = int(parts[3])
+        session_id = callback_query.data[
+            "filter_quality_".__len__():
+        ]
 
         session = await get_search_session(
-            session_id
+            session_id,
+            callback_query.from_user.id,
         )
 
         if not session:
-
             await callback_query.answer(
-                "Search session expired.",
+                "❌ Session expired.",
                 show_alert=True,
             )
-
             return
 
-        query = session.get(
-            "query",
-            "",
-        )
+        options = []
 
-        current_filters = normalize_filters(
-            session.get(
-                "filters",
-                {},
-            )
-        )
-
-        options = await get_filter_options(
-            query,
-            filters=current_filters,
-        )
-
-        qualities = options.get(
-            "qualities",
-            [],
-        )
-
-        if not qualities:
-
-            await callback_query.answer(
-                "No quality options available.",
-                show_alert=True,
+        try:
+            data = await get_filter_options(
+                session.get("query", ""),
+                session.get("filters", {}) or {},
             )
 
-            return
+            options = (
+                data.get("qualities")
+                or data.get("quality")
+                or []
+            )
+
+        except Exception:
+            pass
+
+        await callback_query.answer()
 
         await callback_query.message.edit_text(
-            "🎥 <b>Select Quality</b>\n\n"
-            "Choose a quality:",
-            reply_markup=quality_filter_buttons(
-                session_id,
-                qualities,
-                page=page,
-                current_quality=current_filters.get(
-                    "quality"
-                ),
+            "🎞 <b>Select Quality</b>",
+            reply_markup=InlineKeyboardMarkup(
+                quality_filter_buttons(
+                    session_id,
+                    options,
+                )
             ),
         )
 
-        await callback_query.answer()
 
     # ========================================================
     # SEASON FILTER
@@ -1510,68 +1932,58 @@ def register_search_handlers(app):
 
     @app.on_callback_query(
         filters.regex(
-            r"^filter_season_[a-fA-F0-9]+_\d+$"
+            r"^filter_season_.+"
         )
     )
     async def season_filter_callback(
         client,
         callback_query,
     ):
-
-        parts = callback_query.data.split("_")
-
-        session_id = parts[2]
-        page = int(parts[3])
+        session_id = callback_query.data[
+            "filter_season_".__len__():
+        ]
 
         session = await get_search_session(
-            session_id
+            session_id,
+            callback_query.from_user.id,
         )
 
         if not session:
-
             await callback_query.answer(
-                "Search session expired.",
+                "❌ Session expired.",
                 show_alert=True,
             )
-
             return
 
-        query = session.get(
-            "query",
-            "",
-        )
+        options = []
 
-        current_filters = normalize_filters(
-            session.get(
-                "filters",
-                {},
+        try:
+            data = await get_filter_options(
+                session.get("query", ""),
+                session.get("filters", {}) or {},
             )
-        )
 
-        options = await get_filter_options(
-            query,
-            filters=current_filters,
-        )
+            options = (
+                data.get("seasons")
+                or data.get("season")
+                or []
+            )
 
-        seasons = options.get(
-            "seasons",
-            [],
-        )
+        except Exception:
+            pass
+
+        await callback_query.answer()
 
         await callback_query.message.edit_text(
-            "📺 <b>Select Season</b>\n\n"
-            "Choose a season:",
-            reply_markup=season_filter_buttons(
-                session_id,
-                seasons,
-                page=page,
-                current_season=current_filters.get(
-                    "season"
-                ),
+            "📺 <b>Select Season</b>",
+            reply_markup=InlineKeyboardMarkup(
+                season_filter_buttons(
+                    session_id,
+                    options,
+                )
             ),
         )
 
-        await callback_query.answer()
 
     # ========================================================
     # EPISODE FILTER
@@ -1579,432 +1991,150 @@ def register_search_handlers(app):
 
     @app.on_callback_query(
         filters.regex(
-            r"^filter_episode_[a-fA-F0-9]+_\d+$"
+            r"^filter_episode_.+"
         )
     )
     async def episode_filter_callback(
         client,
         callback_query,
     ):
-
-        parts = callback_query.data.split("_")
-
-        session_id = parts[2]
-        page = int(parts[3])
+        session_id = callback_query.data[
+            "filter_episode_".__len__():
+        ]
 
         session = await get_search_session(
-            session_id
+            session_id,
+            callback_query.from_user.id,
         )
 
         if not session:
-
             await callback_query.answer(
-                "Search session expired.",
+                "❌ Session expired.",
                 show_alert=True,
             )
-
             return
 
-        query = session.get(
-            "query",
-            "",
-        )
+        options = []
 
-        current_filters = normalize_filters(
-            session.get(
-                "filters",
-                {},
+        try:
+            data = await get_filter_options(
+                session.get("query", ""),
+                session.get("filters", {}) or {},
             )
-        )
 
-        options = await get_filter_options(
-            query,
-            filters=current_filters,
-        )
+            options = (
+                data.get("episodes")
+                or data.get("episode")
+                or []
+            )
 
-        episodes = options.get(
-            "episodes",
-            [],
-        )
-
-        await callback_query.message.edit_text(
-            "🎞 <b>Select Episode</b>\n\n"
-            "Choose an episode:",
-            reply_markup=episode_filter_buttons(
-                session_id,
-                episodes,
-                page=page,
-                current_episode=current_filters.get(
-                    "episode"
-                ),
-            ),
-        )
+        except Exception:
+            pass
 
         await callback_query.answer()
 
+        await callback_query.message.edit_text(
+            "🎬 <b>Select Episode</b>",
+            reply_markup=InlineKeyboardMarkup(
+                episode_filter_buttons(
+                    session_id,
+                    options,
+                )
+            ),
+        )
+
+
     # ========================================================
-    # SET LANGUAGE
+    # SET FILTER
     # ========================================================
 
     @app.on_callback_query(
         filters.regex(
-            r"^setlang_[a-fA-F0-9]+_\d+_.+$"
+            r"^setfilter_.+"
         )
     )
-    async def set_language_callback(
+    async def set_filter_callback(
         client,
         callback_query,
     ):
-
         parts = callback_query.data.split(
             "_",
             3,
         )
 
-        session_id = parts[1]
-        page = int(parts[2])
-        language = parts[3].strip()
+        if len(parts) < 4:
+            await callback_query.answer(
+                "Invalid filter.",
+                show_alert=True,
+            )
+            return
+
+        filter_name = parts[1]
+        session_id = parts[2]
+        value = parts[3]
+
+        user_id = callback_query.from_user.id
 
         session = await get_search_session(
-            session_id
+            session_id,
+            user_id,
         )
 
         if not session:
-
             await callback_query.answer(
-                "Search session expired.",
+                "❌ Session expired.",
                 show_alert=True,
             )
-
             return
 
-        current_filters = normalize_filters(
-            session.get(
-                "filters",
-                {},
-            )
-        )
+        filters_data = session.get(
+            "filters",
+            {},
+        ) or {}
 
-        if language.lower() == "clear":
+        # Convert numeric values.
+        if filter_name in (
+            "year",
+            "season",
+            "episode",
+        ):
+            try:
+                value = int(value)
+            except Exception:
+                pass
 
-            current_filters.pop(
-                "language",
-                None,
-            )
+        filters_data[
+            filter_name
+        ] = value
 
-        else:
-
-            current_filters["language"] = language
-
-        await update_search_session_filters(
-            session_id,
-            current_filters,
-        )
-
-        await refresh_filtered_results(
-            client,
-            callback_query,
-            session_id,
-            page,
-        )
-
-    # ========================================================
-    # SET YEAR
-    # ========================================================
-
-    @app.on_callback_query(
-        filters.regex(
-            r"^setyear_[a-fA-F0-9]+_\d+_.+$"
-        )
-    )
-    async def set_year_callback(
-        client,
-        callback_query,
-    ):
-
-        parts = callback_query.data.split(
-            "_",
-            3,
-        )
-
-        session_id = parts[1]
-        page = int(parts[2])
-        year = parts[3].strip()
-
-        session = await get_search_session(
-            session_id
-        )
-
-        if not session:
-
-            await callback_query.answer(
-                "Search session expired.",
-                show_alert=True,
+        try:
+            await update_search_session_filters(
+                session_id,
+                user_id,
+                filters_data,
             )
 
-            return
-
-        current_filters = normalize_filters(
-            session.get(
-                "filters",
-                {},
-            )
-        )
-
-        if year.lower() == "clear":
-
-            current_filters.pop(
-                "year",
-                None,
-            )
-
-        else:
-
-            current_filters["year"] = year
-
-        await update_search_session_filters(
-            session_id,
-            current_filters,
-        )
-
-        await refresh_filtered_results(
-            client,
-            callback_query,
-            session_id,
-            page,
-        )
-
-    # ========================================================
-    # SET QUALITY
-    # ========================================================
-
-    @app.on_callback_query(
-        filters.regex(
-            r"^setquality_[a-fA-F0-9]+_\d+_.+$"
-        )
-    )
-    async def set_quality_callback(
-        client,
-        callback_query,
-    ):
-
-        parts = callback_query.data.split(
-            "_",
-            3,
-        )
-
-        session_id = parts[1]
-        page = int(parts[2])
-        quality = parts[3].strip()
-
-        session = await get_search_session(
-            session_id
-        )
-
-        if not session:
-
-            await callback_query.answer(
-                "Search session expired.",
-                show_alert=True,
-            )
-
-            return
-
-        current_filters = normalize_filters(
-            session.get(
-                "filters",
-                {},
-            )
-        )
-
-        if quality.lower() == "clear":
-
-            current_filters.pop(
-                "quality",
-                None,
-            )
-
-        else:
-
-            if not quality:
-
-                await callback_query.answer(
-                    "Invalid quality.",
-                    show_alert=True,
+        except TypeError:
+            try:
+                await update_search_session_filters(
+                    session_id=session_id,
+                    user_id=user_id,
+                    filters=filters_data,
+                )
+            except Exception as e:
+                logger.warning(
+                    "Session filter update failed: %s",
+                    e,
                 )
 
-                return
-
-            current_filters["quality"] = quality
-
-        await update_search_session_filters(
-            session_id,
-            current_filters,
-        )
-
-        await refresh_filtered_results(
-            client,
-            callback_query,
-            session_id,
-            page,
-        )
-
-    # ========================================================
-    # SET SEASON
-    # ========================================================
-
-    @app.on_callback_query(
-        filters.regex(
-            r"^setseason_[a-fA-F0-9]+_\d+_.+$"
-        )
-    )
-    async def set_season_callback(
-        client,
-        callback_query,
-    ):
-
-        parts = callback_query.data.split(
-            "_",
-            3,
-        )
-
-        session_id = parts[1]
-        page = int(parts[2])
-        season = parts[3].strip()
-
-        session = await get_search_session(
-            session_id
-        )
-
-        if not session:
-
-            await callback_query.answer(
-                "Search session expired.",
-                show_alert=True,
+        except Exception as e:
+            logger.warning(
+                "Session filter update failed: %s",
+                e,
             )
 
-            return
-
-        current_filters = normalize_filters(
-            session.get(
-                "filters",
-                {},
-            )
-        )
-
-        if season.lower() == "clear":
-
-            current_filters.pop(
-                "season",
-                None,
-            )
-
-        else:
-
-            current_filters["season"] = season
-
-        await update_search_session_filters(
-            session_id,
-            current_filters,
-        )
-
-        await refresh_filtered_results(
-            client,
-            callback_query,
-            session_id,
-            page,
-        )
-
-    # ========================================================
-    # SET EPISODE
-    # ========================================================
-
-    @app.on_callback_query(
-        filters.regex(
-            r"^setepisode_[a-fA-F0-9]+_\d+_.+$"
-        )
-    )
-    async def set_episode_callback(
-        client,
-        callback_query,
-    ):
-
-        parts = callback_query.data.split(
-            "_",
-            3,
-        )
-
-        session_id = parts[1]
-        page = int(parts[2])
-        episode = parts[3].strip()
-
-        session = await get_search_session(
-            session_id
-        )
-
-        if not session:
-
-            await callback_query.answer(
-                "Search session expired.",
-                show_alert=True,
-            )
-
-            return
-
-        current_filters = normalize_filters(
-            session.get(
-                "filters",
-                {},
-            )
-        )
-
-        if episode.lower() == "clear":
-
-            current_filters.pop(
-                "episode",
-                None,
-            )
-
-        else:
-
-            current_filters["episode"] = episode
-
-        await update_search_session_filters(
-            session_id,
-            current_filters,
-        )
-
-        await refresh_filtered_results(
-            client,
-            callback_query,
-            session_id,
-            page,
-        )
-
-    # ========================================================
-    # CLEAR ALL FILTERS
-    # ========================================================
-
-    @app.on_callback_query(
-        filters.regex(
-            r"^filter_clear_[a-fA-F0-9]+_\d+$"
-        )
-    )
-    async def clear_filters_callback(
-        client,
-        callback_query,
-    ):
-
-        parts = callback_query.data.split(
-            "_"
-        )
-
-        session_id = parts[2]
-        page = int(parts[3])
-
-        await update_search_session_filters(
-            session_id,
-            {},
+        await callback_query.answer(
+            f"✅ {filter_name.title()} set."
         )
 
         await refresh_filtered_results(
@@ -2014,191 +2144,210 @@ def register_search_handlers(app):
             0,
         )
 
-    # ========================================================
-    # FILTER BACK
-    # ========================================================
-
-    @app.on_callback_query(
-        filters.regex(
-            r"^(?:filter_back|filters)_[a-fA-F0-9]+_\d+$"
-        )
-    )
-    async def filter_back_callback(
-        client,
-        callback_query,
-    ):
-
-        parts = callback_query.data.split(
-            "_"
-        )
-
-        session_id = parts[1]
-        page = int(parts[2])
-
-        await show_filter_menu(
-            client,
-            callback_query,
-            session_id,
-            page,
-        )
 
     # ========================================================
-    # PAGINATION
+    # CLEAR FILTERS
     # ========================================================
 
     @app.on_callback_query(
         filters.regex(
-            r"^page_[a-fA-F0-9]+_\d+$"
+            r"^filter_clear_.+"
         )
     )
-    async def pagination_callback(
+    async def clear_filters_callback(
         client,
         callback_query,
     ):
+        session_id = callback_query.data[
+            "filter_clear_".__len__():
+        ]
 
-        parts = callback_query.data.split(
-            "_"
+        user_id = callback_query.from_user.id
+
+        try:
+            await update_search_session_filters(
+                session_id,
+                user_id,
+                {},
+            )
+
+        except TypeError:
+            try:
+                await update_search_session_filters(
+                    session_id=session_id,
+                    user_id=user_id,
+                    filters={},
+                )
+            except Exception:
+                pass
+
+        except Exception:
+            pass
+
+        await callback_query.answer(
+            "✅ Filters cleared."
         )
-
-        session_id = parts[1]
-        page = int(parts[2])
 
         await refresh_filtered_results(
             client,
             callback_query,
             session_id,
-            page,
+            0,
         )
 
+
     # ========================================================
-    # LEGACY SEND ALL
+    # SEND ALL CALLBACK
     # ========================================================
 
     @app.on_callback_query(
         filters.regex(
-            r"^sendall_[a-fA-F0-9]+_\d+$"
+            r"^search_sendall_.+"
         )
     )
-    async def send_all_callback(
+    async def search_sendall_callback(
         client,
         callback_query,
     ):
+        data = callback_query.data
 
-        parts = callback_query.data.split(
-            "_"
+        payload = data[
+            "search_sendall_".__len__():
+        ]
+
+        parts = payload.rsplit(
+            "_",
+            1,
         )
 
-        session_id = parts[1]
-        page = int(parts[2])
-
-        try:
-
-            bot_username = (
-                client.me.username
-                if client.me
-                else None
-            )
-
-        except Exception:
-
-            bot_username = None
-
-        if not bot_username:
-
+        if len(parts) != 2:
             await callback_query.answer(
-                "Bot username unavailable.",
+                "Invalid send-all request.",
                 show_alert=True,
             )
-
             return
 
-        deep_link = (
-            f"https://t.me/{bot_username}"
-            f"?start=sendall_{session_id}_{page}"
+        session_id = parts[0]
+
+        try:
+            page = int(parts[1])
+        except Exception:
+            page = 0
+
+        await callback_query.answer()
+
+        bot_username = await get_bot_username_async(
+            client
         )
 
-        await callback_query.answer(
-            "Opening bot...",
-            show_alert=False,
+        url = build_sendall_deep_link(
+            bot_username,
+            session_id,
+            page,
         )
 
         await callback_query.message.reply_text(
-            "📦 <b>Send all files</b>\n\n"
-            "Tap the button below to continue in PM.",
+            "📦 <b>Send All</b>\n\n"
+            "Open the bot in private chat to receive "
+            "all files from this page.",
             reply_markup=InlineKeyboardMarkup(
                 [
                     [
                         InlineKeyboardButton(
-                            "📦 SEND ALL",
-                            url=deep_link,
+                            "📦 Open Send All",
+                            url=url,
                         )
                     ]
                 ]
             ),
         )
 
+
     # ========================================================
-    # LEGACY FILE CALLBACK
+    # FILE CALLBACK
+    # ========================================================
+    #
+    # If your old result buttons used callback_data instead
+    # of URLs, this keeps them working.
     # ========================================================
 
     @app.on_callback_query(
         filters.regex(
-            r"^file_\d+$"
+            r"^file_.+"
         )
     )
     async def file_callback(
         client,
         callback_query,
     ):
-
-        parts = callback_query.data.split(
-            "_"
-        )
-
-        file_id = parts[1]
-
         try:
-
-            bot_username = (
-                client.me.username
-                if client.me
-                else None
+            message_id = int(
+                callback_query.data.split(
+                    "_",
+                    1,
+                )[1]
             )
 
         except Exception:
-
-            bot_username = None
-
-        if not bot_username:
-
             await callback_query.answer(
-                "Bot username unavailable.",
+                "❌ Invalid file.",
                 show_alert=True,
             )
-
             return
 
-        deep_link = (
-            f"https://t.me/{bot_username}"
-            f"?start=file_{file_id}"
+        # A callback in a group MUST NOT perform FSub or send
+        # the file there.
+        #
+        # Instead provide a PM deep link.
+
+        bot_username = await get_bot_username_async(
+            client
+        )
+
+        url = build_file_deep_link(
+            bot_username,
+            message_id,
         )
 
         await callback_query.answer(
-            "Opening bot...",
+            "Open the bot in private chat.",
             show_alert=False,
         )
 
-        await callback_query.message.reply_text(
-            "🎬 <b>Get File</b>\n\n"
-            "Tap the button below to receive the file in PM.",
-            reply_markup=InlineKeyboardMarkup(
-                [
+        try:
+            await callback_query.message.reply_text(
+                "🎬 <b>Open Private Chat</b>\n\n"
+                "Please open the bot in private chat "
+                "to receive your file.",
+                reply_markup=InlineKeyboardMarkup(
                     [
-                        InlineKeyboardButton(
-                            "📥 GET FILE",
-                            url=deep_link,
-                        )
+                        [
+                            InlineKeyboardButton(
+                                "📥 Get File",
+                                url=url,
+                            )
+                        ]
                     ]
-                ]
-            ),
-        )
+                ),
+            )
+
+        except Exception as e:
+            logger.warning(
+                "Failed to send PM button: %s",
+                e,
+            )
+
+
+# ============================================================
+# EXPORTS
+# ============================================================
+
+__all__ = [
+    "register_search_handlers",
+    "search_movies",
+    "advanced_search",
+    "build_search_text",
+    "handle_file_deep_link",
+    "handle_sendall_deep_link",
+    "refresh_filtered_results",
+]
