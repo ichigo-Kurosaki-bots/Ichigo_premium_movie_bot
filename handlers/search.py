@@ -1112,7 +1112,7 @@ async def refresh_filtered_results(
 
         await callback_query.message.edit_text(
             text,
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.HTML,
             reply_markup=markup
         )
 
