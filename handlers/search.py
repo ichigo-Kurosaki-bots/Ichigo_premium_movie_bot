@@ -27,9 +27,6 @@ from handlers.fsub import (
     send_fsub_message,
 )
 
-# IMPORTANT:
-# Your premium.py does NOT contain can_use_movie.
-# So we only import the function that actually exists.
 from premium import get_remaining_requests
 
 
@@ -70,20 +67,11 @@ async def get_bot_username(client):
 # ============================================================
 # REQUEST CHECK
 # ============================================================
-# Uses the functions that actually exist in your project.
-#
-# Free user:
-#     remaining_requests > 0
-#
-# Premium user:
-#     remaining_requests > 0
-#
-# consume_request() performs the actual deduction.
-# ============================================================
 
 async def has_requests(user_id):
 
     try:
+
         remaining = await get_remaining_requests(
             user_id
         )
@@ -101,8 +89,6 @@ async def has_requests(user_id):
             e
         )
 
-        # Do not block the user here.
-        # consume_request() is the final protection.
         return True
 
 
@@ -580,10 +566,6 @@ async def advanced_search(
     if not query:
         return [], False
 
-    # --------------------------------------------------------
-    # PRIMARY SEARCH
-    # --------------------------------------------------------
-
     results, has_next = await search_movies(
         query=query,
         page=page,
@@ -592,13 +574,6 @@ async def advanced_search(
 
     if results:
         return results, has_next
-
-    # --------------------------------------------------------
-    # FALLBACK
-    #
-    # Search individual words only if the complete
-    # query returned nothing.
-    # --------------------------------------------------------
 
     words = [
         word
@@ -749,19 +724,11 @@ async def handle_file_deep_link(
 
     user_id = user.id
 
-    # --------------------------------------------------------
-    # USER
-    # --------------------------------------------------------
-
     await create_user(
         user_id=user_id,
         first_name=user.first_name or "",
         username=user.username or ""
     )
-
-    # --------------------------------------------------------
-    # FORCE SUB
-    # --------------------------------------------------------
 
     not_joined = await check_all_fsubs(
         client,
@@ -779,18 +746,10 @@ async def handle_file_deep_link(
 
         return
 
-    # --------------------------------------------------------
-    # FIND MEDIA
-    # --------------------------------------------------------
-
     media = await get_media(
         DATABASE_CHANNEL_ID,
         int(message_id)
     )
-
-    # --------------------------------------------------------
-    # FALLBACK SEARCH
-    # --------------------------------------------------------
 
     if not media:
 
@@ -816,14 +775,10 @@ async def handle_file_deep_link(
 
         await message.reply_text(
             "❌ <b>File not found.</b>",
-            parse_mode="html"
+            parse_mode="HTML"
         )
 
         return
-
-    # --------------------------------------------------------
-    # REQUEST CHECK
-    # --------------------------------------------------------
 
     allowed = await has_requests(
         user_id
@@ -834,15 +789,11 @@ async def handle_file_deep_link(
         await message.reply_text(
             "❌ <b>No requests remaining.</b>\n\n"
             "💎 Upgrade your plan to continue.",
-            parse_mode="html",
+            parse_mode="HTML",
             reply_markup=premium_buttons()
         )
 
         return
-
-    # --------------------------------------------------------
-    # CONSUME
-    # --------------------------------------------------------
 
     consumed = await consume_request(
         user_id
@@ -853,15 +804,11 @@ async def handle_file_deep_link(
         await message.reply_text(
             "❌ <b>No requests remaining.</b>\n\n"
             "💎 Please upgrade your plan.",
-            parse_mode="html",
+            parse_mode="HTML",
             reply_markup=premium_buttons()
         )
 
         return
-
-    # --------------------------------------------------------
-    # SEND FILE
-    # --------------------------------------------------------
 
     try:
 
@@ -892,14 +839,10 @@ async def handle_file_deep_link(
         await message.reply_text(
             "❌ <b>Failed to send the file.</b>\n"
             "Your request has been restored.",
-            parse_mode="html"
+            parse_mode="HTML"
         )
 
         return
-
-    # --------------------------------------------------------
-    # REMAINING
-    # --------------------------------------------------------
 
     try:
 
@@ -919,7 +862,7 @@ async def handle_file_deep_link(
                 "✅ <b>File sent successfully.</b>\n\n"
                 f"🎟 Remaining requests: "
                 f"<b>{remaining}</b>",
-                parse_mode="html"
+                parse_mode="HTML"
             )
 
         except Exception:
@@ -955,19 +898,11 @@ async def handle_sendall_deep_link(
 
     user_id = user.id
 
-    # --------------------------------------------------------
-    # USER
-    # --------------------------------------------------------
-
     await create_user(
         user_id=user_id,
         first_name=user.first_name or "",
         username=user.username or ""
     )
-
-    # --------------------------------------------------------
-    # FORCE SUB
-    # --------------------------------------------------------
 
     not_joined = await check_all_fsubs(
         client,
@@ -987,10 +922,6 @@ async def handle_sendall_deep_link(
 
         return
 
-    # --------------------------------------------------------
-    # SESSION
-    # --------------------------------------------------------
-
     session = await get_search_session(
         session_id,
         user_id
@@ -1001,7 +932,7 @@ async def handle_sendall_deep_link(
         await message.reply_text(
             "❌ <b>Search session expired.</b>\n"
             "Please search again.",
-            parse_mode="html"
+            parse_mode="HTML"
         )
 
         return
@@ -1016,10 +947,6 @@ async def handle_sendall_deep_link(
         {}
     ) or {}
 
-    # --------------------------------------------------------
-    # SEARCH CURRENT PAGE
-    # --------------------------------------------------------
-
     results, has_next = await search_movies(
         query=query,
         page=int(page),
@@ -1030,14 +957,10 @@ async def handle_sendall_deep_link(
 
         await message.reply_text(
             "❌ No files found on this page.",
-            parse_mode="html"
+            parse_mode="HTML"
         )
 
         return
-
-    # --------------------------------------------------------
-    # SEND FILES
-    # --------------------------------------------------------
 
     sent_count = 0
     failed_count = 0
@@ -1053,10 +976,6 @@ async def handle_sendall_deep_link(
             failed_count += 1
             continue
 
-        # ----------------------------------------------------
-        # CHECK BALANCE
-        # ----------------------------------------------------
-
         allowed = await has_requests(
             user_id
         )
@@ -1064,20 +983,12 @@ async def handle_sendall_deep_link(
         if not allowed:
             break
 
-        # ----------------------------------------------------
-        # CONSUME
-        # ----------------------------------------------------
-
         consumed = await consume_request(
             user_id
         )
 
         if not consumed:
             break
-
-        # ----------------------------------------------------
-        # SEND
-        # ----------------------------------------------------
 
         try:
 
@@ -1109,10 +1020,6 @@ async def handle_sendall_deep_link(
                 user_id
             )
 
-    # --------------------------------------------------------
-    # RESULT
-    # --------------------------------------------------------
-
     try:
 
         remaining = await get_remaining_requests(
@@ -1138,7 +1045,7 @@ async def handle_sendall_deep_link(
 
     await message.reply_text(
         text,
-        parse_mode="html"
+        parse_mode="HTML"
     )
 
 
@@ -1204,7 +1111,7 @@ async def refresh_filtered_results(
 
         await callback_query.message.edit_text(
             text,
-            parse_mode="html",
+            parse_mode="HTML",
             reply_markup=markup
         )
 
@@ -1245,10 +1152,6 @@ def register_search_handlers(app):
 
         payload = message.command[1].strip()
 
-        # ----------------------------------------------------
-        # FILE
-        # ----------------------------------------------------
-
         if payload.startswith("file_"):
 
             try:
@@ -1275,10 +1178,6 @@ def register_search_handlers(app):
             )
 
             return
-
-        # ----------------------------------------------------
-        # SEND ALL
-        # ----------------------------------------------------
 
         if payload.startswith("sendall_"):
 
@@ -1339,16 +1238,8 @@ def register_search_handlers(app):
         if not query:
             return
 
-        # ----------------------------------------------------
-        # IGNORE ALL COMMANDS
-        # ----------------------------------------------------
-
         if query.startswith("/"):
             return
-
-        # ----------------------------------------------------
-        # USER
-        # ----------------------------------------------------
 
         user = message.from_user
 
@@ -1362,10 +1253,6 @@ def register_search_handlers(app):
             first_name=user.first_name or "",
             username=user.username or ""
         )
-
-        # ----------------------------------------------------
-        # FORCE SUB
-        # ----------------------------------------------------
 
         not_joined = await check_all_fsubs(
             client,
@@ -1382,10 +1269,6 @@ def register_search_handlers(app):
             )
 
             return
-
-        # ----------------------------------------------------
-        # SEARCH
-        # ----------------------------------------------------
 
         try:
 
@@ -1410,10 +1293,6 @@ def register_search_handlers(app):
 
             return
 
-        # ----------------------------------------------------
-        # RECORD
-        # ----------------------------------------------------
-
         try:
 
             await record_search(query)
@@ -1421,10 +1300,6 @@ def register_search_handlers(app):
         except Exception:
 
             pass
-
-        # ----------------------------------------------------
-        # SESSION
-        # ----------------------------------------------------
 
         try:
 
@@ -1447,10 +1322,6 @@ def register_search_handlers(app):
 
             return
 
-        # ----------------------------------------------------
-        # TEXT
-        # ----------------------------------------------------
-
         text = build_search_text(
             query=query,
             results=results,
@@ -1458,10 +1329,6 @@ def register_search_handlers(app):
             has_next=has_next,
             filters_data={}
         )
-
-        # ----------------------------------------------------
-        # BUTTONS
-        # ----------------------------------------------------
 
         markup = search_result_buttons(
             results=results,
@@ -1472,7 +1339,7 @@ def register_search_handlers(app):
 
         await message.reply_text(
             text,
-            parse_mode="html",
+            parse_mode="HTML",
             reply_markup=markup
         )
 
@@ -2069,7 +1936,7 @@ def register_search_handlers(app):
                 "📥 <b>Get File</b>\n\n"
                 "Tap the button below to "
                 "continue in private chat.",
-                parse_mode="html",
+                parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup(
                     [
                         [
@@ -2177,7 +2044,7 @@ def register_search_handlers(app):
                 "📦 <b>Send All Files</b>\n\n"
                 "Open the bot in private chat "
                 "to receive the files.",
-                parse_mode="html",
+                parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup(
                     [
                         [
