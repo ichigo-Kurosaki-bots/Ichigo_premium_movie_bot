@@ -3,8 +3,8 @@ import html
 import logging
 from urllib.parse import quote, unquote
 
+from pyrogram import filters, StopPropagation
 from pyrogram.enums import ParseMode
-from pyrogram import filters
 from pyrogram.errors import FloodWait, RPCError
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -63,6 +63,62 @@ async def get_bot_username(client):
         return ""
 
     return me.username
+
+
+# ============================================================
+# AUTO DELETE
+# ============================================================
+
+async def delete_messages_after_5_minutes(
+    client,
+    chat_id,
+    message_ids,
+    warning_message_id=None
+):
+    try:
+
+        await asyncio.sleep(300)
+
+        for message_id in message_ids:
+
+            try:
+
+                await client.delete_messages(
+                    chat_id,
+                    message_id
+                )
+
+            except Exception as e:
+
+                logger.warning(
+                    "Could not delete file message %s: %s",
+                    message_id,
+                    e
+                )
+
+        if warning_message_id:
+
+            try:
+
+                await client.delete_messages(
+                    chat_id,
+                    warning_message_id
+                )
+
+            except Exception as e:
+
+                logger.warning(
+                    "Could not delete warning message %s: %s",
+                    warning_message_id,
+                    e
+                )
+
+    except Exception as e:
+
+        logger.exception(
+            "Auto-delete task failed: %s",
+            e
+        )
 
 
 # ============================================================
@@ -143,10 +199,10 @@ def search_result_buttons(
             continue
 
         title = (
-            media.get("title")
-            or media.get("file_name")
+            media.get("file_name")
             or media.get("filename")
             or media.get("name")
+            or media.get("title")
             or "File"
         )
 
@@ -479,10 +535,10 @@ def build_search_text(
     ):
 
         title = (
-            media.get("title")
-            or media.get("file_name")
+            media.get("file_name")
             or media.get("filename")
             or media.get("name")
+            or media.get("title")
             or "Unknown File"
         )
 
@@ -805,7 +861,7 @@ async def handle_file_deep_link(
         await message.reply_text(
             "❌ <b>No requests remaining.</b>\n\n"
             "💎 Please upgrade your plan.",
-            parse_mode="HTML",
+            parse_mode=ParseMode.HTML,
             reply_markup=premium_buttons()
         )
 
@@ -840,10 +896,38 @@ async def handle_file_deep_link(
         await message.reply_text(
             "❌ <b>Failed to send the file.</b>\n"
             "Your request has been restored.",
-            parse_mode="HTML"
+            parse_mode=ParseMode.HTML
         )
 
         return
+
+    # ========================================================
+    # 5 MINUTE DELETE WARNING
+    # ========================================================
+
+    try:
+
+        warning = await message.reply_text(
+            "⚠️ <b>This file will be automatically "
+            "deleted after 5 minutes.</b>",
+            parse_mode=ParseMode.HTML
+        )
+
+        asyncio.create_task(
+            delete_messages_after_5_minutes(
+                client=client,
+                chat_id=message.chat.id,
+                message_ids=[sent.id],
+                warning_message_id=warning.id
+            )
+        )
+
+    except Exception as e:
+
+        logger.warning(
+            "Could not create auto-delete warning: %s",
+            e
+        )
 
     try:
 
@@ -863,7 +947,7 @@ async def handle_file_deep_link(
                 "✅ <b>File sent successfully.</b>\n\n"
                 f"🎟 Remaining requests: "
                 f"<b>{remaining}</b>",
-                parse_mode="HTML"
+                parse_mode=ParseMode.HTML
             )
 
         except Exception:
@@ -966,6 +1050,9 @@ async def handle_sendall_deep_link(
     sent_count = 0
     failed_count = 0
 
+    # Store all sent message IDs
+    sent_message_ids = []
+
     for media in results:
 
         message_id = media.get(
@@ -1007,6 +1094,11 @@ async def handle_sendall_deep_link(
 
             sent_count += 1
 
+            # Save sent message ID for auto-delete
+            sent_message_ids.append(
+                sent.id
+            )
+
         except Exception as e:
 
             failed_count += 1
@@ -1019,6 +1111,38 @@ async def handle_sendall_deep_link(
 
             await restore_request(
                 user_id
+            )
+
+    # ========================================================
+    # SEND WARNING FOR SEND ALL
+    # ========================================================
+
+    warning = None
+
+    if sent_message_ids:
+
+        try:
+
+            warning = await message.reply_text(
+                "⚠️ <b>All sent files will be "
+                "automatically deleted after 5 minutes.</b>",
+                parse_mode=ParseMode.HTML
+            )
+
+            asyncio.create_task(
+                delete_messages_after_5_minutes(
+                    client=client,
+                    chat_id=message.chat.id,
+                    message_ids=sent_message_ids,
+                    warning_message_id=warning.id
+                )
+            )
+
+        except Exception as e:
+
+            logger.warning(
+                "Could not create send-all auto-delete warning: %s",
+                e
             )
 
     try:
@@ -1138,7 +1262,8 @@ def register_search_handlers(app):
 
     @app.on_message(
         filters.private
-        & filters.command("start")
+        & filters.command("start"),
+        group=-1
     )
     async def search_start_deep_link(
         client,
@@ -1170,7 +1295,7 @@ def register_search_handlers(app):
                     "❌ Invalid file link."
                 )
 
-                return
+                raise StopPropagation
 
             await handle_file_deep_link(
                 client,
@@ -1178,7 +1303,7 @@ def register_search_handlers(app):
                 message_id
             )
 
-            return
+            raise StopPropagation
 
         if payload.startswith("sendall_"):
 
@@ -1190,7 +1315,7 @@ def register_search_handlers(app):
                     "❌ Invalid send-all link."
                 )
 
-                return
+                raise StopPropagation
 
             session_id = parts[1]
 
@@ -1209,7 +1334,7 @@ def register_search_handlers(app):
                 page
             )
 
-            return
+            raise StopPropagation
 
     # ========================================================
     # PRIVATE SEARCH
