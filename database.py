@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import datetime
 
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -115,6 +116,14 @@ async def init_database():
         "search_key"
     )
 
+    await media_collection.create_index(
+        "file_name"
+    )
+
+    await media_collection.create_index(
+        "filename"
+    )
+
     # --------------------------------------------------------
     # FILTER INDEXES
     # --------------------------------------------------------
@@ -135,7 +144,6 @@ async def init_database():
         "episode"
     )
 
-    # QUALITY FILTER INDEX
     await media_collection.create_index(
         "quality"
     )
@@ -241,11 +249,8 @@ async def create_user(
                 "premium_requests": 0,
                 "remaining_requests": FREE_REQUESTS,
                 "total_requests_used": 0,
-
-                # TOKEN SYSTEM
                 "tokens": 0,
                 "last_token_claim": None,
-
                 "created_at": now
             }
         },
@@ -669,7 +674,6 @@ async def add_media(data):
 
         {
             "channel_id": channel_id,
-
             "message_id": message_id
         },
 
@@ -692,7 +696,6 @@ async def get_media(
 
         {
             "channel_id": channel_id,
-
             "message_id": message_id
         }
     )
@@ -737,6 +740,7 @@ async def get_media_storage_stats():
     )
 
     if not result:
+
         return {
             "total_files": 0,
             "total_size": 0
@@ -771,17 +775,11 @@ async def create_search_session(
     session_id = secrets.token_hex(8)
 
     document = {
-
         "session_id": session_id,
-
         "user_id": user_id,
-
         "query": query,
-
         "filters": filters or {},
-
-        "created_at":
-            datetime.utcnow()
+        "created_at": datetime.utcnow()
     }
 
     await search_sessions_collection.insert_one(
@@ -800,7 +798,6 @@ async def get_search_session(
 
         {
             "session_id": session_id,
-
             "user_id": user_id
         }
     )
@@ -811,17 +808,6 @@ async def update_search_session_filters(
     user_id,
     filters=None
 ):
-    """
-    Update the filters currently selected
-    for a search session.
-
-    Supported filters:
-        language
-        year
-        quality
-        season
-        episode
-    """
 
     filters = filters or {}
 
@@ -853,10 +839,12 @@ async def update_search_session_filters(
         clean_filters[key] = value
 
     result = await search_sessions_collection.update_one(
+
         {
             "session_id": session_id,
             "user_id": user_id
         },
+
         {
             "$set": {
                 "filters": clean_filters,
@@ -892,7 +880,6 @@ async def delete_search_session(
 ):
 
     await search_sessions_collection.delete_one(
-
         {
             "session_id": session_id
         }
@@ -951,7 +938,6 @@ async def get_total_file_size():
     )
 
     if not result:
-
         return 0
 
     return result[0].get(
@@ -989,17 +975,14 @@ async def get_stats():
 
     return {
 
-        "users":
-            users,
+        "users": users,
 
-        "chats":
-            chats,
+        "chats": chats,
 
         "premium_users":
             premium_users,
 
-        "media":
-            media,
+        "media": media,
 
         "total_size":
             total_size_bytes,
@@ -1033,11 +1016,8 @@ async def get_indexer_state():
     if not state:
 
         return {
-
             "last_message_id": 0,
-
             "indexed_count": 0,
-
             "updated_at": None
         }
 
@@ -1124,96 +1104,47 @@ async def reset_indexer():
         upsert=True
     )
 
+
 # ============================================================
-# SEARCH MEDIA
+# SEARCH HELPERS
 # ============================================================
 
-async def search_media(
-    query,
-    skip=0,
-    limit=10,
-    filters=None
-):
-    """
-    Robust media search.
+def _normalize_search_text(text):
 
-    Searches:
-        title
-        file_name
-        filename
-        name
-        search_key
-        title_key
-        caption
+    if text is None:
+        return ""
 
-    The search supports:
-        - Full phrase matching
-        - Individual word matching
-        - Different spacing/punctuation
-        - Case-insensitive search
+    text = str(text).lower()
 
-    Optional filters:
-        language
-        year
-        quality
-        season
-        episode
-    """
-
-    if not query:
-        return []
-
-    query = str(query).strip()
-
-    if not query:
-        return []
-
-    import re
-
-    filters = filters or {}
-
-    # --------------------------------------------------------
-    # NORMALIZE SEARCH QUERY
-    # --------------------------------------------------------
-
-    normalized_query = query.lower()
-
-    normalized_query = re.sub(
+    text = re.sub(
         r"[^a-z0-9\u0900-\u097f\u0b80-\u0bff\u0c00-\u0c7f\u0d00-\u0d7f\s]",
         " ",
-        normalized_query
+        text
     )
 
-    normalized_query = re.sub(
+    text = re.sub(
         r"\s+",
         " ",
-        normalized_query
+        text
     ).strip()
 
-    if not normalized_query:
-        return []
+    return text
 
-    words = [
-        word.strip()
-        for word in normalized_query.split()
-        if word.strip()
-    ]
 
-    # --------------------------------------------------------
-    # SEARCH CONDITIONS
-    # --------------------------------------------------------
+def _build_search_condition(query):
 
-    search_conditions = []
-
-    # Full phrase
-    escaped_phrase = re.escape(
-        normalized_query
+    normalized_query = _normalize_search_text(
+        query
     )
 
-    phrase_regex = {
-        "$regex": escaped_phrase,
-        "$options": "i"
-    }
+    if not normalized_query:
+        return None
+
+    words = [
+        word
+        for word in normalized_query.split()
+        if len(word) >= 2
+    ]
 
     searchable_fields = [
         "title",
@@ -1225,51 +1156,117 @@ async def search_media(
         "caption"
     ]
 
-    # Full phrase search
-    for field in searchable_fields:
-
-        search_conditions.append({
-            field: phrase_regex
-        })
-
     # --------------------------------------------------------
-    # WORD SEARCH
-    #
-    # Example:
-    # "Pushpa 2 The Rule"
-    #
-    # Each word can match independently.
+    # SINGLE WORD
     # --------------------------------------------------------
 
-    for word in words:
+    if len(words) <= 1:
 
-        if len(word) < 2:
-            continue
+        word = (
+            words[0]
+            if words
+            else normalized_query
+        )
 
         word_regex = {
             "$regex": re.escape(word),
             "$options": "i"
         }
 
-        for field in searchable_fields:
-
-            search_conditions.append({
-                field: word_regex
-            })
+        return {
+            "$or": [
+                {
+                    field: word_regex
+                }
+                for field in searchable_fields
+            ]
+        }
 
     # --------------------------------------------------------
-    # BASE FILTER
+    # MULTI-WORD SEARCH
+    #
+    # ALL meaningful words must be present.
+    #
+    # Example:
+    #
+    # Pushpa 2 The Rule
+    #
+    # must contain:
+    # Pushpa
+    # 2
+    # Rule
+    #
+    # instead of matching only one word.
     # --------------------------------------------------------
 
-    search_filter = {
-        "$or": search_conditions
+    word_conditions = []
+
+    for word in words:
+
+        word_regex = {
+            "$regex": re.escape(word),
+            "$options": "i"
+        }
+
+        word_conditions.append(
+            {
+                "$or": [
+                    {
+                        field: word_regex
+                    }
+                    for field in searchable_fields
+                ]
+            }
+        )
+
+    # --------------------------------------------------------
+    # PHRASE CONDITION
+    # --------------------------------------------------------
+
+    phrase_regex = {
+        "$regex": re.escape(
+            normalized_query
+        ),
+        "$options": "i"
     }
+
+    phrase_condition = {
+        "$or": [
+            {
+                field: phrase_regex
+            }
+            for field in searchable_fields
+        ]
+    }
+
+    # --------------------------------------------------------
+    # PHRASE OR ALL WORDS
+    # --------------------------------------------------------
+
+    return {
+        "$or": [
+            phrase_condition,
+            {
+                "$and": word_conditions
+            }
+        ]
+    }
+
+
+def _apply_media_filters(
+    search_filter,
+    filters
+):
+
+    filters = filters or {}
 
     # --------------------------------------------------------
     # LANGUAGE
     # --------------------------------------------------------
 
-    language = filters.get("language")
+    language = filters.get(
+        "language"
+    )
 
     if language:
 
@@ -1307,7 +1304,9 @@ async def search_media(
     # QUALITY
     # --------------------------------------------------------
 
-    quality = filters.get("quality")
+    quality = filters.get(
+        "quality"
+    )
 
     if quality:
 
@@ -1360,29 +1359,87 @@ async def search_media(
 
             pass
 
-    # --------------------------------------------------------
-    # PAGINATION
-    # --------------------------------------------------------
+    return search_filter
+
+
+# ============================================================
+# SEARCH MEDIA
+# ============================================================
+
+async def search_media(
+    query,
+    skip=0,
+    limit=10,
+    filters=None
+):
+    """
+    Search indexed media.
+
+    Supports:
+
+    - Full phrase matching
+    - Multi-word matching
+    - Case-insensitive search
+    - Punctuation/spacing normalization
+    - Language filter
+    - Year filter
+    - Quality filter
+    - Season filter
+    - Episode filter
+
+    For multi-word queries all meaningful words
+    must match the same media document.
+    """
+
+    if not query:
+        return []
+
+    query = str(
+        query
+    ).strip()
+
+    if not query:
+        return []
+
+    search_condition = _build_search_condition(
+        query
+    )
+
+    if not search_condition:
+        return []
+
+    filters = filters or {}
+
+    search_filter = dict(
+        search_condition
+    )
+
+    search_filter = _apply_media_filters(
+        search_filter,
+        filters
+    )
 
     try:
+
         skip = max(
             0,
             int(skip)
         )
+
     except Exception:
+
         skip = 0
 
     try:
+
         limit = max(
             1,
             int(limit)
         )
-    except Exception:
-        limit = 10
 
-    # --------------------------------------------------------
-    # SEARCH
-    # --------------------------------------------------------
+    except Exception:
+
+        limit = 10
 
     logger.info(
         "Searching media: query=%r skip=%s limit=%s filters=%s",
@@ -1425,18 +1482,11 @@ async def get_filter_options(
     filters=None
 ):
     """
-    Return filter values that exist for the
-    current search.
+    Return filter values that exist for
+    the current search.
 
-    Returns:
-
-        {
-            "languages": [...],
-            "years": [...],
-            "qualities": [...],
-            "seasons": [...],
-            "episodes": [...]
-        }
+    Uses exactly the same search logic as
+    search_media().
     """
 
     empty_result = {
@@ -1450,113 +1500,30 @@ async def get_filter_options(
     if not query:
         return empty_result
 
-    query = str(query).strip()
+    query = str(
+        query
+    ).strip()
 
     if not query:
         return empty_result
 
-    import re
+    search_condition = _build_search_condition(
+        query
+    )
 
-    pattern = re.escape(query)
-
-    regex = {
-        "$regex": pattern,
-        "$options": "i"
-    }
-
-    base_filter = {
-        "$or": [
-            {
-                "title": regex
-            },
-            {
-                "file_name": regex
-            },
-            {
-                "search_key": regex
-            },
-            {
-                "caption": regex
-            }
-        ]
-    }
+    if not search_condition:
+        return empty_result
 
     filters = filters or {}
 
-    # --------------------------------------------------------
-    # APPLY CURRENT FILTERS
-    # --------------------------------------------------------
+    base_filter = dict(
+        search_condition
+    )
 
-    if filters.get("language"):
-
-        language = str(
-            filters["language"]
-        ).strip()
-
-        if language:
-
-            base_filter["language"] = {
-                "$regex": re.escape(language),
-                "$options": "i"
-            }
-
-    if filters.get("year") is not None:
-
-        try:
-
-            base_filter["year"] = int(
-                filters["year"]
-            )
-
-        except (
-            TypeError,
-            ValueError
-        ):
-
-            pass
-
-    if filters.get("quality"):
-
-        quality = str(
-            filters["quality"]
-        ).strip()
-
-        if quality:
-
-            base_filter["quality"] = {
-                "$regex": re.escape(quality),
-                "$options": "i"
-            }
-
-    if filters.get("season") is not None:
-
-        try:
-
-            base_filter["season"] = int(
-                filters["season"]
-            )
-
-        except (
-            TypeError,
-            ValueError
-        ):
-
-            pass
-
-    if filters.get("episode") is not None:
-
-        try:
-
-            base_filter["episode"] = int(
-                filters["episode"]
-            )
-
-        except (
-            TypeError,
-            ValueError
-        ):
-
-            pass
+    base_filter = _apply_media_filters(
+        base_filter,
+        filters
+    )
 
     # --------------------------------------------------------
     # LANGUAGES
@@ -1564,7 +1531,7 @@ async def get_filter_options(
 
     language_pipeline = [
         {
-            "$match": dict(base_filter)
+            "$match": base_filter
         },
         {
             "$match": {
@@ -1598,14 +1565,20 @@ async def get_filter_options(
 
     for item in language_result:
 
-        value = item.get("_id")
+        value = item.get(
+            "_id"
+        )
 
         if value:
 
-            value = str(value).strip()
+            value = str(
+                value
+            ).strip()
 
             if value:
-                languages.append(value)
+                languages.append(
+                    value
+                )
 
     # --------------------------------------------------------
     # YEARS
@@ -1615,7 +1588,7 @@ async def get_filter_options(
 
     year_pipeline = [
         {
-            "$match": dict(base_filter)
+            "$match": base_filter
         },
         {
             "$match": {
@@ -1647,17 +1620,23 @@ async def get_filter_options(
 
     for item in year_result:
 
-        value = item.get("_id")
+        value = item.get(
+            "_id"
+        )
 
         if value is not None:
 
             try:
 
-                value = int(value)
+                value = int(
+                    value
+                )
 
                 if 1960 <= value <= current_year:
 
-                    years.append(value)
+                    years.append(
+                        value
+                    )
 
             except (
                 TypeError,
@@ -1672,7 +1651,7 @@ async def get_filter_options(
 
     quality_pipeline = [
         {
-            "$match": dict(base_filter)
+            "$match": base_filter
         },
         {
             "$match": {
@@ -1706,14 +1685,20 @@ async def get_filter_options(
 
     for item in quality_result:
 
-        value = item.get("_id")
+        value = item.get(
+            "_id"
+        )
 
         if value:
 
-            value = str(value).strip()
+            value = str(
+                value
+            ).strip()
 
             if value:
-                qualities.append(value)
+                qualities.append(
+                    value
+                )
 
     # --------------------------------------------------------
     # SEASONS
@@ -1721,7 +1706,7 @@ async def get_filter_options(
 
     season_pipeline = [
         {
-            "$match": dict(base_filter)
+            "$match": base_filter
         },
         {
             "$match": {
@@ -1753,17 +1738,23 @@ async def get_filter_options(
 
     for item in season_result:
 
-        value = item.get("_id")
+        value = item.get(
+            "_id"
+        )
 
         if value is not None:
 
             try:
 
-                value = int(value)
+                value = int(
+                    value
+                )
 
                 if 1 <= value <= 20:
 
-                    seasons.append(value)
+                    seasons.append(
+                        value
+                    )
 
             except (
                 TypeError,
@@ -1778,7 +1769,7 @@ async def get_filter_options(
 
     episode_pipeline = [
         {
-            "$match": dict(base_filter)
+            "$match": base_filter
         },
         {
             "$match": {
@@ -1810,17 +1801,23 @@ async def get_filter_options(
 
     for item in episode_result:
 
-        value = item.get("_id")
+        value = item.get(
+            "_id"
+        )
 
         if value is not None:
 
             try:
 
-                value = int(value)
+                value = int(
+                    value
+                )
 
                 if 1 <= value <= 50:
 
-                    episodes.append(value)
+                    episodes.append(
+                        value
+                    )
 
             except (
                 TypeError,
@@ -1943,9 +1940,6 @@ async def get_available_episodes(
 # ============================================================
 
 async def get_all_user_ids():
-    """
-    Get all registered Telegram user IDs.
-    """
 
     cursor = users_collection.find(
         {},
@@ -2009,7 +2003,6 @@ async def add_fsub_channel(
     )
 
     if existing:
-
         return False
 
     await settings_collection.update_one(
@@ -2052,16 +2045,13 @@ async def remove_fsub_channel(
 # ============================================================
 
 async def record_search(query):
-    """
-    Record only real user search queries.
-
-    Telegram commands starting with "/" are ignored.
-    """
 
     if not query:
         return False
 
-    query = str(query).strip()
+    query = str(
+        query
+    ).strip()
 
     if not query:
         return False
@@ -2087,10 +2077,9 @@ async def record_search(query):
     return True
 
 
-async def get_trending_searches(limit=29):
-    """
-    Return the most searched real queries.
-    """
+async def get_trending_searches(
+    limit=29
+):
 
     document = await settings_collection.find_one(
         {
@@ -2113,7 +2102,9 @@ async def get_trending_searches(limit=29):
 
     for query, count in queries.items():
 
-        query = str(query).strip()
+        query = str(
+            query
+        ).strip()
 
         if not query:
             continue
@@ -2139,7 +2130,9 @@ async def get_trending_searches(limit=29):
         reverse=True
     )
 
-    return sorted_queries[:int(limit)]
+    return sorted_queries[
+        :int(limit)
+    ]
 
 
 # ============================================================
@@ -2157,7 +2150,9 @@ async def create_redeem_code(
 
     try:
 
-        amount = int(amount)
+        amount = int(
+            amount
+        )
 
     except (
         TypeError,
@@ -2227,14 +2222,17 @@ async def get_redeem_codes():
     )
 
 
-async def get_redeem_code(code):
+async def get_redeem_code(
+    code
+):
 
     if not code:
         return None
 
     return await redeem_codes_collection.find_one(
         {
-            "code": str(code).upper().strip()
+            "code":
+                str(code).upper().strip()
         }
     )
 
@@ -2251,7 +2249,9 @@ async def redeem_code(
             "reason": "invalid_code"
         }
 
-    code = str(code).upper().strip()
+    code = str(
+        code
+    ).upper().strip()
 
     now = datetime.utcnow()
 
@@ -2312,14 +2312,17 @@ async def redeem_code(
     }
 
 
-async def delete_redeem_code(code):
+async def delete_redeem_code(
+    code
+):
 
     if not code:
         return False
 
     result = await redeem_codes_collection.delete_one(
         {
-            "code": str(code).upper().strip()
+            "code":
+                str(code).upper().strip()
         }
     )
 
@@ -2354,7 +2357,9 @@ async def ban_user(
 
     try:
 
-        user_id = int(user_id)
+        user_id = int(
+            user_id
+        )
 
     except (
         TypeError,
@@ -2390,11 +2395,15 @@ async def ban_user(
     )
 
 
-async def unban_user(user_id):
+async def unban_user(
+    user_id
+):
 
     try:
 
-        user_id = int(user_id)
+        user_id = int(
+            user_id
+        )
 
     except (
         TypeError,
@@ -2412,11 +2421,15 @@ async def unban_user(user_id):
     return result.deleted_count > 0
 
 
-async def is_user_banned(user_id):
+async def is_user_banned(
+    user_id
+):
 
     try:
 
-        user_id = int(user_id)
+        user_id = int(
+            user_id
+        )
 
     except (
         TypeError,
@@ -2434,11 +2447,15 @@ async def is_user_banned(user_id):
     return user is not None
 
 
-async def get_banned_user(user_id):
+async def get_banned_user(
+    user_id
+):
 
     try:
 
-        user_id = int(user_id)
+        user_id = int(
+            user_id
+        )
 
     except (
         TypeError,
@@ -2483,7 +2500,9 @@ async def set_maintenance(
     enabled
 ):
 
-    enabled = bool(enabled)
+    enabled = bool(
+        enabled
+    )
 
     await settings_collection.update_one(
 
