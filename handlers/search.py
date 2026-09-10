@@ -323,57 +323,43 @@ def filter_menu_buttons(session_id):
             [
                 InlineKeyboardButton(
                     "🌐 Language",
-                    callback_data=(
-                        f"filter_language_{session_id}"
-                    )
+                    callback_data=f"filter_language_{session_id}"
                 )
             ],
             [
                 InlineKeyboardButton(
                     "📅 Year",
-                    callback_data=(
-                        f"filter_year_{session_id}"
-                    )
+                    callback_data=f"filter_year_{session_id}"
                 )
             ],
             [
                 InlineKeyboardButton(
                     "🎞 Quality",
-                    callback_data=(
-                        f"filter_quality_{session_id}"
-                    )
+                    callback_data=f"filter_quality_{session_id}"
                 )
             ],
             [
                 InlineKeyboardButton(
                     "📺 Season",
-                    callback_data=(
-                        f"filter_season_{session_id}"
-                    )
+                    callback_data=f"filter_season_{session_id}"
                 )
             ],
             [
                 InlineKeyboardButton(
                     "🔢 Episode",
-                    callback_data=(
-                        f"filter_episode_{session_id}"
-                    )
+                    callback_data=f"filter_episode_{session_id}"
                 )
             ],
             [
                 InlineKeyboardButton(
                     "🔄 Clear Filters",
-                    callback_data=(
-                        f"clear_filters_{session_id}"
-                    )
-                ]
+                    callback_data=f"clear_filters_{session_id}"
+                )
             ],
             [
                 InlineKeyboardButton(
                     "⬅️ Back",
-                    callback_data=(
-                        f"back_search_{session_id}"
-                    )
+                    callback_data=f"back_search_{session_id}"
                 )
             ]
         ]
