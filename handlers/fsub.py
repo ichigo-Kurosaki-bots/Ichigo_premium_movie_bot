@@ -477,8 +477,9 @@ def register_fsub_callback_handler(app):
 
                         await handle_file_deep_link(
                             client=client,
-                            message=callback_query.message,
-                            message_id=message_id
+                            message=callback.message,
+                            message_id=message_id,
+                            user_id=callback.from_user.id
                         )
 
                     # ========================================
@@ -525,9 +526,10 @@ def register_fsub_callback_handler(app):
 
                         await handle_sendall_deep_link(
                             client=client,
-                            message=callback_query.message,
+                            message=callback.message,
                             session_id=session_id,
-                            page=page
+                            page=page,
+                            user_id=callback.from_user.id
                         )
 
                     # ========================================
