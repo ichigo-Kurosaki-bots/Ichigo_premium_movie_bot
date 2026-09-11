@@ -186,6 +186,33 @@ def get_result_quality(result):
 
     return str(value).strip()
 
+def format_file_size(size):
+
+    try:
+        size = int(size)
+    except Exception:
+        return ""
+
+    if size <= 0:
+        return ""
+
+    if size >= 1024 * 1024 * 1024:
+        return f"{size / (1024 * 1024 * 1024):.2f} GB"
+
+    return f"{size / (1024 * 1024):.0f} MB"
+
+
+def get_result_file_size(result):
+
+    value = (
+        result.get("file_size")
+        or result.get("filesize")
+        or result.get("size")
+        or 0
+    )
+
+    return format_file_size(value)
+
 # ============================================================
 # SEARCH RESULT BUTTONS
 # ============================================================
@@ -217,9 +244,34 @@ def search_result_buttons(
 
         title = title[:45]
 
-        button_text = (
-            f"{index}. {title}"
+        file_size = get_result_file_size(
+             result
         )
+
+        quality = get_result_quality(
+            result
+        )
+
+        parts = []
+
+        if file_size:
+            parts.append(
+                f"[{file_size}]"
+        )
+
+        if quality:
+            parts.append(
+                f"[{quality}]"
+        )
+
+        parts.append(
+            title
+        )
+
+        button_text = (
+            f"{index}. "
+            + " ".join(parts)
+         )
 
         buttons.append(
             [
