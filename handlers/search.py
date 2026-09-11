@@ -322,38 +322,13 @@ def search_result_buttons(
         title = get_result_title(
             result
         )
-
-        title = title[:45]
-
-        file_size = get_result_file_size(
-             result
-        )
-
-        quality = get_result_quality(
-            result
-        )
-
-        parts = []
-
-        if file_size:
-            parts.append(
-                f"[{file_size}]"
-        )
-
-        if quality:
-            parts.append(
-                f"[{quality}]"
-        )
-
-        parts.append(
-            title
-        )
+        
+        title = title[:55]
 
         button_text = (
-            f"{index}. "
-            + " ".join(parts)
-         )
-
+            f"{index}. {title}"
+        )
+        
         buttons.append(
             [
                 InlineKeyboardButton(
