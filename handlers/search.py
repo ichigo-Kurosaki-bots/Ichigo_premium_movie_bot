@@ -17,6 +17,8 @@ from config import (
     DATABASE_CHANNEL_ID
 )
 
+UPDATES_URL = "https://t.me/Aero_Unity"
+
 from database import (
     get_user,
     create_user,
@@ -999,7 +1001,7 @@ async def send_database_file(
         if copied.caption:
 
             clickable_caption = (
-                f'<a href="{UPDATES_CHANNEL}">'
+                f'<a href="{UPDATES_URL}">'
                 f'<b>{html_escape(copied.caption)}</b>'
                 f'</a>'
             )
@@ -1012,7 +1014,7 @@ async def send_database_file(
                     [
                         InlineKeyboardButton(
                             "• Uᴘᴅᴀᴛᴇs •",
-                            url=UPDATES_CHANNEL
+                            url=UPDATES_URL
                         )
                     ]
                 ])
@@ -1027,7 +1029,7 @@ async def send_database_file(
                     [
                         InlineKeyboardButton(
                             "• Uᴘᴅᴀᴛᴇs •",
-                            url=UPDATES_CHANNEL
+                            url=UPDATES_URL
                         )
                     ]
                 ])
