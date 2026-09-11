@@ -2084,6 +2084,23 @@ async def get_stats():
             f"{free_storage_mb:.2f} MB"
     }
 
+async def get_all_user_ids():
+
+    cursor = users_collection.find(
+        {},
+        {
+            "_id": 0,
+            "user_id": 1
+        }
+    )
+
+    users = await cursor.to_list(length=None)
+
+    return [
+        user["user_id"]
+        for user in users
+        if user.get("user_id") is not None
+    ]
 
 # ============================================================
 # INDEXER STATE
