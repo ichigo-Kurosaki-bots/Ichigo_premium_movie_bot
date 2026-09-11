@@ -13,6 +13,7 @@ from pyrogram.types import (
 from config import (
     RESULTS_PER_PAGE,
     MAX_RESULTS,
+    UPDATES_CHANNEL, 
     DATABASE_CHANNEL_ID
 )
 
@@ -1158,6 +1159,27 @@ async def handle_file_deep_link(
         )
 
         return
+
+    # --------------------------------------------------------
+    # WARNING AFTER SINGLE FILE
+    # --------------------------------------------------------
+
+    await client.send_message(
+        user_id,
+        "<b>⏳️ ᴅᴜᴇ ᴛᴏ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs...</b>\n\n"
+        "<b>›› ʏᴏᴜʀ ғɪʟᴇs ᴡɪʟʟ ʙ ᴅᴇʟᴇᴛᴇᴅ ᴡɪᴛʜɪɴ 5 min</b>"
+        "<b>sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
+        "<b> ɴᴏᴛᴇ : ᴜsᴇ ᴠʟᴄ ᴘʟᴀʏᴇʀ ᴏʀ ᴍx ᴘʟᴀʏᴇʀ ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>",
+            
+        reply_markup=InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "• Uᴘᴅᴀᴛᴇs •",
+                    url=UPDATES_CHANNEL
+                )
+            ]
+        ])
+    )
 
     # --------------------------------------------------------
     # SUCCESS
