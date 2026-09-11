@@ -1,5 +1,10 @@
+# ============================================================
+# handlers/start.py
+# ============================================================
+
 import os
 import asyncio
+import logging
 
 from pyrogram import filters
 from pyrogram.types import (
@@ -25,18 +30,16 @@ from premium import (
 from utils.buttons import (
     home_buttons,
     premium_buttons,
-    account_buttons,
-    help_buttons
+    account_buttons
 )
-
-# ============================================================
-# DEEP LINK HANDLERS
-# ============================================================
 
 from handlers.search import (
     handle_file_deep_link,
     handle_sendall_deep_link
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
@@ -53,52 +56,64 @@ UPDATES_URL = os.getenv(
     "https://t.me/Aero_Unity"
 )
 
+MOVIES_GROUP_URL = os.getenv(
+    "MOVIES_GROUP_URL",
+    "https://t.me/+YaRuf7dVB6RlZWJl"
+)
+
 
 # ============================================================
 # START BUTTONS
 # ============================================================
 
-def start_buttons(bot_username):
+def start_buttons(
+    bot_username
+):
 
     add_group_url = (
         f"https://t.me/{bot_username}"
         f"?startgroup=true"
     )
 
-    MOVIES_GROUP_URL = os.getenv(
-        "MOVIES_GROUP_URL",
-        "https://t.me/+YaRuf7dVB6RlZWJl"
-    )
-
     return InlineKeyboardMarkup(
         [
+
             [
+
                 InlineKeyboardButton(
                     "• ᴀᴅᴅ ᴍᴇ ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ •",
                     url=add_group_url
                 )
             ],
+
             [
+
                 InlineKeyboardButton(
                     "• ғᴇᴀᴛᴜʀᴇs •",
                     callback_data="features"
                 ),
+
                 InlineKeyboardButton(
                     "• ʜᴇʟᴘ •",
                     callback_data="help"
                 )
             ],
+
             [
+
                 InlineKeyboardButton(
                     "• ᴍᴏᴠɪᴇs ɢʀᴏᴜᴘ •",
                     url=MOVIES_GROUP_URL
                 )
             ],
+
             [
+
                 InlineKeyboardButton(
                     "• ᴀʙᴏᴜᴛ •",
                     callback_data="start_about"
                 ),
+
                 InlineKeyboardButton(
                     "• ᴜᴘᴅᴀᴛᴇs •",
                     url=UPDATES_URL
@@ -112,61 +127,144 @@ def start_buttons(bot_username):
 # START TEXT
 # ============================================================
 
-def build_start_text(first_name, remaining):
+def build_start_text(
+    first_name,
+    remaining
+):
+
+    first_name = (
+        first_name
+        or "User"
+    )
 
     return (
+
         f"👋 <b>Hey {first_name.upper()} "
         f"Mʏ Nᴀᴍᴇ Is Pʀᴇᴍɪᴜᴍ Mᴏᴠɪᴇ Bᴏᴛ</b>\n\n"
 
         "<b>I ᴀᴍ A Pᴏᴡᴇʀғᴜʟ Mᴏᴠɪᴇ Sᴇᴀʀᴄʜ Bᴏᴛ.</b> "
 
-        "<b>ʏᴏᴜ ᴄᴀɴ ᴜsᴇ ᴍᴇ ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ</b>"
+        "<b>ʏᴏᴜ ᴄᴀɴ ᴜsᴇ ᴍᴇ ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ</b> "
 
         "<b>ɪ ᴡɪʟʟ ɢɪᴠᴇ ᴍᴏᴠɪᴇs ᴏʀ sᴇʀɪᴇs "
-        "ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ ᴀɴᴅ ᴘᴍ !! 😍.</b>\n\n"
+        "ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ ᴀɴᴅ ᴘᴍ !! 😍</b>\n\n"
 
         f"🆓 <b>ғʀᴇᴇ ʀᴇǫᴜᴇsᴛs ʀᴇᴍᴀɪɴɪɴɢ:</b> "
         f"<b>{remaining}</b>\n\n"
 
-        "<b>Aᴄᴛɪᴠᴀᴛᴇ Pʀᴇᴍɪᴜᴍ Aғᴛᴇʀ Yᴏᴜʀ</b> "
-
-        "<b>ғʀᴇᴇ ʀᴇǫᴜᴇsᴛs ᴀʀᴇ ғɪɴɪsʜᴇᴅ.</b>\n\n"
+        "<b>Aᴄᴛɪᴠᴀᴛᴇ Pʀᴇᴍɪᴜᴍ Aғᴛᴇʀ Yᴏᴜʀ "
+        "ғʀᴇᴇ ʀᴇǫᴜᴇsᴛs ᴀʀᴇ ғɪɴɪsʜᴇᴅ.</b>\n\n"
 
         "<b>Mᴀɪɴᴛᴀɪɴᴇᴅ ʙʏ: @Mr_Mohammed_29</b>"
     )
 
 
 # ============================================================
-# REGISTER START HANDLERS
+# ENSURE USER
 # ============================================================
 
-def register_start_handlers(app):
+async def ensure_start_user(
+    message
+):
 
-    @app.on_message(
-        filters.command("start")
+    user_id = message.from_user.id
+
+    first_name = (
+        message.from_user.first_name
+        or "User"
     )
-    async def start_handler(client, message):
 
-        print(
-            f"START RECEIVED from "
-            f"{message.from_user.id}"
+    username = (
+        message.from_user.username
+        or ""
+    )
+
+    user = await get_user(
+        user_id
+    )
+
+    if not user:
+
+        user = await create_user(
+
+            user_id=user_id,
+
+            first_name=first_name,
+
+            username=username
         )
 
-        # ====================================================
-        # DEEP LINK PAYLOAD
-        # ====================================================
+    else:
+
+        await update_user(
+
+            user_id=user_id,
+
+            first_name=first_name,
+
+            username=username
+        )
+
+        user = await get_user(
+            user_id
+        )
+
+    return user
+
+
+# ============================================================
+# REGISTER
+# ============================================================
+
+def register_start_handlers(
+    app
+):
+
+    # ========================================================
+    # START
+    # ========================================================
+
+    @app.on_message(
+        filters.private
+        & filters.command("start")
+    )
+    async def start_handler(
+        client,
+        message
+    ):
+
+        user_id = (
+            message.from_user.id
+        )
+
+        logger.info(
+            "START RECEIVED from %s",
+            user_id
+        )
+
+        # ----------------------------------------------------
+        # PAYLOAD
+        # ----------------------------------------------------
 
         payload = ""
 
-        if message.command and len(message.command) > 1:
-            payload = message.command[1].strip()
+        if (
+            message.command
+            and len(message.command) > 1
+        ):
 
-        # ====================================================
+            payload = (
+                message.command[1]
+                .strip()
+            )
+
+        # ----------------------------------------------------
         # FILE DEEP LINK
-        # /start file_12345
-        # ====================================================
+        # ----------------------------------------------------
 
-        if payload.startswith("file_"):
+        if payload.startswith(
+            "file_"
+        ):
 
             try:
 
@@ -189,25 +287,34 @@ def register_start_handlers(app):
                 return
 
             await handle_file_deep_link(
+
                 client=client,
+
                 message=message,
-                message_id=message_id
+
+                message_id=message_id,
+
+                user_id=user_id
             )
 
             return
 
-        # ====================================================
+        # ----------------------------------------------------
         # SEND ALL DEEP LINK
-        # /start sendall_SESSION_PAGE
-        # ====================================================
+        # ----------------------------------------------------
 
-        if payload.startswith("sendall_"):
+        if payload.startswith(
+            "sendall_"
+        ):
 
             try:
 
-                parts = payload.split("_")
+                parts = payload.split(
+                    "_"
+                )
 
                 if len(parts) != 3:
+
                     raise ValueError
 
                 session_id = parts[1]
@@ -228,57 +335,31 @@ def register_start_handlers(app):
                 return
 
             await handle_sendall_deep_link(
+
                 client=client,
+
                 message=message,
+
                 session_id=session_id,
-                page=page
+
+                page=page,
+
+                user_id=user_id
             )
 
             return
 
-        # ====================================================
+        # ----------------------------------------------------
         # NORMAL START
-        # ====================================================
+        # ----------------------------------------------------
 
-        user_id = message.from_user.id
-
-        first_name = (
-            message.from_user.first_name
-            or "User"
+        user = await ensure_start_user(
+            message
         )
 
-        username = (
-            message.from_user.username
-            or ""
-        )
-
-        user = await get_user(
-            user_id
-        )
-
-        if not user:
-
-            user = await create_user(
-                user_id=user_id,
-                first_name=first_name,
-                username=username
-            )
-
-        else:
-
-            await update_user(
-                user_id=user_id,
-                first_name=first_name,
-                username=username
-            )
-
-            user = await get_user(
-                user_id
-            )
-
-        # ====================================================
-        # START ANIMATION
-        # ====================================================
+        # ----------------------------------------------------
+        # ANIMATION
+        # ----------------------------------------------------
 
         try:
 
@@ -287,46 +368,55 @@ def register_start_handlers(app):
                 text="⚡️"
             )
 
-            await asyncio.sleep(0.6)
+            await asyncio.sleep(
+                0.6
+            )
 
             await animation.edit_text(
                 "卍解 Bᴀɴᴋᴀɪ"
             )
 
-            await asyncio.sleep(0.6)
+            await asyncio.sleep(
+                0.6
+            )
 
             await animation.edit_text(
                 "Tᴇɴsᴀ Zᴀɴɢᴇᴛsᴜ"
             )
 
-            await asyncio.sleep(0.6)
+            await asyncio.sleep(
+                0.6
+            )
 
             await animation.edit_text(
                 "Iᴄʜɪɢᴏ Kᴜʀᴏsᴀᴋɪ..."
             )
 
-            await asyncio.sleep(0.6)
+            await asyncio.sleep(
+                0.6
+            )
 
             await animation.delete()
 
         except Exception as e:
 
-            print(
-                f"START ANIMATION ERROR: {e}"
+            logger.warning(
+                "START ANIMATION ERROR: %s",
+                e
             )
 
-        # ====================================================
-        # REMAINING REQUESTS
-        # ====================================================
+        # ----------------------------------------------------
+        # REQUESTS
+        # ----------------------------------------------------
 
         remaining = user.get(
             "remaining_requests",
             FREE_REQUESTS
         )
 
-        # ====================================================
+        # ----------------------------------------------------
         # BOT USERNAME
-        # ====================================================
+        # ----------------------------------------------------
 
         me = await client.get_me()
 
@@ -335,57 +425,67 @@ def register_start_handlers(app):
             or ""
         )
 
-        # ====================================================
-        # START MESSAGE
-        # ====================================================
+        # ----------------------------------------------------
+        # START SCREEN
+        # ----------------------------------------------------
 
         text = build_start_text(
-            first_name=first_name,
+            first_name=(
+                message.from_user.first_name
+                or "User"
+            ),
             remaining=remaining
         )
 
-        reply_markup = start_buttons(
-            bot_username=bot_username
+        keyboard = start_buttons(
+            bot_username
         )
 
-        # ====================================================
-        # START IMAGE
-        # ====================================================
+        # ----------------------------------------------------
+        # IMAGE
+        # ----------------------------------------------------
 
         if START_IMAGE:
 
             try:
 
                 await message.reply_photo(
+
                     photo=START_IMAGE,
+
                     caption=text,
-                    reply_markup=reply_markup
+
+                    reply_markup=keyboard
                 )
 
                 return
 
             except Exception as e:
 
-                print(
-                    f"START IMAGE SEND FAILED: {e}"
+                logger.warning(
+                    "START IMAGE SEND FAILED: %s",
+                    e
                 )
 
-        # ====================================================
-        # NORMAL START MESSAGE
-        # ====================================================
+        # ----------------------------------------------------
+        # TEXT
+        # ----------------------------------------------------
 
         await message.reply_text(
-            text,
-            reply_markup=reply_markup
-        )
 
+            text,
+
+            reply_markup=keyboard
+        )
 
     # ========================================================
     # FEATURES
     # ========================================================
 
     @app.on_callback_query(
-        filters.regex(r"^features$")
+        filters.regex(
+            r"^features$"
+        )
     )
     async def features_callback(
         client,
@@ -393,6 +493,7 @@ def register_start_handlers(app):
     ):
 
         text = (
+
             "⚡️ <b>Fᴇᴀᴛᴜʀᴇs</b>\n\n"
 
             "🎬 <b>Mᴏᴠɪᴇ Sᴇᴀʀᴄʜ</b>\n"
@@ -409,10 +510,10 @@ def register_start_handlers(app):
             "Gᴇᴛ ᴀᴅᴅɪᴛɪᴏɴᴀʟ ᴍᴏᴠɪᴇ ʀᴇǫᴜᴇsᴛs.\n\n"
 
             "🔥 <b>Tʀᴇɴᴅɪɴɢ</b>\n"
-            "Sᴇᴇ ᴡʜᴀᴛ ᴜsᴇʀs ᴀʀᴇ sᴇᴀʀᴄʜɪɴɢ ғᴏʀ.\n\n"
+            "Sᴇᴇ Wʜᴀᴛ Uѕᴇʀs Aʀᴇ Sᴇᴀʀᴄʜɪɴɢ Fᴏʀ.\n\n"
 
             "📢 <b>Uᴘᴅᴀᴛᴇs</b>\n"
-            "Sᴛᴀʏ ᴜᴘᴅᴀᴛᴇᴅ ᴡɪᴛʜ ᴛʜᴇ ʟᴀᴛᴇsᴛ ᴄᴏɴᴛᴇɴᴛ.\n\n"
+            "Sᴛᴀʏ ᴜᴘᴅᴀᴛᴇᴅ Wɪᴛʜ Tʜᴇ Lᴀᴛᴇsᴛ Cᴏɴᴛᴇɴᴛ.\n\n"
 
             "<b>Mᴀɪɴᴛᴀɪɴᴇᴅ ʙʏ: @Mr_Mohammed_29</b>"
         )
@@ -430,35 +531,37 @@ def register_start_handlers(app):
 
         try:
 
-            await callback.message.edit_caption(
-                caption=text,
-                reply_markup=buttons
-            )
+            if callback.message.photo:
 
-        except Exception:
+                await callback.message.edit_caption(
+                    caption=text,
+                    reply_markup=buttons
+                )
 
-            try:
+            else:
 
                 await callback.message.edit_text(
                     text,
                     reply_markup=buttons
                 )
 
-            except Exception as e:
+        except Exception as e:
 
-                print(
-                    f"FEATURES EDIT FAILED: {e}"
-                )
+            logger.warning(
+                "FEATURES EDIT ERROR: %s",
+                e
+            )
 
         await callback.answer()
-
 
     # ========================================================
     # ABOUT
     # ========================================================
 
     @app.on_callback_query(
-        filters.regex(r"^start_about$")
+        filters.regex(
+            r"^start_about$"
+        )
     )
     async def start_about_callback(
         client,
@@ -466,6 +569,7 @@ def register_start_handlers(app):
     ):
 
         text = (
+
             "<b>⍟───[ MY ᴅᴇᴛᴀɪʟꜱ ]───⍟</b>\n\n"
 
             "• <b>Pʀᴏɢʀᴀᴍᴇʀ: "
@@ -482,146 +586,57 @@ def register_start_handlers(app):
 
             "• <b>ᴅᴀᴛᴀʙᴀsᴇ:</b> ᴍᴏɴɢᴏ ᴅʙ\n"
 
-            "• <b>ᴄʜᴀɴɴᴇʟ: "
+            "• <b>ᴄʜᴀɴɴᴇʟ:</b> "
             "<a href=\"https://t.me/Aero_Unity\">"
-            "ᴀᴇʀᴏ ᴜɴɪᴛʏ</a></b>\n"
+            "ᴀᴇʀᴏ ᴜɴɪᴛʏ</a>\n\n"
 
-            "• <b>ᴍʏ sᴇʀᴠᴇʀ:"
-            "<a href=\"https://t.me/Mr_Mohammed_29\">"
-            "ꜱᴇʀᴠᴇʀ</a></b>\n"
+            "<b>Bᴜɪʟᴅ Sᴛᴀᴛᴜs:</b> ᴠ3 [sᴛᴀʙʟᴇ]"
+        )
 
-            "• <b>ʙᴜɪʟᴅ sᴛᴀᴛᴜs:</b> "
-            "ᴠ3 [sᴛᴀʙʟᴇ]\n\n"
+        buttons = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "• ʜᴏᴍᴇ •",
+                        callback_data="start_back"
+                    )
+                ]
+            ]
         )
 
         try:
 
-            await callback.message.edit_caption(
-                caption=text,
-                reply_markup=InlineKeyboardMarkup(
-                    [
-                        [
-                            InlineKeyboardButton(
-                                "• ʜᴏᴍᴇ •",
-                                callback_data="start_back"
-                            )
-                        ]
-                    ]
+            if callback.message.photo:
+
+                await callback.message.edit_caption(
+                    caption=text,
+                    reply_markup=buttons
                 )
-            )
+
+            else:
+
+                await callback.message.edit_text(
+                    text,
+                    reply_markup=buttons
+                )
 
         except Exception as e:
 
-            print(
-                f"ABOUT EDIT FAILED: {e}"
+            logger.warning(
+                "ABOUT EDIT ERROR: %s",
+                e
             )
 
         await callback.answer()
-
-
-    # ========================================================
-    # START BACK
-    # ========================================================
-
-    @app.on_callback_query(filters.regex(r"^start_back$"))
-    async def start_back_callback(client, callback_query):
-
-        user_id = callback_query.from_user.id
-
-        first_name = (
-            callback_query.from_user.first_name
-            or "User"
-        )   
-
-        username = (
-            callback_query.from_user.username
-            or ""
-        )  
-
-        user = await get_user(user_id)
-
-        if not user:
-            user = await create_user(
-                user_id=user_id,
-                first_name=first_name,
-                username=username
-            )
-        else:
-             await update_user(
-                 user_id=user_id,
-                 first_name=first_name,
-                 username=username
-             )
-   
-             user = await get_user(user_id)
-
-        remaining = user.get(
-             "remaining_requests",
-             FREE_REQUESTS
-        )
-
-        me = await client.get_me()
-
-        bot_username = me.username or ""
-
-        text = build_start_text(
-            first_name=first_name,
-            remaining=remaining
-        )
-
-        reply_markup = start_buttons(
-            bot_username=bot_username
-        )   
-
-        await callback_query.answer()
-
-        # Delete the current Help / About / Features message
-        try:
-            await callback_query.message.delete()
- 
-        except Exception as e:
-            print(
-                f"START BACK DELETE ERROR: {e}"
-            )
-
-        # Send complete START screen again
-        if START_IMAGE:
-
-            try:
-                await client.send_photo(
-                    chat_id=user_id,
-                    photo=START_IMAGE,
-                    caption=text,
-                    reply_markup=reply_markup
-                )    
-
-                return
-
-            except Exception as e:
-                print(
-                    f"START BACK IMAGE SEND FAILED: {e}"
-                )
-
-         # Fallback when START_IMAGE is not configured
-        try:
-            await client.send_message(
-                chat_id=user_id,
-                text=text,
-                reply_markup=reply_markup
-            )
-    
-        except Exception as e:
-            print(
-                f"START BACK TEXT SEND FAILED: {e}"
-            )
-
 
     # ========================================================
     # HOME
     # ========================================================
 
     @app.on_callback_query(
-        filters.regex(r"^home$")
+        filters.regex(
+            r"^home$"
+        )
     )
     async def home_callback(
         client,
@@ -637,11 +652,14 @@ def register_start_handlers(app):
         if not user:
 
             user = await create_user(
+
                 user_id=user_id,
+
                 first_name=(
                     callback.from_user.first_name
                     or "User"
                 ),
+
                 username=(
                     callback.from_user.username
                     or ""
@@ -654,26 +672,34 @@ def register_start_handlers(app):
         )
 
         text = (
+
             "<b>Pʀᴇᴍɪᴜᴍ Mᴏᴠɪᴇ Bᴏᴛ</b>\n\n"
 
             f"🎟 ғʀᴇᴇ ʀᴇǫᴜᴇsᴛs ʀᴇᴍᴀɪɴɪɴɢ: "
-            f"<b>{remaining}</b>\n\n"
+            f"<b>{remaining}</b>"
         )
 
-        await callback.message.edit_text(
-            text,
-            reply_markup=home_buttons()
-        )
+        try:
+
+            await callback.message.edit_text(
+                text,
+                reply_markup=home_buttons()
+            )
+
+        except Exception:
+
+            pass
 
         await callback.answer()
 
-
     # ========================================================
-    # MY ACCOUNT
+    # ACCOUNT
     # ========================================================
 
     @app.on_callback_query(
-        filters.regex(r"^my_account$")
+        filters.regex(
+            r"^my_account$"
+        )
     )
     async def account_callback(
         client,
@@ -689,11 +715,14 @@ def register_start_handlers(app):
         if not user:
 
             user = await create_user(
+
                 user_id=user_id,
+
                 first_name=(
                     callback.from_user.first_name
                     or "User"
                 ),
+
                 username=(
                     callback.from_user.username
                     or ""
@@ -711,13 +740,14 @@ def register_start_handlers(app):
 
         await callback.answer()
 
-
     # ========================================================
-    # PREMIUM PLANS
+    # PREMIUM
     # ========================================================
 
     @app.on_callback_query(
-        filters.regex(r"^premium_plans$")
+        filters.regex(
+            r"^premium_plans$"
+        )
     )
     async def premium_plans_callback(
         client,
@@ -731,13 +761,14 @@ def register_start_handlers(app):
 
         await callback.answer()
 
-
     # ========================================================
     # HELP
     # ========================================================
 
     @app.on_callback_query(
-        filters.regex(r"^help$")
+        filters.regex(
+            r"^help$"
+        )
     )
     async def help_callback(
         client,
@@ -745,6 +776,7 @@ def register_start_handlers(app):
     ):
 
         text = (
+
             "📚 <b>Hᴇʟᴘ & Mᴏᴠɪᴇ Rᴜʟᴇs</b>\n\n"
 
             "🎬 <b>Hᴏᴡ Tᴏ Sᴇᴀʀᴄʜ:</b>\n\n"
@@ -753,8 +785,7 @@ def register_start_handlers(app):
 
             "➤ Tʜᴇ Bᴏᴛ Wɪʟʟ Sᴇᴀʀᴄʜ Mʏ Dᴀᴛᴀʙᴀsᴇ.\n\n"
 
-            "➤ Sᴇʟᴇᴄᴛ Tʜᴇ Rᴇǫᴜɪʀᴇᴅ Fɪʟᴇ "
-            "Fʀᴏᴍ Tʜᴇ Rᴇsᴜʟᴛs.\n\n"
+            "➤ Sᴇʟᴇᴄᴛ Tʜᴇ Rᴇǫᴜɪʀᴇᴅ Fɪʟᴇ.\n\n"
 
             "⚠️ <b>Mᴏᴠɪᴇ Sᴇᴀʀᴄʜ Rᴜʟᴇs:</b>\n\n"
 
@@ -774,7 +805,9 @@ def register_start_handlers(app):
         )
 
         await callback.message.edit_text(
+
             text,
+
             reply_markup=InlineKeyboardMarkup(
                 [
                     [
@@ -789,13 +822,14 @@ def register_start_handlers(app):
 
         await callback.answer()
 
-
     # ========================================================
     # SEARCH HELP
     # ========================================================
 
     @app.on_callback_query(
-        filters.regex(r"^search_help$")
+        filters.regex(
+            r"^search_help$"
+        )
     )
     async def search_help_callback(
         client,
@@ -803,18 +837,150 @@ def register_start_handlers(app):
     ):
 
         text = (
-            "🔎 <b>Search Movies</b>\n\n"
 
-            "Send the name of the movie, series, "
-            "anime, or other authorized media.\n\n"
+            "🔎 <b>Sᴇᴀʀᴄ Mᴏᴠɪᴇs</b>\n\n"
+
+            "Sᴇɴᴅ Tʜᴇ Nᴀᴍᴇ Oғ Tʜᴇ Mᴏᴠɪᴇ, "
+            "Sᴇʀɪᴇs, Oʀ Aɴɪᴍᴇ.\n\n"
 
             "<b>Example:</b>\n"
-            "<code>Example : Avengers Endgame</code>"
+            "<code>Avengers Endgame</code>"
         )
 
         await callback.message.edit_text(
+
             text,
-            reply_markup=home_buttons()
+
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "• ʜᴏᴍᴇ •",
+                            callback_data="home"
+                        )
+                    ]
+                ]
+            )
         )
 
         await callback.answer()
+
+    # ========================================================
+    # START BACK
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^start_back$"
+        )
+    )
+    async def start_back_callback(
+        client,
+        callback
+    ):
+
+        user_id = callback.from_user.id
+
+        first_name = (
+            callback.from_user.first_name
+            or "User"
+        )
+
+        username = (
+            callback.from_user.username
+            or ""
+        )
+
+        user = await get_user(
+            user_id
+        )
+
+        if not user:
+
+            user = await create_user(
+
+                user_id=user_id,
+
+                first_name=first_name,
+
+                username=username
+            )
+
+        else:
+
+            await update_user(
+
+                user_id=user_id,
+
+                first_name=first_name,
+
+                username=username
+            )
+
+            user = await get_user(
+                user_id
+            )
+
+        remaining = user.get(
+            "remaining_requests",
+            FREE_REQUESTS
+        )
+
+        me = await client.get_me()
+
+        bot_username = (
+            me.username
+            or ""
+        )
+
+        text = build_start_text(
+            first_name,
+            remaining
+        )
+
+        keyboard = start_buttons(
+            bot_username
+        )
+
+        await callback.answer()
+
+        try:
+
+            await callback.message.delete()
+
+        except Exception:
+
+            pass
+
+        if START_IMAGE:
+
+            try:
+
+                await client.send_photo(
+
+                    chat_id=user_id,
+
+                    photo=START_IMAGE,
+
+                    caption=text,
+
+                    reply_markup=keyboard
+                )
+
+                return
+
+            except Exception as e:
+
+                logger.warning(
+                    "START BACK IMAGE ERROR: %s",
+                    e
+                )
+
+        await client.send_message(
+
+            chat_id=user_id,
+
+            text=text,
+
+            reply_markup=keyboard
+        )
