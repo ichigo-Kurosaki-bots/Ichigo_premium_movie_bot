@@ -153,12 +153,7 @@ def get_result_title(result):
         except (TypeError, ValueError):
             pass
 
-    quality = result.get("quality")
-
-    quality_text = ""
-
-    if quality:
-        quality_text = str(quality).strip()
+    quality_text = get_result_quality(result)
 
     title = (
         result.get("title")
@@ -257,7 +252,6 @@ def get_result_year(result):
     return str(value).strip()
 
 def get_result_quality(result):
-    import re
 
     # Check database fields first
     quality = (
