@@ -1,13 +1,71 @@
-# ============================================================
-# utils/buttons.py
-# ============================================================
-
+import re
 from pyrogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
 )
 
+# ============================================================
+# SEARCH RESULT FORMAT HELPERS
+# ============================================================
 
+def format_file_size(size):
+    """
+    Convert bytes into MB / GB.
+    Example:
+    734003200  -> 700 MB
+    2976417792 -> 2.77 GB
+    """
+
+    try:
+        size = float(size)
+    except (TypeError, ValueError):
+        return "Unknown Size"
+
+    if size <= 0:
+        return "Unknown Size"
+
+    mb = size / (1024 ** 2)
+
+    if mb >= 1024:
+        gb = size / (1024 ** 3)
+        return f"{gb:.2f} GB"
+
+    return f"{mb:.0f} MB"
+
+
+def detect_quality(text):
+    """
+    Detect quality from title / filename.
+
+    Examples:
+    480p
+    720p
+    1080p
+    1440p
+    2160p
+    4K
+    """
+
+    if not text:
+        return "Unknown"
+
+    text = str(text)
+
+    match = re.search(
+        r'(?<!\d)(2160p|1440p|1080p|720p|576p|480p|360p)(?!\d)',
+        text,
+        re.IGNORECASE,
+    )
+
+    if match:
+        return match.group(1).lower()
+
+    # Detect 4K
+    if re.search(r'(?<![a-z0-9])4k(?![a-z0-9])', text, re.IGNORECASE):
+        return "4K"
+
+    return "Unknown"
+    
 # ============================================================
 # SEARCH RESULT BUTTONS
 # ============================================================
@@ -47,6 +105,10 @@ def search_result_buttons(
         if not message_id:
             continue
 
+        # ----------------------------------------------------
+        # TITLE
+        # ----------------------------------------------------
+
         title = (
             result.get("title")
             or result.get("file_name")
@@ -57,8 +119,43 @@ def search_result_buttons(
 
         title = str(title).strip()
 
-        if len(title) > 55:
-            title = title[:52] + "..."
+        # ----------------------------------------------------
+        # FILE SIZE
+        # ----------------------------------------------------
+
+        file_size = (
+            result.get("file_size")
+            or result.get("size")
+            or result.get("file_size_bytes")
+            or 0
+        )
+
+        size_text = format_file_size(file_size)
+
+        # ----------------------------------------------------
+        # QUALITY
+        # ----------------------------------------------------
+
+        quality = (
+            result.get("quality")
+            or result.get("resolution")
+        )
+
+        if quality:
+            quality = str(quality).strip()
+        else:
+            quality = detect_quality(title)
+
+        button_title = title
+
+        if len(button_title) > 55:
+            button_title = button_title[:52] + "..."
+
+        button_text = (
+            f"[{size_text}] | "
+            f"[{quality}] | "
+            f"{button_title}"
+        )
 
         # ----------------------------------------------------
         # DEEP LINK
@@ -77,7 +174,7 @@ def search_result_buttons(
 
             buttons.append([
                 InlineKeyboardButton(
-                    f"›› {title}",
+                    f"›› {button_text}",
                     url=url,
                 )
             ])
@@ -86,7 +183,7 @@ def search_result_buttons(
 
             buttons.append([
                 InlineKeyboardButton(
-                    f"›› {title}",
+                    f"›› {button_text}",
                     callback_data=(
                         f"file_{int(message_id)}"
                     ),
@@ -129,10 +226,7 @@ def search_result_buttons(
         send_all_button = None
 
     # --------------------------------------------------------
-    # DIRECT FILTER BUTTONS
-    #
-    # SEND ALL | LANGUAGES | YEARS
-    # QUALITY   | EPISODES  | SEASONS
+    # FILTER BUTTONS
     # --------------------------------------------------------
 
     if send_all_button:
@@ -210,7 +304,6 @@ def search_result_buttons(
         buttons.append(navigation)
 
     return InlineKeyboardMarkup(buttons)
-
 
 # ============================================================
 # FILTER MENU
