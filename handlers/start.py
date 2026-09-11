@@ -6,6 +6,7 @@ import os
 import asyncio
 import logging
 
+from pyrogram.errors import MessageNotModified
 from pyrogram import filters
 from pyrogram.types import (
     InlineKeyboardButton,
@@ -38,9 +39,7 @@ from handlers.search import (
     handle_sendall_deep_link
 )
 
-
 logger = logging.getLogger(__name__)
-
 
 # ============================================================
 # CONFIG
@@ -60,7 +59,6 @@ MOVIES_GROUP_URL = os.getenv(
     "MOVIES_GROUP_URL",
     "https://t.me/+YaRuf7dVB6RlZWJl"
 )
-
 
 # ============================================================
 # START BUTTONS
@@ -747,17 +745,23 @@ def register_start_handlers(
     @app.on_callback_query(
         filters.regex(
             r"^premium_plans$"
-        )
+        )  
     )
     async def premium_plans_callback(
         client,
         callback
     ):
 
-        await callback.message.edit_text(
-            format_plans(),
-            reply_markup=premium_buttons()
-        )
+        try:
+
+            await callback.message.edit_text(
+                format_plans(),
+                reply_markup=premium_buttons()
+            )
+
+        except MessageNotModified:
+
+            pass
 
         await callback.answer()
 
