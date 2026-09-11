@@ -556,9 +556,12 @@ def register_token_handlers(app):
             return
 
         await callback.message.edit_text(
-            format_plans(),
-            reply_markup=premium_buttons()
-        )
+            "💎 <b>Token Premium</b>\n\n"
+            "🎟️ <b>100 Tokens</b> → <b>Starter Premium</b>\n"
+            "🎬 <b>20 Movie Requests</b>\n\n"
+            "Use your tokens to activate premium.",
+            reply_markup=token_redeem_buttons()
+)
 
         await callback.answer()
 
