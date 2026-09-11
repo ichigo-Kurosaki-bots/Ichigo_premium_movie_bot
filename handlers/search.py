@@ -336,90 +336,54 @@ def build_search_text(
     has_next=False,
     filters_data=None
 ):
+    start = page * SEARCH_PAGE_SIZE + 1
+    end = start + len(results) - 1
 
-    query = html_escape(
-        str(query)
+    # Get metadata from first result
+    first_result = results[0] if results else {}
+
+    title = (
+        first_result.get("title")
+        or first_result.get("name")
+        or query
     )
 
-    total_on_page = len(
-        results
+    year = (
+        first_result.get("year")
+        or "—"
     )
 
-    start_number = (
-        page * SEARCH_PAGE_SIZE
-    ) + 1
+    language = (
+        first_result.get("language")
+        or "—"
+    )
 
-    end_number = (
-        page * SEARCH_PAGE_SIZE
-        + total_on_page
+    rating = (
+        first_result.get("rating")
+        or first_result.get("ratings")
+        or "—"
     )
 
     text = (
-        "🔎 <b>Sᴇᴀʀᴄ Rᴇsᴜʟᴛs</b>\n\n"
-        f"🎬 <b>Qᴜᴇʀʏ:</b> "
-        f"<code>{query}</code>\n"
-    )
+        f"🎬 <b>Tɪᴛʟᴇ:</b> "
+        f"{html_escape(str(title))}\n\n"
 
-    if total_on_page:
+        f"📅 <b>Yᴇᴀʀ:</b> "
+        f"{html_escape(str(year))}\n"
 
-        text += (
-            f"📁 <b>Rᴇsᴜʟᴛs:</b> "
-            f"{start_number}-{end_number}\n\n"
-        )
+        f"🌐 <b>Lᴀɴɢᴜᴀɢᴇ:</b> "
+        f"{html_escape(str(language))}\n"
 
-    else:
+        f"⭐ <b>Rᴀᴛɪɴɢ:</b> "
+        f"{html_escape(str(rating))}\n\n"
 
-        text += (
-            "❌ <b>Nᴏ ʀᴇsᴜʟᴛs ғᴏᴜɴᴅ.</b>\n\n"
-        )
+        f"📁 <b>Rᴇsᴜʟᴛs Sʜᴏᴡɴ Iɴ:</b> "
+        f"{start}-{end}\n"
 
-    # --------------------------------------------------------
-    # ACTIVE FILTERS
-    # --------------------------------------------------------
+        f"⚡ <b>Pᴏᴡᴇʀᴇᴅ Bʏ:</b> "
+        f"@Aero_Unity\n\n"
 
-    if filters_data:
-
-        active = []
-
-        for key in (
-            "language",
-            "year",
-            "quality",
-            "season",
-            "episode"
-        ):
-
-            value = filters_data.get(
-                key
-            )
-
-            if value is not None and str(
-                value
-            ).strip():
-
-                active.append(
-                    f"{key.title()}: {value}"
-                )
-
-        if active:
-
-            text += (
-                "⚙️ <b>Fɪʟᴛᴇʀs:</b>\n"
-                + "\n".join(
-                    f"• {html_escape(str(x))}"
-                    for x in active
-                )
-                + "\n\n"
-            )
-
-    if has_next:
-
-        text += (
-            "➡️ <b>Uѕᴇ Nᴇxᴛ Bᴜᴛᴛᴏɴ Fᴏʀ Mᴏʀᴇ.</b>\n\n"
-        )
-
-    text += (
-        "👇 <b>Sᴇʟᴇᴄᴛ A Fɪʟᴇ Bᴇʟᴏᴡ.</b>"
+        f"<b>Hᴇʀᴇ Aʀᴇ Yᴏᴜʀ Rᴇsᴜʟᴛs</b> 👇"
     )
 
     return text
