@@ -208,7 +208,7 @@ def get_result_title(result):
 
     parts.append(title)
 
-    return " ".join(parts)
+    return " | ".join(parts)
 
 def extract_year_from_result(result):
     title = get_result_title(result)
@@ -325,9 +325,7 @@ def search_result_buttons(
         
         title = title[:55]
 
-        button_text = (
-            f"{index}. {title}"
-        )
+        button_text = f"›› {title}"
         
         buttons.append(
             [
