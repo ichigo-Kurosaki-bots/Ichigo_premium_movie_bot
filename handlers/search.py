@@ -533,7 +533,10 @@ def build_search_text(
     results,
     page=0,
     has_next=False,
-    filters_data=None
+    filters_data=None,
+    search_time=0,
+    requested_by_id=None,
+    requested_by_name="User"
 ):
     start = page * SEARCH_PAGE_SIZE + 1
     end = start + len(results) - 1
@@ -547,7 +550,17 @@ def build_search_text(
 
     language = get_result_language(first_result) or "—"
 
-    rating = get_result_rating(first_result) or "—"
+    # Clickable Telegram user name
+    if requested_by_id:
+        requested_by = (
+            f'<a href="tg://user?id={requested_by_id}">'
+            f'{html_escape(requested_by_name or "User")}'
+            f'</a>'
+        )
+    else:
+        requested_by = html_escape(
+            requested_by_name or "User"
+        )
 
     text = (
         f"🎬 <b>Tɪᴛʟᴇ:</b> "
@@ -559,11 +572,11 @@ def build_search_text(
         f"🌐 <b>Lᴀɴɢᴜᴀɢᴇ:</b> "
         f"{html_escape(str(language))}\n"
 
-        f"⭐ <b>Rᴀᴛɪɴɢ:</b> "
-        f"{html_escape(str(rating))}\n\n"
+        f"⏰ <b>ʀᴇsᴜʟᴛ ɪɴ :</b> "
+        f"{search_time:.2f} Sᴇᴄᴏɴᴅs\n"
 
-        f"📁 <b>Rᴇsᴜʟᴛs Sʜᴏᴡs:</b> "
-        f"{start}-{end}\n"
+        f"Requested by : "
+        f"{requested_by}\n"
 
         f"⚡ <b>Pᴏᴡᴇʀᴇᴅ Bʏ:</b> "
         f"@Aero_Unity\n\n"
@@ -572,7 +585,6 @@ def build_search_text(
     )
 
     return text
-
 # ============================================================
 # FILTER TEXT
 # ============================================================
@@ -1785,11 +1797,15 @@ def register_search_handlers(app):
 
             pass
 
+        search_start = time.perf_counter()
+
         results, has_next = await search_movies(
             query=query,
             page=0,
             filters_data={}
         )
+
+        search_time = time.perf_counter() - search_start
 
         if not results:
 
@@ -1828,7 +1844,13 @@ def register_search_handlers(app):
             results=results,
             page=0,
             has_next=has_next,
-            filters_data={}
+            filters_data={},
+            search_time=search_time,
+            requested_by_id=user_id,
+            requested_by_name=(
+                message.from_user.first_name
+                or "User"
+            )
         )
 
         keyboard = search_result_buttons(
@@ -1917,12 +1939,28 @@ def register_search_handlers(app):
 
             return
 
+        try:
+            requester = await client.get_users(
+                user_id
+            )
+
+            requested_by_name = (
+                requester.first_name
+                or "User"
+            )
+
+        except Exception:
+            requested_by_name = "User"
+
         text = build_search_text(
             query=query,
             results=results,
             page=page,
             has_next=has_next,
-            filters_data=filters_data
+            filters_data=filters_data,
+            search_time=0,
+            requested_by_id=user_id,
+        requested_by_name=requested_by_name
         )
 
         keyboard = search_result_buttons(
