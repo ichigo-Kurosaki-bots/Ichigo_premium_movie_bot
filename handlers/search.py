@@ -7,6 +7,7 @@ import re
 from html import escape as html_escape
 
 from pyrogram import filters, enums
+from pyrogram.errors import MessageNotModified
 from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup
@@ -1054,18 +1055,6 @@ async def handle_file_deep_link(
     user_id=None
 ):
 
-    # --------------------------------------------------------
-    # USER ID
-    #
-    # When called from normal /start:
-    # message.from_user is the real user.
-    #
-    # When called from FSub callback:
-    # message.from_user can be the bot because
-    # callback.message belongs to the bot.
-    # Therefore FSub can pass user_id explicitly.
-    # --------------------------------------------------------
-
     if user_id is None:
 
         if not message.from_user:
@@ -1200,46 +1189,26 @@ async def handle_file_deep_link(
 
         return
 
-    # --------------------------------------------------------
-    # SUCCESS
-    # --------------------------------------------------------
+     # --------------------------------------------------------
+     # SUCCESS
+     # --------------------------------------------------------
 
-    await record_search(
-        str(
-            media.get(
-                "title",
-                media.get(
-                    "file_name",
-                    ""
-                )
-            )
-        )
-    )
+     try:
+         await record_search(
+             str(
+                 media.get(
+                     "title",
+                     media.get(
+                         "file_name",
+                         ""
+                     )
+                 ) 
+             )
+         )
+     except Exception:
+         pass
 
-    user = await get_user(
-        user_id
-    )
-
-    remaining = (
-        user.get(
-            "remaining_requests",
-            0
-        )
-        if user
-        else 0
-    )
-
-    try:
-
-        await message.reply_text(
-            "✅ <b>Fɪʟᴇ Sᴇɴᴛ Sᴜᴄᴄᴇssғᴜʟʟʏ!</b>\n\n"
-            f"🎟 <b>Rᴇǫᴜᴇsᴛs Rᴇᴍᴀɪɴɪɴɢ:</b> "
-            f"{remaining}"
-        )
-
-    except Exception:
-
-        pass
+     return 
 
 
 # ============================================================
@@ -1403,46 +1372,9 @@ async def handle_sendall_deep_link(
                 user_id
             )
 
-    # --------------------------------------------------------
-    # BALANCE
-    # --------------------------------------------------------
+            return
 
-    user = await get_user(
-        user_id
-    )
-
-    remaining = (
-        user.get(
-            "remaining_requests",
-            0
-        )
-        if user
-        else 0
-    )
-
-    # --------------------------------------------------------
-    # RESULT
-    # --------------------------------------------------------
-
-    if sent_count:
-
-        text = (
-            "📦 <b>Sᴇɴᴅ Aʟʟ Cᴏᴍᴘʟᴇᴛᴇ</b>\n\n"
-            f"✅ <b>Sᴇɴᴛ:</b> {sent_count}\n"
-            f"❌ <b>Fᴀɪʟᴇᴅ:</b> {failed_count}\n"
-            f"🎟 <b>Rᴇᴍᴀɪɴɪɴɢ:</b> {remaining}"
-        )
-
-    else:
-
-        text = (
-            "❌ <b>Nᴏ Fɪʟᴇs Wᴇʀᴇ Sᴇɴᴛ.</b>\n\n"
-            f"🎟 <b>Rᴇᴍᴀɪɴɪɴɢ:</b> {remaining}"
-        )
-
-    await message.reply_text(
-        text
-    )
+    
 
 
 # ============================================================
@@ -1524,7 +1456,6 @@ def register_search_handlers(app):
     # ========================================================
 
     @app.on_message(
-        filters.private
         & filters.text
         & ~filters.command(
             [
@@ -1564,20 +1495,22 @@ def register_search_handlers(app):
         # FORCE SUB
         # ----------------------------------------------------
 
-        not_joined = await check_all_fsubs(
-            client,
-            user_id
-        )
+        if message.chat.type == enums.ChatType.PRIVATE:
 
-        if not_joined:
-
-            await send_fsub_message(
+            not_joined = await check_all_fsubs(
                 client,
-                message,
-                not_joined
+                user_id
             )
 
-            return
+            if not_joined:
+
+                await send_fsub_message(
+                    client,
+                    message,
+                    not_joined
+                )      
+
+                return
 
         # ----------------------------------------------------
         # REQUEST CHECK
@@ -1805,14 +1738,6 @@ def register_search_handlers(app):
             return
 
         user_id = callback.from_user.id
-
-        # ----------------------------------------------------
-        # GROUP
-        #
-        # Telegram cannot directly move the user into PM
-        # using a callback message. callback.answer(url=...)
-        # opens the bot deep link.
-        # ----------------------------------------------------
 
         if callback.message.chat.type != enums.ChatType.PRIVATE:
 
