@@ -257,15 +257,56 @@ def get_result_year(result):
     return str(value).strip()
 
 def get_result_quality(result):
+    import re
 
-    value = result.get(
-        "quality"
+    # Check database fields first
+    quality = (
+        result.get("quality")
+        or result.get("video_quality")
+        or result.get("resolution")
+        or result.get("video_resolution")
     )
 
-    if value is None:
-        return ""
+    if quality:
+        return str(quality).strip()
 
-    return str(value).strip()
+    # If quality is not stored separately,
+    # detect it from the file title/name/caption
+    text = " ".join(
+        str(result.get(key, "") or "")
+        for key in [
+            "title",
+            "file_name",
+            "filename",
+            "name",
+            "caption",
+        ]
+    )
+
+    patterns = [
+        r"\b(HDRip)\b",
+        r"\b(4k)\b",
+        r"\b(2160p)\b",
+        r"\b(1440p)\b",
+        r"\b(1080p)\b",
+        r"\b(720p)\b",
+        r"\b(576p)\b",
+        r"\b(480p)\b",
+        r"\b(360p)\b",
+        r"\b(240p)\b",
+    ]
+
+    for pattern in patterns:
+        match = re.search(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
+
+        if match:
+            return match.group(1)
+
+    return ""
 
 def format_file_size(size):
 
