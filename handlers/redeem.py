@@ -228,3 +228,21 @@ def register_redeem_handlers(app):
             "✅ Your Premium plan is now active.\n"
             "🍿 Enjoy the bot!"
         )
+        
+        # ---------------------------------------------
+        # REDEEM BUTTON
+        # ---------------------------------------------
+        @app.on_callback_query(filters.regex("^redeem$"))
+        async def redeem_button_callback(client, callback_query):
+
+            await callback_query.answer()
+
+            await callback_query.message.edit_text(
+                "🎟️ <b>Redeem Premium Code</b>\n\n"
+                "Use the command below:\n\n"
+                "<code>/redeem YOUR_CODE</code>\n\n"
+                "Example:\n"
+                "<code>/redeem PMB-AB12-CD34</code>"
+            )
+
+    
