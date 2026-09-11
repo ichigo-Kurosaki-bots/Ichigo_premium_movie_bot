@@ -244,37 +244,51 @@ async def main():
 
     register_fsub_handlers(app)
 
-    register_access_handlers(app)
-
-    register_owner_handlers(app)
-    
-    register_redeem_handlers(app)
-
-    register_start_handlers(app)
-
     logger.info("TEST 3")
 
-    register_premium_handlers(app)
+    register_access_handlers(app)
 
     logger.info("TEST 4")
 
-    register_search_handlers(app)
+    register_owner_handlers(app)
 
     logger.info("TEST 5")
+    
+    register_redeem_handlers(app)
+
+    logger.info("TEST 6")
+    
+    register_start_handlers(app)
+
+    logger.info("TEST 7")
+
+    register_premium_handlers(app)
+
+    logger.info("TEST 8")
+
+    register_search_handlers(app)
+
+    logger.info("TEST 9")
 
     register_token_handlers(app)
 
+    logger.info("TEST 10")
+
     register_channel_handlers(app)
 
-    register_group_welcome_handlers(app)
+    logger.info("TEST 11")
 
+    register_group_welcome_handlers(app)
+    
+    logger.info("TEST 12")
+    
     register_font_handlers(app)
 
-    logger.info("TEST 6")
+    logger.info("TEST 13")
 
     register_admin_handlers(app)
 
-    logger.info("TEST 7")
+    logger.info("TEST 14")
 
     # --------------------------------------------------------
     # DEBUG UPDATE HANDLER
@@ -310,7 +324,7 @@ async def main():
     # START TELEGRAM CLIENT
     # --------------------------------------------------------
 
-    logger.info("TEST 8")
+    logger.info("TEST 15")
 
     await app.start()
 
