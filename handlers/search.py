@@ -6,17 +6,17 @@ import asyncio
 import html
 import logging
 import os
+import re
 from time import perf_counter
-from urllib.parse import quote, unquote
 
-from pyrogram import filters
+from pyrogram import filters, StopPropagation
 from pyrogram.enums import ParseMode
 from pyrogram.errors import FloodWait, RPCError
 from pyrogram.handlers import MessageHandler, CallbackQueryHandler
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from pyrogram import StopPropagation
 
 from config import DATABASE_CHANNEL_ID
+
 from database import (
     create_user,
     search_media,
@@ -26,6 +26,7 @@ from database import (
     update_search_session_filters,
     get_search_session_filters,
     get_media_by_message,
+    get_user,
     consume_request,
     restore_request,
 )
@@ -34,8 +35,6 @@ from handlers.fsub import (
     check_all_fsubs,
     send_fsub_message,
 )
-
-from premium import get_remaining_requests
 
 
 logger = logging.getLogger(__name__)
@@ -47,7 +46,9 @@ logger = logging.getLogger(__name__)
 
 RESULTS_PER_PAGE = 10
 MAX_RESULTS = 50
-DELETE_AFTER = 300  # 5 minutes
+
+# 5 minutes
+DELETE_AFTER = 300
 
 UPDATES_URL = os.getenv(
     "UPDATES_CHANNEL",
@@ -56,18 +57,10 @@ UPDATES_URL = os.getenv(
 
 
 # ============================================================
-# HELPERS
+# URL HELPERS
 # ============================================================
 
 def normalize_updates_url(url):
-    """
-    Converts:
-        @Aero_Unity
-    into:
-        https://t.me/Aero_Unity
-
-    Leaves normal URLs unchanged.
-    """
 
     if not url:
         return "https://t.me/Aero_Unity"
@@ -86,36 +79,52 @@ def normalize_updates_url(url):
     return url
 
 
-UPDATES_URL = normalize_updates_url(UPDATES_URL)
+UPDATES_URL = normalize_updates_url(
+    UPDATES_URL
+)
 
+
+# ============================================================
+# GENERAL HELPERS
+# ============================================================
 
 def escape_html(text):
+
     if text is None:
         return ""
 
-    return html.escape(str(text))
+    return html.escape(
+        str(text)
+    )
 
 
 def clean_query(text):
+
     if not text:
         return ""
 
     text = str(text).strip()
 
-    while "  " in text:
-        text = text.replace("  ", " ")
+    text = re.sub(
+        r"\s+",
+        " ",
+        text
+    )
 
     return text
 
 
 async def get_bot_username(client):
+
     try:
+
         me = await client.get_me()
 
         if me and me.username:
             return me.username
 
     except Exception as e:
+
         logger.error(
             "Failed to get bot username: %s",
             e
@@ -124,7 +133,15 @@ async def get_bot_username(client):
     return None
 
 
-def build_file_deep_link(bot_username, message_id):
+# ============================================================
+# DEEP LINKS
+# ============================================================
+
+def build_file_deep_link(
+    bot_username,
+    message_id
+):
+
     return (
         f"https://t.me/{bot_username}"
         f"?start=file_{int(message_id)}"
@@ -136,6 +153,7 @@ def build_sendall_deep_link(
     session_id,
     page
 ):
+
     return (
         f"https://t.me/{bot_username}"
         f"?start=sendall_{session_id}_{page}"
@@ -143,44 +161,77 @@ def build_sendall_deep_link(
 
 
 # ============================================================
-# DISPLAY TITLE
+# RESULT INFORMATION
 # ============================================================
 
-def get_result_title(item):
-    """
-    Choose the best available title.
+def _valid_text(value):
 
-    Some database records may contain incorrect values
-    in `title`, so filename/name fields are preferred.
-    """
+    if value is None:
+        return None
+
+    value = str(value).strip()
+
+    if not value:
+        return None
+
+    # Ignore values which are obviously metadata
+    # instead of a movie/file title.
+    if re.fullmatch(
+        r"(?:\d+|s\d+|e\d+|\d{3,4}p)",
+        value,
+        re.IGNORECASE
+    ):
+        return None
+
+    return value
+
+
+def get_result_title(item):
 
     candidates = [
         item.get("file_name"),
         item.get("filename"),
         item.get("name"),
         item.get("title"),
+        item.get("caption"),
     ]
 
     for value in candidates:
 
-        if value is None:
-            continue
+        value = _valid_text(
+            value
+        )
 
-        value = str(value).strip()
+        if value:
 
-        if not value:
-            continue
+            # Remove common extension.
+            value = re.sub(
+                r"\.(mkv|mp4|avi|mov|webm|flv|ts)$",
+                "",
+                value,
+                flags=re.IGNORECASE
+            )
 
-        # Ignore obviously bad numeric titles.
-        if value.isdigit():
-            continue
+            # Make filename easier to read.
+            value = value.replace(
+                "_",
+                " "
+            )
 
-        return value
+            value = re.sub(
+                r"\s+",
+                " ",
+                value
+            ).strip()
+
+            if value:
+                return value
 
     return "File"
 
 
 def get_result_year(item):
+
     year = (
         item.get("year")
         or item.get("release_year")
@@ -194,6 +245,7 @@ def get_result_year(item):
 
 
 def get_result_audio(item):
+
     audio = (
         item.get("audio")
         or item.get("language")
@@ -202,14 +254,18 @@ def get_result_audio(item):
     )
 
     if isinstance(audio, list):
+
         audio = ", ".join(
-            str(x) for x in audio
+            str(x)
+            for x in audio
+            if x
         )
 
     return str(audio)
 
 
 def get_result_rating(item):
+
     rating = (
         item.get("rating")
         or item.get("imdb")
@@ -220,6 +276,60 @@ def get_result_rating(item):
     return str(rating)
 
 
+def get_page_year(results):
+
+    years = []
+
+    for item in results:
+
+        year = get_result_year(
+            item
+        )
+
+        if year != "N/A" and year not in years:
+            years.append(year)
+
+    if not years:
+        return "N/A"
+
+    return ", ".join(
+        years[:5]
+    )
+
+
+def get_page_languages(results):
+
+    languages = []
+
+    for item in results:
+
+        audio = get_result_audio(
+            item
+        )
+
+        if audio == "N/A":
+            continue
+
+        for language in audio.split(","):
+
+            language = language.strip()
+
+            if (
+                language
+                and language not in languages
+            ):
+                languages.append(
+                    language
+                )
+
+    if not languages:
+        return "N/A"
+
+    return ", ".join(
+        languages[:10]
+    )
+
+
 # ============================================================
 # RESULT BUTTONS
 # ============================================================
@@ -228,7 +338,8 @@ def search_result_buttons(
     results,
     bot_username,
     session_id,
-    page
+    page,
+    has_next=False
 ):
 
     buttons = []
@@ -243,9 +354,10 @@ def search_result_buttons(
         if not message_id:
             continue
 
-        title = get_result_title(item)
+        title = get_result_title(
+            item
+        )
 
-        # Keep button text readable.
         if len(title) > 55:
             title = title[:52] + "..."
 
@@ -278,7 +390,7 @@ def search_result_buttons(
             )
         )
 
-    if len(results) >= RESULTS_PER_PAGE:
+    if has_next:
 
         navigation.append(
             InlineKeyboardButton(
@@ -290,7 +402,9 @@ def search_result_buttons(
         )
 
     if navigation:
-        buttons.append(navigation)
+        buttons.append(
+            navigation
+        )
 
     # --------------------------------------------------------
     # SEND ALL
@@ -315,7 +429,7 @@ def search_result_buttons(
 
 
 # ============================================================
-# SEARCH RESULT TEXT
+# SEARCH TEXT
 # ============================================================
 
 def build_search_text(
@@ -326,15 +440,30 @@ def build_search_text(
     filters_data=None
 ):
 
-    query = escape_html(query)
+    query = escape_html(
+        query
+    )
+
+    year = escape_html(
+        get_page_year(results)
+    )
+
+    language = escape_html(
+        get_page_languages(results)
+    )
 
     text = (
         "🔎 <b>Search Results</b>\n\n"
+
         f"🎬 <b>Title:</b> {query}\n"
+
+        f"📅 <b>Year:</b> {year}\n"
+
+        f"🔊 <b>Language:</b> {language}\n"
     )
 
     # --------------------------------------------------------
-    # FILTERS
+    # FILTER INFORMATION
     # --------------------------------------------------------
 
     if filters_data:
@@ -355,7 +484,8 @@ def build_search_text(
             text += (
                 "\n🎯 <b>Filters:</b>\n"
                 + "\n".join(
-                    f"• {x}" for x in active
+                    f"• {x}"
+                    for x in active
                 )
                 + "\n"
             )
@@ -365,12 +495,17 @@ def build_search_text(
     # --------------------------------------------------------
 
     text += (
-        f"\n📊 <b>Results:</b> {len(results)}\n"
-        f"⏱️ <b>Time:</b> {elapsed:.2f} seconds\n"
+        f"\n📊 <b>Results:</b> "
+        f"{len(results)}\n"
+
+        f"⏱️ <b>Results shown in:</b> "
+        f"{elapsed:.2f} seconds\n"
+
         f"⚡ <b>Powered by:</b> "
-        f"<a href=\"https://t.me/Aero_Unity\">"
+        f'<a href="https://t.me/Aero_Unity">'
         f"@Aero_Unity</a>\n\n"
-        "👇 <b>Here are your Results</b>\n"
+
+        "👇 <b>Here are your results</b>"
     )
 
     return text
@@ -386,7 +521,9 @@ async def search_movies(
     filters_data=None
 ):
 
-    skip = page * RESULTS_PER_PAGE
+    skip = (
+        page * RESULTS_PER_PAGE
+    )
 
     results = await search_media(
         query,
@@ -398,9 +535,14 @@ async def search_movies(
     if not results:
         return [], False
 
-    has_next = len(results) > RESULTS_PER_PAGE
+    has_next = (
+        len(results)
+        > RESULTS_PER_PAGE
+    )
 
-    results = results[:RESULTS_PER_PAGE]
+    results = results[
+        :RESULTS_PER_PAGE
+    ]
 
     return results, has_next
 
@@ -415,12 +557,17 @@ async def advanced_search(
     filters_data=None
 ):
 
-    query = clean_query(query)
+    query = clean_query(
+        query
+    )
 
     if not query:
         return [], False
 
-    # Primary search.
+    # --------------------------------------------------------
+    # PRIMARY SEARCH
+    # --------------------------------------------------------
+
     results, has_next = await search_movies(
         query,
         page,
@@ -464,7 +611,10 @@ async def advanced_search(
                 )
 
                 if message_id:
-                    combined[str(message_id)] = item
+
+                    combined[
+                        str(message_id)
+                    ] = item
 
         except Exception as e:
 
@@ -480,15 +630,25 @@ async def advanced_search(
 
     all_results.sort(
         key=lambda x: int(
-            x.get("message_id", 0) or 0
+            x.get(
+                "message_id",
+                0
+            ) or 0
         ),
         reverse=True
     )
 
-    start = page * RESULTS_PER_PAGE
-    end = start + RESULTS_PER_PAGE
+    start = (
+        page * RESULTS_PER_PAGE
+    )
 
-    page_results = all_results[start:end]
+    end = (
+        start + RESULTS_PER_PAGE
+    )
+
+    page_results = all_results[
+        start:end
+    ]
 
     return (
         page_results,
@@ -497,7 +657,7 @@ async def advanced_search(
 
 
 # ============================================================
-# SESSION FILTER HELPER
+# SESSION FILTERS
 # ============================================================
 
 async def get_session_filters(
@@ -531,28 +691,48 @@ async def get_session_filters(
 # REQUEST BALANCE
 # ============================================================
 
-async def has_requests(user_id):
+async def get_remaining_requests_count(
+    user_id
+):
 
     try:
 
-        remaining = await get_remaining_requests(
+        user = await get_user(
             user_id
         )
 
-        if remaining is None:
-            return True
+        if not user:
+            return 0
 
-        return int(remaining) > 0
+        remaining = user.get(
+            "remaining_requests",
+            0
+        )
+
+        return int(
+            remaining or 0
+        )
 
     except Exception as e:
 
         logger.warning(
-            "Failed to check request balance: %s",
+            "Failed to get request balance: %s",
             e
         )
 
-        # Do not block users if balance lookup itself fails.
-        return True
+        return 0
+
+
+async def has_requests(
+    user_id
+):
+
+    return (
+        await get_remaining_requests_count(
+            user_id
+        )
+        > 0
+    )
 
 
 # ============================================================
@@ -568,9 +748,12 @@ async def delete_messages_after_delay(
 
     try:
 
-        await asyncio.sleep(delay)
+        await asyncio.sleep(
+            delay
+        )
 
     except asyncio.CancelledError:
+
         return
 
     for message_id in message_ids:
@@ -606,11 +789,21 @@ def schedule_auto_delete(
     message_ids
 ):
 
-    clean_ids = [
-        int(x)
-        for x in message_ids
-        if x
-    ]
+    clean_ids = []
+
+    for message_id in message_ids:
+
+        if not message_id:
+            continue
+
+        try:
+
+            clean_ids.append(
+                int(message_id)
+            )
+
+        except Exception:
+            continue
 
     if not clean_ids:
         return
@@ -626,6 +819,45 @@ def schedule_auto_delete(
 
 
 # ============================================================
+# SEND WARNING
+# ============================================================
+
+async def send_delete_warning(
+    client,
+    message,
+    sent_count=1,
+    send_all=False
+):
+
+    if send_all:
+
+        text = (
+            "⚠️ <b>Important</b>\n\n"
+            f"📦 <b>{sent_count}</b> file(s) "
+            "were sent successfully.\n\n"
+            "🗑 <b>These files will be "
+            "automatically deleted after "
+            "5 minutes.</b>\n\n"
+            "Please save them before they are deleted."
+        )
+
+    else:
+
+        text = (
+            "⚠️ <b>Important</b>\n\n"
+            "🗑 <b>This file will be "
+            "automatically deleted after "
+            "5 minutes.</b>\n\n"
+            "Please save it before it is deleted."
+        )
+
+    return await message.reply_text(
+        text,
+        parse_mode=ParseMode.HTML
+    )
+
+
+# ============================================================
 # SEND DATABASE FILE
 # ============================================================
 
@@ -634,13 +866,6 @@ async def send_database_file(
     message,
     message_id
 ):
-
-    caption = (
-        "⚠️ <b>Please save this file before it is "
-        "automatically deleted after 5 minutes.</b>\n\n"
-        f'📢 <b><a href="{UPDATES_URL}">'
-        f'Updates</a></b>'
-    )
 
     reply_markup = InlineKeyboardMarkup(
         [
@@ -653,14 +878,14 @@ async def send_database_file(
         ]
     )
 
-    return await client.copy_message(
+    sent = await client.copy_message(
         chat_id=message.chat.id,
         from_chat_id=DATABASE_CHANNEL_ID,
         message_id=int(message_id),
-        caption=caption,
-        parse_mode=ParseMode.HTML,
         reply_markup=reply_markup
     )
+
+    return sent
 
 
 # ============================================================
@@ -673,7 +898,10 @@ async def handle_file_deep_link(
     message_id
 ):
 
-    # Only PM.
+    # --------------------------------------------------------
+    # DELIVERY MUST ALWAYS HAPPEN IN PM
+    # --------------------------------------------------------
+
     if message.chat.type != "private":
         return
 
@@ -704,7 +932,7 @@ async def handle_file_deep_link(
         )
 
     # --------------------------------------------------------
-    # FORCE SUB
+    # FORCE SUBSCRIBE
     # --------------------------------------------------------
 
     try:
@@ -764,10 +992,12 @@ async def handle_file_deep_link(
         return
 
     # --------------------------------------------------------
-    # REQUEST LIMIT
+    # REQUEST BALANCE
     # --------------------------------------------------------
 
-    if not await has_requests(user_id):
+    if not await has_requests(
+        user_id
+    ):
 
         await message.reply_text(
             "❌ <b>You have no requests remaining.</b>\n\n"
@@ -780,8 +1010,6 @@ async def handle_file_deep_link(
     # --------------------------------------------------------
     # CONSUME REQUEST
     # --------------------------------------------------------
-
-    consumed = False
 
     try:
 
@@ -796,7 +1024,9 @@ async def handle_file_deep_link(
             e
         )
 
-    if consumed is False:
+        consumed = False
+
+    if not consumed:
 
         await message.reply_text(
             "❌ <b>You have no requests remaining.</b>",
@@ -808,6 +1038,9 @@ async def handle_file_deep_link(
     # --------------------------------------------------------
     # SEND FILE
     # --------------------------------------------------------
+
+    sent = None
+    warning = None
 
     try:
 
@@ -824,17 +1057,37 @@ async def handle_file_deep_link(
             )
 
         # ----------------------------------------------------
-        # AUTO DELETE AFTER 5 MINUTES
+        # WARNING
         # ----------------------------------------------------
+
+        warning = await send_delete_warning(
+            client,
+            message,
+            sent_count=1,
+            send_all=False
+        )
+
+        # ----------------------------------------------------
+        # AUTO DELETE
+        # ----------------------------------------------------
+
+        delete_ids = [
+            sent.id
+        ]
+
+        if warning:
+            delete_ids.append(
+                warning.id
+            )
 
         schedule_auto_delete(
             client,
             message.chat.id,
-            [sent.id]
+            delete_ids
         )
 
         logger.info(
-            "File %s sent to %s; scheduled deletion",
+            "File %s sent to user %s",
             message_id,
             user_id
         )
@@ -842,20 +1095,25 @@ async def handle_file_deep_link(
     except FloodWait as e:
 
         try:
-            await restore_request(user_id)
+            await restore_request(
+                user_id
+            )
         except Exception:
             pass
 
         await message.reply_text(
-            f"⏳ <b>Telegram rate limit.</b>\n"
-            f"Please try again after {e.value} seconds.",
+            f"⏳ <b>Telegram rate limit.</b>\n\n"
+            f"Please try again after "
+            f"{e.value} seconds.",
             parse_mode=ParseMode.HTML
         )
 
     except RPCError as e:
 
         try:
-            await restore_request(user_id)
+            await restore_request(
+                user_id
+            )
         except Exception:
             pass
 
@@ -866,14 +1124,16 @@ async def handle_file_deep_link(
 
         await message.reply_text(
             "❌ <b>Failed to send the file.</b>\n"
-            "Please try again later.",
+            "Your request has been restored.",
             parse_mode=ParseMode.HTML
         )
 
     except Exception as e:
 
         try:
-            await restore_request(user_id)
+            await restore_request(
+                user_id
+            )
         except Exception:
             pass
 
@@ -884,7 +1144,7 @@ async def handle_file_deep_link(
 
         await message.reply_text(
             "❌ <b>Failed to send the file.</b>\n"
-            "Please try again later.",
+            "Your request has been restored.",
             parse_mode=ParseMode.HTML
         )
 
@@ -899,6 +1159,10 @@ async def handle_sendall_deep_link(
     session_id,
     page=0
 ):
+
+    # --------------------------------------------------------
+    # ONLY PM
+    # --------------------------------------------------------
 
     if message.chat.type != "private":
         return
@@ -926,7 +1190,7 @@ async def handle_sendall_deep_link(
         pass
 
     # --------------------------------------------------------
-    # FORCE SUB
+    # FORCE SUBSCRIBE
     # --------------------------------------------------------
 
     try:
@@ -936,7 +1200,12 @@ async def handle_sendall_deep_link(
             user_id
         )
 
-    except Exception:
+    except Exception as e:
+
+        logger.error(
+            "Send All FSub check error: %s",
+            e
+        )
 
         not_joined = []
 
@@ -957,8 +1226,6 @@ async def handle_sendall_deep_link(
     # SESSION
     # --------------------------------------------------------
 
-    session = None
-
     try:
 
         session = await get_search_session(
@@ -973,10 +1240,12 @@ async def handle_sendall_deep_link(
             e
         )
 
+        session = None
+
     if not session:
 
         await message.reply_text(
-            "❌ <b>Search session expired.</b>\n"
+            "❌ <b>Search session expired.</b>\n\n"
             "Please search again.",
             parse_mode=ParseMode.HTML
         )
@@ -994,11 +1263,27 @@ async def handle_sendall_deep_link(
         or {}
     )
 
-    results, _ = await advanced_search(
-        query,
-        page=page,
-        filters_data=filters_data
-    )
+    try:
+
+        results, _ = await advanced_search(
+            query,
+            page=page,
+            filters_data=filters_data
+        )
+
+    except Exception as e:
+
+        logger.exception(
+            "Send All search failed: %s",
+            e
+        )
+
+        await message.reply_text(
+            "❌ <b>Unable to load files.</b>",
+            parse_mode=ParseMode.HTML
+        )
+
+        return
 
     if not results:
 
@@ -1026,13 +1311,23 @@ async def handle_sendall_deep_link(
         )
 
         if not message_id:
+
             failed += 1
             continue
 
-        if not await has_requests(user_id):
+        # ----------------------------------------------------
+        # CHECK BALANCE
+        # ----------------------------------------------------
+
+        if not await has_requests(
+            user_id
+        ):
+
             break
 
-        consumed = False
+        # ----------------------------------------------------
+        # CONSUME
+        # ----------------------------------------------------
 
         try:
 
@@ -1040,12 +1335,21 @@ async def handle_sendall_deep_link(
                 user_id
             )
 
-        except Exception:
+        except Exception as e:
+
+            logger.warning(
+                "Send All consume error: %s",
+                e
+            )
 
             consumed = False
 
-        if consumed is False:
+        if not consumed:
             break
+
+        # ----------------------------------------------------
+        # SEND
+        # ----------------------------------------------------
 
         try:
 
@@ -1056,6 +1360,7 @@ async def handle_sendall_deep_link(
             )
 
             if not sent:
+
                 raise RuntimeError(
                     "File copy failed"
                 )
@@ -1069,9 +1374,11 @@ async def handle_sendall_deep_link(
         except FloodWait as e:
 
             try:
+
                 await restore_request(
                     user_id
                 )
+
             except Exception:
                 pass
 
@@ -1084,68 +1391,95 @@ async def handle_sendall_deep_link(
         except Exception as e:
 
             try:
+
                 await restore_request(
                     user_id
                 )
+
             except Exception:
                 pass
 
             failed += 1
 
             logger.warning(
-                "Send all file failed: %s",
+                "Send All file failed: %s",
                 e
             )
 
     # --------------------------------------------------------
-    # AUTO DELETE ALL
+    # NOTHING SENT
     # --------------------------------------------------------
 
-    if sent_messages:
+    if not sent_messages:
 
-        schedule_auto_delete(
-            client,
-            message.chat.id,
-            sent_messages
+        await message.reply_text(
+            "❌ <b>No files could be sent.</b>",
+            parse_mode=ParseMode.HTML
         )
 
+        return
+
     # --------------------------------------------------------
-    # RESULT MESSAGE
+    # WARNING
     # --------------------------------------------------------
 
-    remaining = None
+    warning = None
 
     try:
 
-        remaining = await get_remaining_requests(
-            user_id
+        warning = await send_delete_warning(
+            client,
+            message,
+            sent_count=success,
+            send_all=True
         )
 
-    except Exception:
-        pass
+    except Exception as e:
 
-    status = (
-        "📦 <b>Send All Completed</b>\n\n"
-        f"✅ <b>Sent:</b> {success}\n"
-        f"❌ <b>Failed:</b> {failed}\n"
-        "⏱️ <b>Files will be deleted after 5 minutes.</b>"
+        logger.warning(
+            "Failed to send deletion warning: %s",
+            e
+        )
+
+    # --------------------------------------------------------
+    # AUTO DELETE
+    # --------------------------------------------------------
+
+    delete_ids = list(
+        sent_messages
     )
 
-    if remaining is not None:
+    if warning:
 
-        status += (
-            f"\n\n💳 <b>Remaining Requests:</b> "
-            f"{remaining}"
+        delete_ids.append(
+            warning.id
         )
 
-    await message.reply_text(
-        status,
-        parse_mode=ParseMode.HTML
+    schedule_auto_delete(
+        client,
+        message.chat.id,
+        delete_ids
+    )
+
+    # --------------------------------------------------------
+    # REMAINING REQUESTS
+    # --------------------------------------------------------
+
+    remaining = await get_remaining_requests_count(
+        user_id
+    )
+
+    logger.info(
+        "Send All completed | user=%s | sent=%s | failed=%s | remaining=%s",
+        user_id,
+        success,
+        failed,
+        remaining
     )
 
 
 # ============================================================
-# REFRESH FILTERED RESULTS
+# REFRESH SEARCH RESULTS
 # ============================================================
 
 async def refresh_filtered_results(
@@ -1168,10 +1502,12 @@ async def refresh_filtered_results(
     )
 
     if not session:
+
         await callback_query.answer(
             "Search session expired.",
             show_alert=True
         )
+
         return
 
     query = (
@@ -1189,7 +1525,8 @@ async def refresh_filtered_results(
     )
 
     elapsed = (
-        perf_counter() - started
+        perf_counter()
+        - started
     )
 
     bot_username = await get_bot_username(
@@ -1197,10 +1534,12 @@ async def refresh_filtered_results(
     )
 
     if not bot_username:
+
         await callback_query.answer(
             "Bot username unavailable.",
             show_alert=True
         )
+
         return
 
     text = build_search_text(
@@ -1215,7 +1554,8 @@ async def refresh_filtered_results(
         results,
         bot_username,
         session_id,
-        page
+        page,
+        has_next=has_next
     )
 
     try:
@@ -1224,7 +1564,9 @@ async def refresh_filtered_results(
             text,
             parse_mode=ParseMode.HTML,
             reply_markup=(
-                InlineKeyboardMarkup(keyboard)
+                InlineKeyboardMarkup(
+                    keyboard
+                )
                 if keyboard
                 else None
             )
@@ -1249,7 +1591,19 @@ async def movie_search_handler(
     message
 ):
 
-    if message.chat.type != "private":
+    # --------------------------------------------------------
+    # ALLOW PM + GROUP + SUPERGROUP
+    # --------------------------------------------------------
+
+    if message.chat.type not in [
+        "private",
+        "group",
+        "supergroup"
+    ]:
+
+        return
+
+    if not message.from_user:
         return
 
     query = clean_query(
@@ -1273,16 +1627,28 @@ async def movie_search_handler(
         parse_mode=ParseMode.HTML
     )
 
+    user_id = (
+        message.from_user.id
+    )
+
+    # --------------------------------------------------------
+    # CREATE USER
+    # --------------------------------------------------------
+
     try:
 
         await create_user(
-            message.from_user.id,
+            user_id,
             message.from_user.username,
             message.from_user.first_name
         )
 
-    except Exception:
-        pass
+    except Exception as e:
+
+        logger.warning(
+            "create_user failed: %s",
+            e
+        )
 
     # --------------------------------------------------------
     # RECORD SEARCH
@@ -1291,7 +1657,7 @@ async def movie_search_handler(
     try:
 
         await record_search(
-            message.from_user.id,
+            user_id,
             query
         )
 
@@ -1309,7 +1675,7 @@ async def movie_search_handler(
     try:
 
         session_id = await create_search_session(
-            message.from_user.id,
+            user_id,
             query,
             {}
         )
@@ -1351,16 +1717,26 @@ async def movie_search_handler(
             e
         )
 
+        elapsed = (
+            perf_counter()
+            - started
+        )
+
         await searching.edit_text(
-            "❌ <b>Search failed.</b>\n\n"
-            "Please try again.",
+            (
+                "❌ <b>Search failed.</b>\n\n"
+                f"⏱️ <b>Time:</b> "
+                f"{elapsed:.2f} seconds\n\n"
+                "Please try again."
+            ),
             parse_mode=ParseMode.HTML
         )
 
         return
 
     elapsed = (
-        perf_counter() - started
+        perf_counter()
+        - started
     )
 
     # --------------------------------------------------------
@@ -1372,10 +1748,13 @@ async def movie_search_handler(
         await searching.edit_text(
             (
                 "❌ <b>No Results Found</b>\n\n"
-                f"🔎 <b>Query:</b> "
+
+                f"🎬 <b>Title:</b> "
                 f"{escape_html(query)}\n\n"
-                f"⏱️ <b>Time:</b> "
+
+                f"⏱️ <b>Results shown in:</b> "
                 f"{elapsed:.2f} seconds\n"
+
                 f"⚡ <b>Powered by:</b> "
                 f'<a href="https://t.me/Aero_Unity">'
                 f"@Aero_Unity</a>"
@@ -1418,7 +1797,8 @@ async def movie_search_handler(
         results,
         bot_username,
         session_id,
-        0
+        0,
+        has_next=has_next
     )
 
     # --------------------------------------------------------
@@ -1441,7 +1821,7 @@ async def movie_search_handler(
 
     except Exception as e:
 
-        logger.error(
+        logger.exception(
             "Failed to show search results: %s",
             e
         )
@@ -1456,18 +1836,25 @@ async def search_page_callback(
     callback_query
 ):
 
-    data = callback_query.data
+    data = (
+        callback_query.data
+        or ""
+    )
 
     try:
 
         parts = data.split("_")
 
         # search_page_SESSION_PAGE
+
         if len(parts) < 4:
             raise ValueError
 
         session_id = parts[2]
-        page = int(parts[3])
+
+        page = int(
+            parts[3]
+        )
 
     except Exception:
 
@@ -1495,12 +1882,17 @@ async def filter_callback(
     callback_query
 ):
 
-    data = callback_query.data
+    data = (
+        callback_query.data
+        or ""
+    )
 
     try:
 
-        # filter_SESSION
-        parts = data.split("_", 1)
+        parts = data.split(
+            "_",
+            1
+        )
 
         session_id = parts[1]
 
@@ -1527,22 +1919,12 @@ async def filter_callback(
 
         return
 
-    query = (
-        session.get("query")
-        or session.get("search_query")
-        or ""
-    )
-
     filters_data = (
         session.get("filters")
         or {}
     )
 
     buttons = []
-
-    # --------------------------------------------------------
-    # CURRENT FILTERS
-    # --------------------------------------------------------
 
     if filters_data:
 
@@ -1561,10 +1943,6 @@ async def filter_callback(
                         )
                     ]
                 )
-
-    # --------------------------------------------------------
-    # CLEAR
-    # --------------------------------------------------------
 
     buttons.append(
         [
@@ -1589,7 +1967,9 @@ async def filter_callback(
     )
 
     await callback_query.message.edit_reply_markup(
-        InlineKeyboardMarkup(buttons)
+        InlineKeyboardMarkup(
+            buttons
+        )
     )
 
     await callback_query.answer()
@@ -1604,12 +1984,17 @@ async def set_filter_callback(
     callback_query
 ):
 
-    data = callback_query.data
+    data = (
+        callback_query.data
+        or ""
+    )
 
     try:
 
-        # set_filter_SESSION_KEY_VALUE
-        parts = data.split("_", 4)
+        parts = data.split(
+            "_",
+            4
+        )
 
         session_id = parts[2]
         key = parts[3]
@@ -1660,7 +2045,7 @@ async def set_filter_callback(
 
 
 # ============================================================
-# CLEAR FILTER CALLBACK
+# CLEAR ALL FILTERS
 # ============================================================
 
 async def clear_filters_callback(
@@ -1668,7 +2053,10 @@ async def clear_filters_callback(
     callback_query
 ):
 
-    data = callback_query.data
+    data = (
+        callback_query.data
+        or ""
+    )
 
     try:
 
@@ -1709,7 +2097,10 @@ async def clear_single_filter_callback(
     callback_query
 ):
 
-    data = callback_query.data
+    data = (
+        callback_query.data
+        or ""
+    )
 
     try:
 
@@ -1765,7 +2156,10 @@ async def filter_back_callback(
     callback_query
 ):
 
-    data = callback_query.data
+    data = (
+        callback_query.data
+        or ""
+    )
 
     try:
 
@@ -1792,7 +2186,7 @@ async def filter_back_callback(
 
 
 # ============================================================
-# START DEEP LINK HANDLER
+# START DEEP LINK
 # ============================================================
 
 async def deep_link_start_handler(
@@ -1860,10 +2254,18 @@ async def deep_link_start_handler(
 
         try:
 
-            parts = payload.split("_")
+            parts = payload.split(
+                "_"
+            )
+
+            if len(parts) != 3:
+                raise ValueError
 
             session_id = parts[1]
-            page = int(parts[2])
+
+            page = int(
+                parts[2]
+            )
 
         except Exception:
 
@@ -1885,7 +2287,7 @@ async def deep_link_start_handler(
 
 
 # ============================================================
-# NOOP CALLBACK
+# NOOP
 # ============================================================
 
 async def noop_callback(
@@ -1908,27 +2310,34 @@ async def noop_callback(
 def register_search_handlers(app):
 
     # --------------------------------------------------------
-    # DEEP LINKS
+    # DEEP LINK
     # --------------------------------------------------------
 
     app.add_handler(
         MessageHandler(
             deep_link_start_handler,
             filters.private
-            & filters.command("start"),
+            & filters.command("start")
         ),
         group=-1
     )
 
     # --------------------------------------------------------
     # SEARCH
+    #
+    # IMPORTANT:
+    # NO filters.private HERE.
+    #
+    # This allows:
+    # PM
+    # Group
+    # Supergroup
     # --------------------------------------------------------
 
     app.add_handler(
         MessageHandler(
             movie_search_handler,
-            filters.private
-            & filters.text
+            filters.text
             & ~filters.command(
                 [
                     "start",
@@ -1985,7 +2394,7 @@ def register_search_handlers(app):
     )
 
     # --------------------------------------------------------
-    # CLEAR ALL FILTERS
+    # CLEAR ALL
     # --------------------------------------------------------
 
     app.add_handler(
@@ -1999,7 +2408,7 @@ def register_search_handlers(app):
     )
 
     # --------------------------------------------------------
-    # CLEAR SINGLE FILTER
+    # CLEAR SINGLE
     # --------------------------------------------------------
 
     app.add_handler(
