@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import re
+import time
+
 from html import escape as html_escape
 
 from pyrogram import filters, enums
@@ -290,37 +292,6 @@ def get_result_year(result):
         return match.group(1)
 
     return ""
-
-def get_result_rating(result):
-
-    if not result:
-        return ""
-
-    # Check database fields
-    rating = (
-        result.get("rating")
-        or result.get("ratings")
-        or result.get("imdb_rating")
-        or result.get("imdb")
-    )
-
-    if rating:
-        return str(rating).strip()
-
-    # Check nested data
-    data = result.get("data")
-
-    if isinstance(data, dict):
-
-        rating = (
-            data.get("rating")
-            or data.get("ratings")
-            or data.get("imdb_rating")
-            or data.get("imdb")
-        )
-
-        if rating:
-            return str(rating).strip()
 
     # Try to detect rating from title/caption
     text = " ".join(
