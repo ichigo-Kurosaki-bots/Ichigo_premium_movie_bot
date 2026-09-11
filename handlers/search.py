@@ -791,9 +791,6 @@ async def advanced_search(
         filters_data
     )
 
-    # The database search already handles
-    # multi-word matching, so do not perform
-    # a loose OR search here.
     return results, has_next
 
 
@@ -1373,9 +1370,6 @@ async def handle_sendall_deep_link(
             )
 
             return
-
-    
-
 
 # ============================================================
 # REFRESH SEARCH RESULTS
