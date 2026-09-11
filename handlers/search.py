@@ -1946,12 +1946,17 @@ def register_search_handlers(app):
                 parse_mode=enums.ParseMode.HTML
             )
 
+        except MessageNotModified:
+  
+            pass
+
         except Exception as e:
 
-            logger.error(
-                "FILTER EDIT ERROR: %s",
-                e
-            )
+           logger.error(
+               "FILTER EDIT ERROR: %s",
+               e,
+               exc_info=True
+           )
 
         await callback.answer()
 
@@ -2066,11 +2071,16 @@ def register_search_handlers(app):
                 parse_mode=enums.ParseMode.HTML
             )
 
+        except MessageNotModified:
+
+            pass
+
         except Exception as e:
 
             logger.error(
                 "FILTER RESULT EDIT ERROR: %s",
-                e
+                e,
+                exc_info=True
             )
 
     # ========================================================
@@ -2148,11 +2158,16 @@ def register_search_handlers(app):
                 parse_mode=enums.ParseMode.HTML
             )
 
+        except MessageNotModified:
+
+            pass
+
         except Exception as e:
 
             logger.error(
                 "CLEAR FILTER ERROR: %s",
-                e
+                e,
+                exc_info=True
             )
 
         await callback.answer(
@@ -2233,11 +2248,16 @@ def register_search_handlers(app):
                 parse_mode=enums.ParseMode.HTML
             )
 
+        except MessageNotModified:
+
+            pass
+
         except Exception as e:
 
             logger.error(
                 "FILTER BACK ERROR: %s",
-                e
+                e,
+                exc_info=True
             )
 
         await callback.answer()
