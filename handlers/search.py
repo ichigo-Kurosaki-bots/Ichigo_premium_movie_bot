@@ -994,21 +994,49 @@ async def send_database_file(
             chat_id=chat_id,
             from_chat_id=DATABASE_CHANNEL_ID,
             message_id=message_id
-
-        reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "• Uᴘᴅᴀᴛᴇs •",
-                        url=UPDATES_CHANNEL
-                    )
-                ]
-           ])
         )
+
+        if copied.caption:
+
+            clickable_caption = (
+                f'<a href="{UPDATES_CHANNEL}">'
+                f'<b>{html_escape(copied.caption)}</b>'
+                f'</a>'
+            )
+
+            await client.edit_message_caption(
+                chat_id=chat_id,
+                message_id=copied.id,
+                caption=clickable_caption,
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(
+                            "• Uᴘᴅᴀᴛᴇs •",
+                            url=UPDATES_CHANNEL
+                        )
+                    ]
+                ])
+            )
+
+        else:
+
+            await client.edit_message_reply_markup(
+                chat_id=chat_id,
+                message_id=copied.id,
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(
+                            "• Uᴘᴅᴀᴛᴇs •",
+                            url=UPDATES_CHANNEL
+                        )
+                    ]
+                ])
+            )
 
         asyncio.create_task(
             delete_file_after_5_minutes(copied)
-        ) 
-        
+        )
+
         return copied
 
     except Exception as e:
@@ -1020,7 +1048,6 @@ async def send_database_file(
         )
 
         return None
-
 
 # ============================================================
 # FILE DEEP LINK
