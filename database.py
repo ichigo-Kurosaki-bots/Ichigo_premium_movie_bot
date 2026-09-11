@@ -966,7 +966,8 @@ async def get_media_storage_stats():
 async def create_search_session(
     user_id,
     query,
-    filters=None
+    filters=None,
+    search_time=0
 ):
 
     import secrets
@@ -988,6 +989,9 @@ async def create_search_session(
 
         "filters":
             filters or {},
+
+        "search_time":
+            float(search_time or 0),
 
         "created_at":
             datetime.utcnow()
