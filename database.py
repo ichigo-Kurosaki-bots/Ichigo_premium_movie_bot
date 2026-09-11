@@ -2569,3 +2569,13 @@ async def get_maintenance_status():
             "updated_at"
         )
     }
+
+async def get_media_by_message(channel_id, message_id):
+    try:
+        return await media_collection.find_one({
+            "channel_id": int(channel_id),
+            "message_id": int(message_id)
+        })
+    except Exception as e:
+        logger.error(f"get_media_by_message error: {e}")
+        return None
