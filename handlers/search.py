@@ -572,22 +572,15 @@ def build_search_text(
 
     title = query.strip()
 
-    year = extract_year_from_result(first_result)
+    year = get_result_year(first_result) or "—"
 
-    language = (
-        first_result.get("language")
-        or "—"
-    )
+    language = get_result_language(first_result) or "—"
 
-    rating = (
-        first_result.get("rating")
-        or first_result.get("ratings")
-        or "—"
-    )
+    rating = get_result_rating(first_result) or "—"
 
     text = (
         f"🎬 <b>Tɪᴛʟᴇ:</b> "
-        f"{html_escape(str(title))}\n\n"
+        f"{html_escape(str(title))}\n"
 
         f"📅 <b>Yᴇᴀʀ:</b> "
         f"{html_escape(str(year))}\n"
@@ -598,7 +591,7 @@ def build_search_text(
         f"⭐ <b>Rᴀᴛɪɴɢ:</b> "
         f"{html_escape(str(rating))}\n\n"
 
-        f"📁 <b>Rᴇsᴜʟᴛs Sʜᴏᴡɴ Iɴ:</b> "
+        f"📁 <b>Rᴇsᴜʟᴛs Sʜᴏᴡs:</b> "
         f"{start}-{end}\n"
 
         f"⚡ <b>Pᴏᴡᴇʀᴇᴅ Bʏ:</b> "
