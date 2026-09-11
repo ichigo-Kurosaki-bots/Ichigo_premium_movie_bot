@@ -14,7 +14,7 @@ from pyrogram.enums import ParseMode
 from pyrogram.errors import FloodWait, RPCError
 from pyrogram.handlers import MessageHandler, CallbackQueryHandler
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from pyrogram.dispatcher import StopPropagation
+from pyrogram import StopPropagation
 
 from config import DATABASE_CHANNEL_ID
 from database import (
