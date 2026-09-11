@@ -1,7 +1,4 @@
-# ============================================================
-# handlers/search.py
-# ============================================================
-
+import asyncio
 import logging
 import re
 from html import escape as html_escape
@@ -41,9 +38,7 @@ from handlers.fsub import (
     send_fsub_message
 )
 
-
 logger = logging.getLogger(__name__)
-
 
 # ============================================================
 # CONSTANTS
@@ -56,7 +51,6 @@ SEARCH_PAGE_SIZE = int(
 MAX_SEARCH_RESULTS = int(
     MAX_RESULTS or 50
 )
-
 
 # ============================================================
 # QUERY HELPERS
@@ -77,20 +71,17 @@ def clean_query(query):
 
     return query
 
-
 def normalize_query(query):
 
     query = clean_query(query)
 
     return query.lower()
 
-
 def escape_regex(text):
 
     return re.escape(
         str(text)
     )
-
 
 def create_search_patterns(query):
 
@@ -118,7 +109,6 @@ def create_search_patterns(query):
 
     return patterns
 
-
 # ============================================================
 # RESULT HELPERS
 # ============================================================
@@ -136,7 +126,6 @@ def get_result_title(result):
 
     return str(title).strip()
 
-
 def get_result_message_id(result):
 
     value = result.get(
@@ -147,7 +136,6 @@ def get_result_message_id(result):
         return int(value)
     except Exception:
         return None
-
 
 def get_result_language(result):
 
@@ -160,7 +148,6 @@ def get_result_language(result):
 
     return str(value).strip()
 
-
 def get_result_year(result):
 
     value = result.get(
@@ -172,7 +159,6 @@ def get_result_year(result):
 
     return str(value).strip()
 
-
 def get_result_quality(result):
 
     value = result.get(
@@ -183,7 +169,6 @@ def get_result_quality(result):
         return ""
 
     return str(value).strip()
-
 
 # ============================================================
 # SEARCH RESULT BUTTONS
@@ -241,7 +226,7 @@ def search_result_buttons(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    "📦 sᴇɴᴅ ᴀʟʟ",
+                    " sᴇɴᴅ ᴀʟʟ",
                     callback_data=(
                         f"sendall_{session_id}_"
                         f"{page}"
@@ -324,7 +309,6 @@ def search_result_buttons(
         buttons
     )
 
-
 # ============================================================
 # SEARCH TEXT
 # ============================================================
@@ -387,7 +371,6 @@ def build_search_text(
     )
 
     return text
-
 
 # ============================================================
 # FILTER TEXT
@@ -685,7 +668,6 @@ def build_filter_buttons(
         buttons
     )
 
-
 # ============================================================
 # SEARCH
 # ============================================================
@@ -771,7 +753,6 @@ async def search_exact_title(
     )
 
     return results
-
 
 # ============================================================
 # FILTER OPTIONS
@@ -919,7 +900,6 @@ async def get_filters(
         user_id=user_id
     )
 
-
 # ============================================================
 # USER HELPER
 # ============================================================
@@ -963,6 +943,30 @@ async def ensure_user(
         username=username
     )
 
+# ============================================================
+# AUTO DELETE FILE AFTER 5 MINUTES
+# ============================================================
+
+async def delete_file_after_5_minutes(message):
+
+    await asyncio.sleep(300)
+
+    try:
+
+        await message.delete()
+
+        logger.info(
+            "FILE AUTO-DELETED AFTER 5 MINUTES | message_id=%s",
+            message.id
+        )
+
+    except Exception as e:
+
+        logger.warning(
+            "FILE AUTO-DELETE FAILED | message_id=%s | %s",
+            getattr(message, "id", "unknown"),
+            e
+        )
 
 # ============================================================
 # DATABASE FILE DELIVERY
@@ -992,6 +996,10 @@ async def send_database_file(
             message_id=message_id
         )
 
+        asyncio.create_task(
+            delete_file_after_5_minutes(copied)
+        ) 
+        
         return copied
 
     except Exception as e:
@@ -1086,9 +1094,8 @@ async def handle_file_deep_link(
     if not media:
 
         await message.reply_text(
-            "❌ <b>File not found in database.</b>\n\n"
-            "The requested file may have been removed "
-            "or is no longer available."
+            "<b>This Movie Not Found in Database</b>\n\n"
+            "<b>Request To Owner [@Mr_Mohammed_29] To add movie</b>"
         )
 
         return
@@ -1150,27 +1157,26 @@ async def handle_file_deep_link(
 
         return
 
-     # --------------------------------------------------------
-     # SUCCESS
-     # --------------------------------------------------------
+    # --------------------------------------------------------
+    # SUCCESS
+    # --------------------------------------------------------
 
-     try:
-         await record_search(
-             str(
-                 media.get(
-                     "title",
-                     media.get(
-                         "file_name",
-                         ""
-                     )
-                 ) 
-             )
-         )
-     except Exception:
-         pass
+    try:
+        await record_search(
+            str(
+                media.get(
+                    "title",
+                    media.get(
+                        "file_name",
+                        ""
+                    )
+                ) 
+            )
+        )
+    except Exception:
+        pass
 
-     return 
-
+    return 
 
 # ============================================================
 # SEND ALL DEEP LINK
@@ -1469,21 +1475,6 @@ def register_search_handlers(app):
                 )      
 
                 return
-
-        # ----------------------------------------------------
-        # REQUEST CHECK
-        # ----------------------------------------------------
-
-        if not await can_make_request(
-            user_id
-        ):
-
-            await message.reply_text(
-                "❌ <b>Yᴏᴜ Hᴀᴠᴇ Nᴏ Rᴇǫᴜᴇsᴛs Lᴇғᴛ.</b>\n\n"
-                "💎 <b>Aᴄᴛɪᴠᴀᴛᴇ Pʀᴇᴍɪᴜᴍ Tᴏ Cᴏɴᴛɪɴᴜᴇ.</b>"
-            )
-
-            return
 
         # ----------------------------------------------------
         # SEARCH
