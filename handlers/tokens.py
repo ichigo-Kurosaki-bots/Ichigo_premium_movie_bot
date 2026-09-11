@@ -561,7 +561,7 @@ def register_token_handlers(app):
             "🎬 <b>20 Movie Requests</b>\n\n"
             "Use your tokens to activate premium.",
             reply_markup=token_redeem_buttons()
-)
+        )
 
         await callback.answer()
 
