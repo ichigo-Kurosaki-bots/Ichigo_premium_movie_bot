@@ -1587,13 +1587,25 @@ def register_search_handlers(app):
         if not results:
 
             await message.reply_text(
-                "❌ <b>Nᴏ Rᴇsᴜʟᴛs Fᴏᴜɴᴅ.</b>\n\n"
-                f"🔎 <code>{html_escape(query)}</code>\n\n"
-                "Tʀʏ Aɴᴏᴛʜᴇʀ Mᴏᴠɪᴇ Oʀ Sᴇʀɪᴇs Nᴀᴍᴇ."
+                "<b>Your Requested Files Not Found in Database</b>\n\n"
+                "<b>🔎 Please Check Your Spelling On Google & "
+                "Try Again ✅</b>",
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(
+                            "• Rᴇǫᴜᴇsᴛ Tᴏ Oᴡɴᴇʀ •",
+                            url="https://t.me/Mr_Mohammed_29"
+                        ),
+                        InlineKeyboardButton(
+                            "• Cʜᴇᴄᴋ Sᴘᴇʟʟɪɴɢ •",
+                            url=f"https://www.google.com/search?q={query}"
+                        )
+                    ]
+                ])
             )
 
             return
-
+  
         # ----------------------------------------------------
         # SESSION
         # ----------------------------------------------------
