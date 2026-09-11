@@ -117,6 +117,48 @@ def create_search_patterns(query):
 # ============================================================
 
 def get_result_title(result):
+    """
+    Build search result button title.
+
+    Example:
+    [450 MB] [720p] Reacher 2026 S04E01 TRUE
+    """
+
+    if not result:
+        return "Unknown File"
+
+    file_size = result.get("file_size")
+
+    size_text = ""
+
+    if file_size is not None:
+        try:
+            size_bytes = int(file_size)
+
+            if size_bytes >= 1024 * 1024 * 1024:
+                size_text = (
+                    f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
+                )
+
+            elif size_bytes >= 1024 * 1024:
+                size_text = (
+                    f"{size_bytes / (1024 * 1024):.0f} MB"
+                )
+
+            elif size_bytes >= 1024:
+                size_text = (
+                    f"{size_bytes / 1024:.0f} KB"
+                )
+
+        except (TypeError, ValueError):
+            pass
+
+    quality = result.get("quality")
+
+    quality_text = ""
+
+    if quality:
+        quality_text = str(quality).strip()
 
     title = (
         result.get("title")
@@ -127,7 +169,46 @@ def get_result_title(result):
         or "Unknown File"
     )
 
-    return str(title).strip()
+    title = str(title).strip()
+
+    title = re.sub(
+        r"\s*\|\s*\d{3,4}p\s*",
+        " ",
+        title,
+        flags=re.IGNORECASE
+    )
+
+    title = re.sub(
+        r"\s*\|\s*\d+(?:\.\d+)?\s*(?:MB|GB|KB)\s*$",
+        "",
+        title,
+        flags=re.IGNORECASE
+    )
+
+    title = re.sub(
+        r"\s+",
+        " ",
+        title
+    ).strip()
+
+    title = re.sub(
+        r"\bS(\d{1,2})\s+E(\d{1,3})\b",
+        lambda m: f"S{int(m.group(1)):02d}E{int(m.group(2)):02d}",
+        title,
+        flags=re.IGNORECASE
+    )
+
+    parts = []
+
+    if size_text:
+        parts.append(f"[{size_text}]")
+
+    if quality_text:
+        parts.append(f"[{quality_text}]")
+
+    parts.append(title)
+
+    return " ".join(parts)
 
 def extract_year_from_result(result):
     title = get_result_title(result)
