@@ -127,6 +127,19 @@ def get_result_title(result):
 
     return str(title).strip()
 
+def extract_year_from_result(result):
+    title = get_result_title(result)
+
+    match = re.search(
+        r"\b(19\d{2}|20\d{2})\b",
+        title
+    )
+
+    if match:
+        return match.group(1)
+
+    return "—"
+
 def get_result_message_id(result):
 
     value = result.get(
@@ -293,19 +306,6 @@ def search_result_buttons(
             )
         )
 
-    if has_next:
-
-        navigation.append(
-            InlineKeyboardButton(
-                "• Nᴇxᴛ •",
-                callback_data=(
-                    f"search_page_"
-                    f"{session_id}_"
-                    f"{page + 1}"
-                )
-            )
-        )
-
     if navigation:
 
         buttons.append(
@@ -335,10 +335,7 @@ def build_search_text(
 
     title = query.strip()
 
-    year = (
-        first_result.get("year")
-        or "—"
-    )
+    year = extract_year_from_result(first_result)
 
     language = (
         first_result.get("language")
@@ -997,6 +994,15 @@ async def send_database_file(
             chat_id=chat_id,
             from_chat_id=DATABASE_CHANNEL_ID,
             message_id=message_id
+
+        reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "• Uᴘᴅᴀᴛᴇs •",
+                        url=UPDATES_CHANNEL
+                    )
+                ]
+           ])
         )
 
         asyncio.create_task(
@@ -1169,16 +1175,7 @@ async def handle_file_deep_link(
         "<b>⏳️ ᴅᴜᴇ ᴛᴏ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs...</b>\n\n"
         "<b>›› ʏᴏᴜʀ ғɪʟᴇs ᴡɪʟʟ ʙ ᴅᴇʟᴇᴛᴇᴅ ᴡɪᴛʜɪɴ 5 min</b>"
         "<b>sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
-        "<b> ɴᴏᴛᴇ : ᴜsᴇ ᴠʟᴄ ᴘʟᴀʏᴇʀ ᴏʀ ᴍx ᴘʟᴀʏᴇʀ ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>",
-            
-        reply_markup=InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "• Uᴘᴅᴀᴛᴇs •",
-                    url=UPDATES_CHANNEL
-                )
-            ]
-        ])
+        "<b> ɴᴏᴛᴇ : ᴜsᴇ ᴠʟᴄ ᴘʟᴀʏᴇʀ ᴏʀ ᴍx ᴘʟᴀʏᴇʀ ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>"
     )
 
     # --------------------------------------------------------
@@ -1375,16 +1372,7 @@ async def handle_sendall_deep_link(
             "<b>⏳️ ᴅᴜᴇ ᴛᴏ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs...</b>\n\n"
             "<b>›› ʏᴏᴜʀ ғɪʟᴇs ᴡɪʟʟ ʙ ᴅᴇʟᴇᴛᴇᴅ ᴡɪᴛʜɪɴ 5 min</b>"
             "<b>sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
-            "<b> ɴᴏᴛᴇ : ᴜsᴇ ᴠʟᴄ ᴘʟᴀʏᴇʀ ᴏʀ ᴍx ᴘʟᴀʏᴇʀ ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>",  
-
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "• Uᴘᴅᴀᴛᴇs •",
-                        url=UPDATES_CHANNEL
-                    )
-                ]
-            ])
+            "<b> ɴᴏᴛᴇ : ᴜsᴇ ᴠʟᴄ ᴘʟᴀʏᴇʀ ᴏʀ ᴍx ᴘʟᴀʏᴇʀ ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>"
         )
 
 # ============================================================
