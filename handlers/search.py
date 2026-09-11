@@ -1436,12 +1436,39 @@ def register_search_handlers(app):
     # ========================================================
 
     @app.on_message(
-        & filters.text
-        & ~filters.command(
-            [
-                "start"
-            ]
-        )
+        filters.text
+        & ~filters.command([
+            "start",
+            "alive",
+            "gentoken",
+            "token",
+            "redeem",
+            "plans",
+            "myplan",
+            "id",
+            "font",
+            "trendlist",
+            "generatecode",
+            "codes",
+            "addfsub",
+            "delfsub",
+            "fsublist",
+            "channel",
+            "user",
+            "premiumuser",
+            "activate",
+            "deactivate",
+            "addpremium",
+            "removepremium",
+            "stats",
+            "indexstatus",
+            "resetindex",
+            "ban",
+            "unban",
+            "banlist",
+            "maintenance",
+            "broadcast"
+        ])
     )
     async def movie_search_handler(
         client,
