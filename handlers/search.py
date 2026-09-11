@@ -575,9 +575,8 @@ def build_search_text(
         f"⏰ <b>ʀᴇsᴜʟᴛ ɪɴ :</b> "
         f"{search_time:.2f} Sᴇᴄᴏɴᴅs\n"
 
-        f"Requested by : "
-        f"{requested_by}\n"
-
+        f'Requested by : <a href="tg://user?id={requested_by_id}">{html_escape(requested_by_name or "User")}</a>\n'
+        
         f"⚡ <b>Pᴏᴡᴇʀᴇᴅ Bʏ:</b> "
         f"@Aero_Unity\n\n"
 
