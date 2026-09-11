@@ -984,3 +984,53 @@ def register_start_handlers(
 
             reply_markup=keyboard
         )
+
+    # ========================================================
+    # CLOSE
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^close$"
+        )
+    )
+    async def close_callback(
+        client,
+        callback
+    ):
+
+        await callback.answer()
+
+        try:
+
+            await callback.message.delete()
+
+        except Exception as e:
+
+            logger.warning(
+                "CLOSE MESSAGE DELETE ERROR: %s",
+                e
+            )
+
+    # ========================================================
+    # PREMIUM BACK
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^premium$"
+        )
+    )
+    async def premium_callback(
+        client,
+        callback
+    ):
+
+        await callback.answer()
+
+        await callback.message.edit_text(
+            format_plans(),
+            reply_markup=premium_buttons()
+        )
+     
+      
