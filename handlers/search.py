@@ -242,14 +242,108 @@ def get_result_language(result):
 
 def get_result_year(result):
 
-    value = result.get(
-        "year"
-    )
-
-    if value is None:
+    if not result:
         return ""
 
-    return str(value).strip()
+    # Check database fields
+    value = (
+        result.get("year")
+        or result.get("release_year")
+        or result.get("releaseYear")
+    )
+
+    if value:
+        return str(value).strip()
+
+    # Check nested data
+    data = result.get("data")
+
+    if isinstance(data, dict):
+
+        value = (
+            data.get("year")
+            or data.get("release_year")
+            or data.get("releaseYear")
+        )
+
+        if value:
+            return str(value).strip()
+
+    # Extract year from title / filename / caption
+    text = " ".join(
+        str(result.get(key, "") or "")
+        for key in [
+            "title",
+            "file_name",
+            "filename",
+            "name",
+            "caption"
+        ]
+    )
+
+    match = re.search(
+        r"\b(19\d{2}|20\d{2})\b",
+        text
+    )
+
+    if match:
+        return match.group(1)
+
+    return ""
+
+def get_result_rating(result):
+
+    if not result:
+        return ""
+
+    # Check database fields
+    rating = (
+        result.get("rating")
+        or result.get("ratings")
+        or result.get("imdb_rating")
+        or result.get("imdb")
+    )
+
+    if rating:
+        return str(rating).strip()
+
+    # Check nested data
+    data = result.get("data")
+
+    if isinstance(data, dict):
+
+        rating = (
+            data.get("rating")
+            or data.get("ratings")
+            or data.get("imdb_rating")
+            or data.get("imdb")
+        )
+
+        if rating:
+            return str(rating).strip()
+
+    # Try to detect rating from title/caption
+    text = " ".join(
+        str(result.get(key, "") or "")
+        for key in [
+            "title",
+            "file_name",
+            "filename",
+            "name",
+            "caption"
+        ]
+    )
+
+    match = re.search(
+        r"\b(?:IMDb?\s*)?([0-9](?:\.[0-9])?)\s*(?:/10)?\b",
+        text,
+        re.IGNORECASE
+    )
+
+    if match:
+        return match.group(1)
+
+    return ""
 
 def get_result_quality(result):
 
