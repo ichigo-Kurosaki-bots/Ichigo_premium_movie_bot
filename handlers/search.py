@@ -218,22 +218,44 @@ def search_result_buttons(
         )
 
     # --------------------------------------------------------
-    # SEND ALL
+    # SEND ALL + NEXT
     # --------------------------------------------------------
 
     if results:
 
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    " sᴇɴᴅ ᴀʟʟ",
-                    callback_data=(
-                        f"sendall_{session_id}_"
-                        f"{page}"
-                    )
-                )
-            ]
+        send_all_button = InlineKeyboardButton(
+            "• Sᴇɴᴅ Aʟʟ •",
+            callback_data=(
+                f"sendall_{session_id}_"
+                f"{page}"
+            )
         )
+
+        next_button = InlineKeyboardButton(
+            "• Nᴇxᴛ •",
+            callback_data=(
+                f"search_page_"
+                f"{session_id}_"
+                f"{page + 1}"
+            )
+        )
+
+        if has_next:
+
+            buttons.append(
+                [
+                    send_all_button,
+                    next_button
+                ]
+            )
+
+        else:
+
+            buttons.append(
+                [
+                    send_all_button
+                ]
+            )
 
     # --------------------------------------------------------
     # FILTER BUTTON
@@ -242,7 +264,7 @@ def search_result_buttons(
     buttons.append(
         [
             InlineKeyboardButton(
-                "⚙️ ғɪʟᴛᴇʀs",
+                "• ғɪʟᴛᴇʀs •",
                 callback_data=(
                     f"filters_{session_id}_"
                     f"{page}"
@@ -261,7 +283,7 @@ def search_result_buttons(
 
         navigation.append(
             InlineKeyboardButton(
-                "⬅️",
+                "• ʙᴀᴄᴋ •",
                 callback_data=(
                     f"search_page_"
                     f"{session_id}_"
@@ -274,7 +296,7 @@ def search_result_buttons(
 
         navigation.append(
             InlineKeyboardButton(
-                "➡️",
+                "• Nᴇxᴛ •",
                 callback_data=(
                     f"search_page_"
                     f"{session_id}_"
@@ -288,22 +310,6 @@ def search_result_buttons(
         buttons.append(
             navigation
         )
-
-    # --------------------------------------------------------
-    # CLOSE
-    # --------------------------------------------------------
-
-    buttons.append(
-        [
-            InlineKeyboardButton(
-                "✖️ ᴄʟᴏsᴇ",
-                callback_data=(
-                    f"search_close_"
-                    f"{session_id}"
-                )
-            )
-        ]
-    )
 
     return InlineKeyboardMarkup(
         buttons
@@ -326,11 +332,7 @@ def build_search_text(
     # Get metadata from first result
     first_result = results[0] if results else {}
 
-    title = (
-        first_result.get("title")
-        or first_result.get("name")
-        or query
-    )
+    title = query.strip()
 
     year = (
         first_result.get("year")
