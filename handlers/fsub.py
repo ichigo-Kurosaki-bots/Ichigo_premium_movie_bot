@@ -473,7 +473,7 @@ def register_fsub_callback_handler(app):
                             client=client,
                             message=callback.message,
                             message_id=message_id,
-                            user_id=callback.from_user.id
+                            user_id=user_id
                         )
 
                     # ========================================
