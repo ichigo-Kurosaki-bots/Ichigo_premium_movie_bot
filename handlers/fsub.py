@@ -1,5 +1,6 @@
 import logging
 import os
+from html import escape
 
 from pyrogram import filters, enums, StopPropagation
 from pyrogram.types import (
@@ -199,19 +200,24 @@ async def send_fsub_message(
     if not channels:
         return None
 
-    first_name = (
-        user.first_name
-        or "User"
+    first_name = escape(
+        user.first_name or "User"
+    )
+
+    clickable_name = (
+        f'<a href="tg://user?id={user.id}">'
+        f'{first_name}'
+        f'</a>'
     )
 
     text = (
-        f"<b>ʜᴇʏ {first_name}</b> ♡\n\n"
+        f"<b>ʜᴇʏ {clickable_name}</b> ♡\n\n"
 
         "<b>›› ‼️ ʟᴏᴏᴋs ʟɪᴋᴇ ʏᴏᴜ ʜᴀᴠᴇɴ'ᴛ "
         "ᴊᴏɪɴᴇᴅ ᴛᴏ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs ʏᴇᴛ, "
         "sᴜʙsᴄʀɪʙᴇ ɴᴏᴡ...</b>\n\n"
     )
-
+    
     # --------------------------------------------------------
     # PRESERVE ORIGINAL REQUEST
     # --------------------------------------------------------
