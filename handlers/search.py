@@ -1880,10 +1880,18 @@ def register_search_handlers(app):
             has_next=has_next
         )
 
-        await message.reply_text(
+        sent = await message.reply_text(
             text,
             reply_markup=keyboard,
             parse_mode=enums.ParseMode.HTML
+        )
+
+        asyncio.create_task(
+            delete_search_results_after_5_minutes(
+                client,
+                sent.chat.id,
+                sent.id
+            )
         )
 
     # ========================================================
