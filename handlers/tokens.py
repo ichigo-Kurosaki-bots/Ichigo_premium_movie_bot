@@ -36,7 +36,7 @@ def token_buttons():
         [
             [
                 InlineKeyboardButton(
-                    "🎁 Dᴀɪʟʏ Cʟᴀɪᴍ",
+                    "• Dᴀɪʟʏ Cʟᴀɪᴍ •",
                     callback_data="token_daily"
                 )
             ],
@@ -546,6 +546,8 @@ def register_token_handlers(app):
 
             return
 
+        await callback.answer()
+
         text = (
             "💎 <b>Pʀᴇᴍɪᴜᴍ Wɪᴛʜ Tᴏᴋᴇɴs</b>\n\n"
 
@@ -588,52 +590,54 @@ def register_token_handlers(app):
 
             return
 
-            user_id = callback.from_user.id
+        await callback.answer()
 
-            try:
+        user_id = callback.from_user.id
 
-                amount = int(
-                    callback.data.split("_")[-1]
-                )
+        try:
 
-            except (ValueError, IndexError):
-
-                await callback.answer(
-                    "❌ Invalid Premium plan.",
-                    show_alert=True
-                )
-
-                return
-
-            plan = get_plan_by_amount(
-                amount
+            amount = int(
+                callback.data.split("_")[-1]
             )
 
-            if not plan:
+        except (ValueError, IndexError):
 
-                await callback.answer(
-                    "‼️ This Premium plan does not exist.",
-                       show_alert=True
-                )
-
-                return
-
-            plan_name = plan.get(
-                "name",
-                "Premium"
+            await callback.answer(
+                "❌ Invalid Premium plan.",
+                show_alert=True
             )
 
-            requests = plan.get(
-                "requests",
-                0
+            return
+
+        plan = get_plan_by_amount(
+            amount
+        )
+
+        if not plan:
+
+            await callback.answer(
+                "‼️ This Premium plan does not exist.",
+                show_alert=True
             )
 
-            result = await redeem_tokens_for_premium(
-                user_id,
-                amount,
-                plan_name,
-                requests
-            )
+            return
+
+        plan_name = plan.get(
+            "name",
+            "Premium"
+        )
+
+        requests = plan.get(
+            "requests",
+            0
+        )
+
+        result = await redeem_tokens_for_premium(
+            user_id,
+            amount,
+            plan_name,
+            requests
+        )
 
         # ----------------------------------------------------
         # NOT ENOUGH TOKENS
