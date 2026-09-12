@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+from config import PREMIUM_PLANS
 
 from pyrogram import filters
 from pyrogram.types import (
@@ -16,7 +17,8 @@ from database import (
 )
 
 from premium import (
-    format_plans
+    format_plans,
+    get_plan_by_amount
 )
 
 from utils.buttons import (
@@ -58,26 +60,43 @@ def token_buttons():
 
 def token_redeem_buttons():
 
-    return InlineKeyboardMarkup(
-        [
+    buttons = []
+
+    for amount, plan in PREMIUM_PLANS.items():
+
+        requests = plan.get(
+            "requests",
+            0
+        )
+
+        name = plan.get(
+            "name",
+            "Premium"
+        )
+
+        buttons.append(
             [
                 InlineKeyboardButton(
-                    "🎟 Rᴇᴅᴇᴇᴍ 100 Tᴏᴋᴇɴѕ",
-                    callback_data="token_redeem"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "• Bᴀᴄᴋ •",
-                    callback_data="token_back"
-                ),
-                InlineKeyboardButton(
-                    "• Cʟᴏѕᴇ •",
-                    callback_data="token_close"
+                    f"🎟 {amount} Tᴏᴋᴇɴs → {requests} Rᴇǫᴜᴇsᴛs",
+                    callback_data=f"token_redeem_{amount}"
                 )
             ]
+        )
+
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                "• Bᴀᴄᴋ •",
+                callback_data="token_back"
+            ),
+            InlineKeyboardButton(
+                "• Cʟᴏѕᴇ •",
+                callback_data="token_close"
+            )
         ]
     )
+
+    return InlineKeyboardMarkup(buttons)
 
 
 # ============================================================
@@ -208,13 +227,6 @@ def register_token_handlers(app):
             reply_markup=token_buttons()
         )
 
-
-    # ========================================================
-    # /gentoken
-    #
-    # DAILY TOKEN CLAIM WITH ANIMATION
-    # ========================================================
-
     @app.on_message(
         filters.command("gentoken")
         & filters.private
@@ -247,13 +259,6 @@ def register_token_handlers(app):
                     or ""
                 )
             )
-
-        # ----------------------------------------------------
-        # CHECK IF ALREADY CLAIMED TODAY
-        #
-        # IMPORTANT:
-        # Do this BEFORE animation.
-        # ----------------------------------------------------
 
         now = datetime.utcnow()
 
@@ -320,12 +325,6 @@ def register_token_handlers(app):
         result = await claim_daily_tokens(
             user_id
         )
-
-        # ----------------------------------------------------
-        # ALREADY CLAIMED
-        #
-        # Safety check for simultaneous requests.
-        # ----------------------------------------------------
 
         if result.get(
             "reason"
@@ -555,11 +554,19 @@ def register_token_handlers(app):
 
             return
 
+        text = (
+            "💎 <b>Pʀᴇᴍɪᴜᴍ Wɪᴛʜ Tᴏᴋᴇɴs</b>\n\n"
+
+            "Use your tokens to activate "
+            "any available Premium plan.\n\n"
+
+            "🎟 <b>1 Token = ₹1 plan value</b>\n\n"
+
+            "Select the plan you want below:"
+        )
+
         await callback.message.edit_text(
-            "💎 <b>Token Premium</b>\n\n"
-            "🎟️ <b>100 Tokens</b> → <b>Starter Premium</b>\n"
-            "🎬 <b>20 Movie Requests</b>\n\n"
-            "Use your tokens to activate premium.",
+            text,
             reply_markup=token_redeem_buttons()
         )
 
@@ -572,7 +579,7 @@ def register_token_handlers(app):
 
     @app.on_callback_query(
         filters.regex(
-            r"^token_redeem$"
+            r"^token_redeem_\d+$"
         )
     )
     async def token_redeem_callback(
@@ -589,11 +596,52 @@ def register_token_handlers(app):
 
             return
 
-        user_id = callback.from_user.id
+                user_id = callback.from_user.id
 
-        result = await redeem_tokens_for_premium(
-            user_id
-        )
+                try:
+
+                    amount = int(
+                        callback.data.split("_")[-1]
+                    )
+
+                except (ValueError, IndexError):
+
+                    await callback.answer(
+                        "❌ Invalid Premium plan.",
+                        show_alert=True
+                    )
+
+                    return
+
+                plan = get_plan_by_amount(
+                    amount
+               )
+
+               if not plan:
+
+                   await callback.answer(
+                       "❌ This Premium plan does not exist.",
+                       show_alert=True
+                   )
+
+                   return
+
+               plan_name = plan.get(
+                   "name",
+                   "Premium"
+               )
+
+               requests = plan.get(
+                   "requests",
+                   0
+               )
+
+               result = await redeem_tokens_for_premium(
+                   user_id,
+                   amount,
+                   plan_name,
+                   requests
+               )
 
         # ----------------------------------------------------
         # NOT ENOUGH TOKENS
@@ -609,8 +657,8 @@ def register_token_handlers(app):
             )
 
             await callback.answer(
-                f"🧐 ʏᴏᴜ ɴᴇᴇᴅ 𝟷𝟶𝟶 ᴛᴏᴋᴇɴs!.\n"
-                f"Current balance: {balance}",
+                f"🧐 ʏᴏᴜ ɴᴇᴇᴅ {amount} ᴛᴏᴋᴇɴs!.\n"
+                f"Current balance: {balance} ᴛᴏᴋᴇɴs",
                 show_alert=True
             )
 
