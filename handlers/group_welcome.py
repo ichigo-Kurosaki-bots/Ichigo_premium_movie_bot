@@ -7,7 +7,6 @@ from pyrogram.types import (
 from config import UPDATES_CHANNEL
 from database import register_chat
 
-
 # ============================================================
 # GROUP WELCOME HANDLER
 # ============================================================
@@ -196,12 +195,11 @@ def register_group_welcome_handlers(app):
 
                 welcome_text = (
                     f"✨ <b>Wᴇʟᴄᴏᴍᴇ {first_name}!</b> 👋\n\n"
-                    f"🎬 <b>Wᴇʟᴄᴏᴍᴇ Tᴏ {group_name}!</b>\n\n"
+                    f"<b>Wᴇʟᴄᴏᴍᴇ Tᴏ {group_name}!</b>\n\n"
                     f"👤 Hᴇʏ <b>{first_name}</b>, "
-                    "<b>glad to have you here! ❤️</b>\n\n"
-                    "<b>Stay updated with the latest</b> "
-                    "<b>movies, series and bot updates.</b>\n\n"
-                    "<b>✨ Enjoy your stay!</b>"
+                    "<b>glad to have you here! ❤️</b>\n"
+                    "<b>search unlimited movies, series, animes, dramas, TV serials.</b>\n"
+                    "<b>Maintained By : @Mr_Mohammed_29</b>"
                 )
 
                 # ------------------------------------------------
