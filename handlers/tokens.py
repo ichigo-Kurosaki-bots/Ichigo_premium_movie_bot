@@ -692,13 +692,13 @@ def register_token_handlers(app):
 
             "🎉 <b>Premium Activated!</b>\n\n"
 
-            "💎 <b>Plan:</b> Starter\n"
-            "🎟 <b>Tokens Used:</b> 100\n"
-            "🎬 <b>Movie Requests:</b> 20\n"
+            f"💎 <b>Plan:</b> {plan_name}\n"
+            f"🎟 <b>Tokens Used:</b> {amount}\n"
+            f"🎬 <b>Movie Requests:</b> {requests}\n"
             f"💰 <b>Remaining Tokens:</b> {balance}\n\n"
 
-            "✅ Your Starter Premium plan is now active.\n"
-            "You can now use your 20 movie requests.",
+            f"✅ Your <b>{plan_name}</b> plan is now active.\n"
+            f"You can now use your <b>{requests}</b> movie requests.",
 
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -719,7 +719,7 @@ def register_token_handlers(app):
         )
 
         await callback.answer(
-            "🎉 100 tokens redeemed!",
+            f"🎉 {amount} tokens redeemed!",
             show_alert=True
         )
 
