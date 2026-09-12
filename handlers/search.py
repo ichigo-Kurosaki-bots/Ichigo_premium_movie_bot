@@ -1180,6 +1180,27 @@ async def delete_file_after_5_minutes(message):
             e
         )
 
+
+async def delete_search_results_after_5_minutes(client, chat_id, message_id):
+    try:
+        await asyncio.sleep(300)  # 5 minutes
+
+        try:
+            await client.delete_messages(
+                chat_id,
+                message_id
+            )
+        except Exception:
+            pass
+
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        logger.warning(
+            f"Failed to delete search results "
+            f"{chat_id}:{message_id}: {e}"
+        )
+
 # ============================================================
 # DATABASE FILE DELIVERY
 # ============================================================
