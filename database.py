@@ -507,36 +507,61 @@ async def claim_daily_tokens(
 # ============================================================
 
 async def redeem_tokens_for_premium(
-    user_id
+    user_id,
+    token_cost,
+    plan_name,
+    requests
 ):
 
     now = datetime.utcnow()
+
+    try:
+        token_cost = int(token_cost)
+        requests = int(requests)
+    except (
+        TypeError,
+        ValueError
+    ):
+        return {
+            "success": False,
+            "reason": "invalid_plan",
+            "tokens": await get_token_balance(user_id)
+        }
+
+    if token_cost <= 0 or requests <= 0:
+
+        return {
+            "success": False,
+            "reason": "invalid_plan",
+            "tokens": await get_token_balance(user_id)
+        }
 
     result = await users_collection.find_one_and_update(
 
         {
             "user_id": user_id,
+
             "tokens": {
-                "$gte": 100
+                "$gte": token_cost
             }
         },
 
         {
             "$inc": {
-                "tokens": -100
+                "tokens": -token_cost
             },
 
             "$set": {
 
                 "premium": True,
 
-                "plan": "Starter",
+                "plan": plan_name,
 
                 "paid_amount": 0,
 
-                "premium_requests": 20,
+                "premium_requests": requests,
 
-                "remaining_requests": 20,
+                "remaining_requests": requests,
 
                 "updated_at": now
             }
@@ -544,6 +569,10 @@ async def redeem_tokens_for_premium(
 
         return_document=ReturnDocument.AFTER
     )
+
+    # --------------------------------------------------------
+    # FAILED
+    # --------------------------------------------------------
 
     if not result:
 
@@ -570,17 +599,36 @@ async def redeem_tokens_for_premium(
             )
         }
 
+    # --------------------------------------------------------
+    # SUCCESS
+    # --------------------------------------------------------
+
     return {
+
         "success": True,
+
         "reason": "redeemed",
+
         "tokens": int(
             result.get(
                 "tokens",
                 0
             ) or 0
         ),
-        "plan": "Starter",
-        "requests": 20
+
+        "plan":
+            result.get(
+                "plan",
+                plan_name
+            ),
+
+        "requests":
+            int(
+                result.get(
+                    "premium_requests",
+                    requests
+                ) or requests
+            )
     }
 
 
