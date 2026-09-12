@@ -1298,16 +1298,20 @@ async def handle_file_deep_link(
 
         user_id = message.from_user.id
 
+    # --------------------------------------------------------
+    # VALIDATE MESSAGE ID
+    # --------------------------------------------------------
+
     try:
 
-        message_id = int(
-            message_id
-        )
+        message_id = int(message_id)
 
-    except Exception:
+    except (TypeError, ValueError):
 
-        await message.reply_text(
-            "❌ <b>Invalid file ID.</b>"
+        await client.send_message(
+            user_id,
+            "❌ <b>Invalid file ID.</b>",
+            parse_mode=enums.ParseMode.HTML
         )
 
         return
@@ -1321,7 +1325,7 @@ async def handle_file_deep_link(
         return
 
     # --------------------------------------------------------
-    # USER
+    # MAKE SURE USER EXISTS
     # --------------------------------------------------------
 
     await ensure_user(
@@ -1330,7 +1334,12 @@ async def handle_file_deep_link(
     )
 
     # --------------------------------------------------------
-    # FORCE SUB
+    # FORCE SUB CHECK
+    # --------------------------------------------------------
+    #
+    # This is kept as a safety check.
+    # If the user is not joined, preserve the exact
+    # file request and show FSub again.
     # --------------------------------------------------------
 
     not_joined = await check_all_fsubs(
@@ -1350,58 +1359,123 @@ async def handle_file_deep_link(
         return
 
     # --------------------------------------------------------
-    # MEDIA LOOKUP
+    # GET MEDIA FROM DATABASE
     # --------------------------------------------------------
 
-    media = await get_media_by_message(
-        DATABASE_CHANNEL_ID,
-        message_id
-    )
+    try:
+
+        media = await get_media_by_message(
+            DATABASE_CHANNEL_ID,
+            message_id
+        )
+
+    except Exception as e:
+
+        logger.exception(
+            "MEDIA LOOKUP ERROR | user=%s | message_id=%s | error=%s",
+            user_id,
+            message_id,
+            e
+        )
+
+        await client.send_message(
+            user_id,
+            "‼️ <b>Database error while finding this file.</b>\n\n"
+            "Please contact the owner.",
+            parse_mode=enums.ParseMode.HTML
+        )
+
+        return
 
     if not media:
 
-        await message.reply_text(
+        await client.send_message(
+            user_id,
             "<b>This Movie Not Found in Database</b>\n\n"
-            "<b>Request To Owner [@Mr_Mohammed_29] To add movie</b>"
+            "<b>Request To Owner "
+            "[@Mr_Mohammed_29] To add movie</b>",
+            parse_mode=enums.ParseMode.HTML
         )
 
         return
 
     # --------------------------------------------------------
-    # REQUEST CHECK
+    # REQUEST LIMIT CHECK
     # --------------------------------------------------------
 
-    allowed = await can_make_request(
-        user_id
-    )
+    try:
+
+        allowed = await can_make_request(
+            user_id
+        )
+
+    except Exception as e:
+
+        logger.exception(
+            "REQUEST CHECK ERROR | user=%s | error=%s",
+            user_id,
+            e
+        )
+
+        await client.send_message(
+            user_id,
+            "‼️ <b>Unable to check your request balance.</b>\n\n"
+            "Please try again.",
+            parse_mode=enums.ParseMode.HTML
+        )
+
+        return
 
     if not allowed:
 
-        await message.reply_text(
-            "❌ <b><i>No requests remaining</i></b>\n\n"
-            "<b> Please activate Premium to continue.</b>"
+        await client.send_message(
+            user_id,
+            "❌ <b><i>No requests remaining.</i></b>\n\n"
+            "<b>Please activate Premium to continue.</b>",
+            parse_mode=enums.ParseMode.HTML
         )
 
         return
 
     # --------------------------------------------------------
-    # RESERVE REQUEST
+    # CONSUME REQUEST
     # --------------------------------------------------------
 
-    consumed = await consume_request(
-        user_id
-    )
+    try:
+
+        consumed = await consume_request(
+            user_id
+        )
+
+    except Exception as e:
+
+        logger.exception(
+            "CONSUME REQUEST ERROR | user=%s | error=%s",
+            user_id,
+            e
+        )
+
+        await client.send_message(
+            user_id,
+            "‼️ <b>Unable to process your request.</b>\n\n"
+            "Please try again.",
+            parse_mode=enums.ParseMode.HTML
+        )
+
+        return
 
     if not consumed:
 
-        await message.reply_text(
-            "❌ <b>No requests remaining.</b>"
+        await client.send_message(
+            user_id,
+            "❌ <b>No requests remaining.</b>",
+            parse_mode=enums.ParseMode.HTML
         )
 
         return
 
     # --------------------------------------------------------
-    # SEND FILE
+    # SEND EXACT DATABASE FILE
     # --------------------------------------------------------
 
     sent = await send_database_file(
@@ -1410,40 +1484,72 @@ async def handle_file_deep_link(
         message_id=message_id
     )
 
+    # --------------------------------------------------------
+    # DELIVERY FAILED
+    # --------------------------------------------------------
+
     if not sent:
 
-        # Restore request if Telegram delivery failed.
-        await restore_request(
-            user_id
-        )
+        try:
 
-        await message.reply_text(
+            await restore_request(
+                user_id
+            )
+
+        except Exception as e:
+
+            logger.warning(
+                "FAILED TO RESTORE REQUEST | "
+                "user=%s | error=%s",
+                user_id,
+                e
+            )
+
+        await client.send_message(
+            user_id,
             "‼️ <b>System Crashing ...</b>\n\n"
-            "<b>Ask To The Owner [@Mr_Mohammed_29] To Solve The Issue</b>"
+            "<b>Ask The Owner "
+            "[@Mr_Mohammed_29] To Solve The Issue</b>",
+            parse_mode=enums.ParseMode.HTML
         )
 
         return
 
     # --------------------------------------------------------
-    # WARNING AFTER SINGLE FILE
-    # --------------------------------------------------------
-
-    warning_message = await client.send_message(
-        user_id,
-        "<b>⏳️ ᴅᴜᴇ ᴛᴏ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs...</b>\n\n"
-        "<b>›› ʏᴏᴜʀ ғɪʟᴇs ᴡɪʟʟ ʙ ᴅᴇʟᴇᴛᴇᴅ ᴡɪᴛʜɪɴ 5 min</b>"
-        "<b>sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
-        "<b> ɴᴏᴛᴇ : ᴜsᴇ ᴠʟᴄ ᴘʟᴀʏᴇʀ ᴏʀ ᴍx ᴘʟᴀʏᴇʀ ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>"
-    )
-    asyncio.create_task(
-        delete_file_after_5_minutes(warning_message)
-    )
-
-    # --------------------------------------------------------
-    # SUCCESS
+    # WARNING MESSAGE
     # --------------------------------------------------------
 
     try:
+
+        warning_message = await client.send_message(
+            user_id,
+            "<b>⏳️ ᴅᴜᴇ ᴛᴏ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs...</b>\n\n"
+            "<b>›› ʏᴏᴜʀ ғɪʟᴇs ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴡɪᴛʜɪɴ 5 min</b>\n"
+            "<b>sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
+            "<b>ɴᴏᴛᴇ : ᴜsᴇ ᴠʟᴄ ᴘʟᴀʏᴇʀ ᴏʀ ᴍx ᴘʟᴀʏᴇʀ ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>",
+            parse_mode=enums.ParseMode.HTML
+        )
+
+        asyncio.create_task(
+            delete_file_after_5_minutes(
+                warning_message
+            )
+        )
+
+    except Exception as e:
+
+        logger.warning(
+            "WARNING MESSAGE ERROR | user=%s | error=%s",
+            user_id,
+            e
+        )
+
+    # --------------------------------------------------------
+    # RECORD SEARCH
+    # --------------------------------------------------------
+
+    try:
+
         await record_search(
             str(
                 media.get(
@@ -1452,13 +1558,21 @@ async def handle_file_deep_link(
                         "file_name",
                         ""
                     )
-                ) 
+                )
             )
         )
+
     except Exception:
+
         pass
 
-    return 
+    logger.info(
+        "FILE SENT SUCCESSFULLY | user=%s | message_id=%s",
+        user_id,
+        message_id
+    )
+
+    return sent
 
 # ============================================================
 # SEND ALL DEEP LINK
