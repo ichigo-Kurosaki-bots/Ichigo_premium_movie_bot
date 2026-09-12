@@ -562,21 +562,21 @@ def build_search_text(
         )
 
     text = (
-        f"🎬 <b>Tɪᴛʟᴇ:</b> "
+        f"<b>›› Tɪᴛʟᴇ:</b> "
         f"{html_escape(str(title))}\n"
 
-        f"📅 <b>Yᴇᴀʀ:</b> "
+        f"<b>›› Yᴇᴀʀ:</b> "
         f"{html_escape(str(year))}\n"
 
-        f"🌐 <b>Lᴀɴɢᴜᴀɢᴇ:</b> "
+        f"<b>›› Lᴀɴɢᴜᴀɢᴇ:</b> "
         f"{html_escape(str(language))}\n"
 
-        f"⏰ <b>ʀᴇsᴜʟᴛ ɪɴ :</b> "
+        f"<b>›› ʀᴇsᴜʟᴛ ɪɴ :</b> "
         f"{search_time:.2f} Sᴇᴄᴏɴᴅs\n"
 
-        f'🔎 <b>Requested by : <a href="tg://user?id={requested_by_id}">{html_escape(requested_by_name or "User")}</a></b>\n'
+        f'<b>›› Rᴇǫᴜᴇsᴛᴇᴅ Bʏ : <a href="tg://user?id={requested_by_id}">{html_escape(requested_by_name or "User")}</a></b>\n'
         
-        f"⚡ <b>Pᴏᴡᴇʀᴇᴅ Bʏ:</b> "
+        f"<b>›› Pᴏᴡᴇʀᴇᴅ Bʏ:</b> "
         f"<b>@Aero_Unity</b>\n\n"
 
         f"<b>Hᴇʀᴇ Aʀᴇ Yᴏᴜʀ Rᴇsᴜʟᴛs</b> 👇"
@@ -1333,15 +1333,6 @@ async def handle_file_deep_link(
         user_id
     )
 
-    # --------------------------------------------------------
-    # FORCE SUB CHECK
-    # --------------------------------------------------------
-    #
-    # This is kept as a safety check.
-    # If the user is not joined, preserve the exact
-    # file request and show FSub again.
-    # --------------------------------------------------------
-
     not_joined = await check_all_fsubs(
         client,
         user_id
@@ -1430,7 +1421,7 @@ async def handle_file_deep_link(
 
         await client.send_message(
             user_id,
-            "❌ <b><i>No requests remaining.</i></b>\n\n"
+            "‼️ <b><i>Your Free Requests Completed.</i></b>\n\n"
             "<b>Please activate Premium to continue.</b>",
             parse_mode=enums.ParseMode.HTML
         )
@@ -1527,7 +1518,8 @@ async def handle_file_deep_link(
             "<b>›› ʏᴏᴜʀ ғɪʟᴇs ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴡɪᴛʜɪɴ 5 min</b>\n"
             "<b>sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
             "<b>ɴᴏᴛᴇ : ᴜsᴇ ᴠʟᴄ ᴘʟᴀʏᴇʀ ᴏʀ ᴍx ᴘʟᴀʏᴇʀ ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>",
-            parse_mode=enums.ParseMode.HTML
+            parse_mode=enums.ParseMode.HTML,
+            reply_to_message_id=sent.id
         )
 
         asyncio.create_task(
@@ -1690,6 +1682,7 @@ async def handle_sendall_deep_link(
 
     sent_count = 0
     failed_count = 0
+    last_sent = None
 
     for result in results:
 
@@ -1725,6 +1718,7 @@ async def handle_sendall_deep_link(
         if sent:
 
             sent_count += 1
+            last_sent = sent
 
         else:
 
@@ -1746,7 +1740,9 @@ async def handle_sendall_deep_link(
             "<b>⏳️ ᴅᴜᴇ ᴛᴏ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs...</b>\n\n"
             "<b>›› ʏᴏᴜʀ ғɪʟᴇs ᴡɪʟʟ ʙ ᴅᴇʟᴇᴛᴇᴅ ᴡɪᴛʜɪɴ 5 min</b>"
             "<b>sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
-            "<b> ɴᴏᴛᴇ : ᴜsᴇ ᴠʟᴄ ᴘʟᴀʏᴇʀ ᴏʀ ᴍx ᴘʟᴀʏᴇʀ ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>"
+            "<b> ɴᴏᴛᴇ : ᴜsᴇ <li>ᴠʟᴄ ᴘʟᴀʏᴇʀ</li> ᴏʀ <li>ᴍx ᴘʟᴀʏᴇʀ</li> ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>",
+            parse_mode=enums.ParseMode.HTML,
+            reply_to_message_id=last_sent.id if last_sent else None
         )
         asyncio.create_task(
             delete_file_after_5_minutes(warning_message)
