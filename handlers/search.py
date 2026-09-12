@@ -4,7 +4,6 @@ import re
 import time
 
 from html import escape as html_escape
-
 from pyrogram import filters, enums
 from pyrogram.errors import MessageNotModified
 from pyrogram.types import (
@@ -857,7 +856,7 @@ def build_filter_buttons(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    "🗑 ᴄʟᴇᴀʀ ғɪʟᴛᴇʀs",
+                    "• ᴄʟᴇᴀʀ ғɪʟᴛᴇʀs •",
                     callback_data=(
                         f"clearfilters_{session_id}"
                     )
@@ -868,7 +867,7 @@ def build_filter_buttons(
     buttons.append(
         [
             InlineKeyboardButton(
-                "⬅️ ʙᴀᴄᴋ",
+                "• ʙᴀᴄᴋ •",
                 callback_data=(
                     f"filterback_{session_id}"
                 )
@@ -1059,7 +1058,6 @@ async def get_available_episodes(
         "episodes",
         []
     )
-
 
 # ============================================================
 # SEARCH SESSION HELPERS
@@ -1380,8 +1378,8 @@ async def handle_file_deep_link(
     if not allowed:
 
         await message.reply_text(
-            "❌ <b>No requests remaining.</b>\n\n"
-            "💎 Please activate Premium to continue."
+            "❌ <b><i>No requests remaining</i></b>\n\n"
+            "<b> Please activate Premium to continue.</b>"
         )
 
         return
@@ -1420,8 +1418,8 @@ async def handle_file_deep_link(
         )
 
         await message.reply_text(
-            "❌ <b>Unable to send this file.</b>\n\n"
-            "Your request was restored. Please try again."
+            "‼️ <b>System Crashing ...</b>\n\n"
+            "<b>Ask To The Owner [@Mr_Mohammed_29] To Solve The Issue</b>"
         )
 
         return
@@ -1528,8 +1526,7 @@ async def handle_sendall_deep_link(
     if not session:
 
         await message.reply_text(
-            "❌ <b>Search session expired.</b>\n\n"
-            "Please search the movie again."
+            "<b>Session Expired, Search Again</b>\n\n"
         )
 
         return
@@ -1568,7 +1565,7 @@ async def handle_sendall_deep_link(
     if not results:
 
         await message.reply_text(
-            "❌ <b>No files found on this page.</b>"
+            "<b>No files found on this page.😢</b>"
         )
 
         return
@@ -1830,7 +1827,7 @@ def register_search_handlers(app):
         if not results:
 
             await message.reply_text(
-                "<b>Your Requested Files Not Found in Database</b>\n\n"
+                "<b>Your Requested File Not Found in My Database</b>\n\n"
                 "<b>🔎 Please Check Your Spelling On Google & "
                 "Try Again ✅</b>",
                 reply_markup=InlineKeyboardMarkup([
@@ -2101,7 +2098,7 @@ def register_search_handlers(app):
             return
 
         await callback.answer(
-            "Checking file..."
+            "›› sᴇɴᴅɪɴɢ ꜰɪʟᴇ...."
         )
 
         await handle_file_deep_link(
@@ -2178,7 +2175,7 @@ def register_search_handlers(app):
         # ----------------------------------------------------
 
         await callback.answer(
-            "Preparing files..."
+            "›› ᴘʀᴇᴘᴀʀɪɴɢ ꜰɪʟᴇs ᴛᴏ sᴇɴᴅ...."
         )
 
         await handle_sendall_deep_link(
