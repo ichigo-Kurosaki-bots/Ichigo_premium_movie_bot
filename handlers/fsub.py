@@ -188,12 +188,7 @@ async def send_fsub_message(
 
     if not user:
         return None
-
-    # --------------------------------------------------------
-    # If caller does not provide channels, automatically find
-    # ONLY the channels this user has not joined.
-    # --------------------------------------------------------
-
+        
     if channels is None:
 
         channels = await check_all_fsubs(
@@ -210,7 +205,7 @@ async def send_fsub_message(
     )
 
     text = (
-        f"HEY <b>{first_name}</b> ♡\n\n"
+        f"<b>ʜᴇʏ {first_name}</b> ♡\n\n"
 
         "<b>›› ‼️ ʟᴏᴏᴋs ʟɪᴋᴇ ʏᴏᴜ ʜᴀᴠᴇɴ'ᴛ "
         "ᴊᴏɪɴᴇᴅ ᴛᴏ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs ʏᴇᴛ, "
@@ -339,7 +334,6 @@ def register_fsub_start_handler(app):
         # ----------------------------------------------------
 
         raise StopPropagation
-
 
 # ============================================================
 # TRY AGAIN CALLBACK
@@ -614,7 +608,7 @@ def register_fsub_callback_handler(app):
         # ====================================================
 
         await callback_query.answer(
-            "❌ You haven't joined all required channels.",
+            "›› ʏᴏᴜ ʜᴀᴠᴇɴ'ᴛ ᴊᴏɪɴᴇᴅ ᴛᴏ ᴏᴜʀ ᴄʜᴀɴɴᴇʟs ʏᴇᴛ, sᴜʙsᴄʀɪʙᴇ ɴᴏw.",
             show_alert=True
         )
 
