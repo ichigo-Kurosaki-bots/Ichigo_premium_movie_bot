@@ -1047,73 +1047,73 @@ def register_admin_handlers(app):
         message
     ):
 
-    # ----------------------------------------------------
-    # CHECK REPLY
-    # ----------------------------------------------------
+        # ----------------------------------------------------
+        # CHECK REPLY
+        # ----------------------------------------------------
 
-    if not message.reply_to_message:
+        if not message.reply_to_message:
 
-        await message.reply_text(
-            "❌ <b>Reply to the message you want to broadcast.</b>"
-        )
+            await message.reply_text(
+                "❌ <b>Reply to the message you want to broadcast.</b>"
+            )
 
-        return
+            return
 
-    source = message.reply_to_message
+            source = message.reply_to_message
 
-    # ----------------------------------------------------
-    # STATUS MESSAGE
-    # ----------------------------------------------------
+            # ----------------------------------------------------
+            # STATUS MESSAGE
+            # ----------------------------------------------------
 
-    status = await message.reply_text(
-        "<b>Broadcast Started...</b>\n\n"
-        "<b>⏳ Preparing broadcast...</b>"
-    )
+            status = await message.reply_text(
+                "<b>Broadcast Started...</b>\n\n"
+                "<b>⏳ Preparing broadcast...</b>"
+            )
 
-    # ----------------------------------------------------
-    # GET ALL USERS
-    # ----------------------------------------------------
+            # ----------------------------------------------------
+            # GET ALL USERS
+            # ----------------------------------------------------
 
-    try:
+            try:
 
-        user_ids = await get_all_user_ids()
+                user_ids = await get_all_user_ids()
 
-    except Exception as e:
+            except Exception as e:
 
-        logger.exception(
-            "Failed to get users for broadcast: %s",
-            e
-        )
+                logger.exception(
+                    "Failed to get users for broadcast: %s",
+                e
+            )
 
-        await status.edit_text(
-            "❌ <b>Broadcast Failed</b>\n\n"
-            "Could not get users from the database."
-        )
+            await status.edit_text(
+                "❌ <b>Broadcast Failed</b>\n\n"
+                "Could not get users from the database."
+            )
 
-        return
+            return
 
-    # ----------------------------------------------------
-    # REMOVE INVALID / DUPLICATE IDS
-    # ----------------------------------------------------
+            # ----------------------------------------------------
+            # REMOVE INVALID / DUPLICATE IDS
+            # ----------------------------------------------------
+ 
+            clean_user_ids = []
 
-    clean_user_ids = []
+            for user_id in user_ids:
 
-    for user_id in user_ids:
+               try:
 
-        try:
+                   user_id = int(user_id)
 
-            user_id = int(user_id)
+                   if user_id not in clean_user_ids:
+                        clean_user_ids.append(user_id)
 
-            if user_id not in clean_user_ids:
-                clean_user_ids.append(user_id)
+               except (TypeError, ValueError):
 
-        except (TypeError, ValueError):
+                   continue
 
-            continue
+               user_ids = clean_user_ids
 
-    user_ids = clean_user_ids
-
-    total = len(user_ids)
+               total = len(user_ids)
 
     # ----------------------------------------------------
     # NO USERS
