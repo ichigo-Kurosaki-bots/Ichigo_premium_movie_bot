@@ -1,9 +1,6 @@
-# handlers/access.py
-
 import logging
 
 from pyrogram import filters, StopPropagation
-
 from config import OWNER_ID, ADMIN_IDS
 from database import (
     is_user_banned,
@@ -12,14 +9,12 @@ from database import (
 
 logger = logging.getLogger(__name__)
 
-
 # ============================================================
 # ADMIN CHECK
 # ============================================================
 
 def is_admin(user_id):
     return user_id == OWNER_ID or user_id in ADMIN_IDS
-
 
 # ============================================================
 # REGISTER ACCESS HANDLERS
@@ -57,8 +52,10 @@ def register_access_handlers(app):
 
                 try:
                     await message.reply_text(
-                        "🚫 <b>Access Denied</b>\n\n"
-                        "You are banned from using this bot."
+                        "🚫 <b>Aᴄᴄᴇss Dᴇɴɪᴇᴅ</b>\n\n"
+                        "<b>Yᴏᴜ Aʀᴇ Bᴀɴɴᴇᴅ Fʀᴏᴍ Usɪɴɢ Tʜɪs Bᴏᴛ, "
+                        "Iғ ɪᴛ ɪs Mɪsᴛᴀᴋᴇ, Cᴏɴᴛᴀᴄᴛ Tᴏ Oᴡɴᴇʀ [@Mr_Mohammed_29]</b>"
+                    
                     )
                 except Exception:
                     pass
@@ -83,9 +80,8 @@ def register_access_handlers(app):
 
                 try:
                     await message.reply_text(
-                        "🔧 <b>Bot Under Maintenance</b>\n\n"
-                        "The bot is currently under maintenance.\n"
-                        "Please try again later."
+                        "🔧 <b>Bᴏᴛ Uɴᴅᴇʀ Mᴀɪɴᴛᴇɴᴀɴᴄᴇ</b>\n\n"
+                        "<b>›› Tʜᴇ ʙᴏᴛ ɪs ᴄᴜʀʀᴇɴᴛʟʏ ᴜɴᴅᴇʀ ᴍᴀɪɴᴛᴇɴᴀɴᴄᴇ"
                     )
                 except Exception:
                     pass
@@ -130,7 +126,7 @@ def register_access_handlers(app):
 
                 try:
                     await callback_query.answer(
-                        "🚫 You are banned from using this bot.",
+                        "🚫 Yᴏᴜ Aʀᴇ Bᴀɴɴᴇᴅ Fʀᴏᴍ Usɪɴɢ Tʜɪs Bᴏᴛ",
                         show_alert=True
                     )
                 except Exception:
@@ -156,7 +152,7 @@ def register_access_handlers(app):
 
                 try:
                     await callback_query.answer(
-                        "🔧 Bot is currently under maintenance.",
+                        "🔧 Tʜᴇ ʙᴏᴛ ɪs ᴄᴜʀʀᴇɴᴛʟʏ ᴜɴᴅᴇʀ ᴍᴀɪɴᴛᴇɴᴀɴᴄᴇ ",
                         show_alert=True
                     )
                 except Exception:
