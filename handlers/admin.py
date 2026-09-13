@@ -1420,3 +1420,169 @@ def register_admin_handlers(app):
         except Exception:
 
             pass
+
+    # ========================================================
+    # /clearjunk
+    # Delete recent messages from the current group
+    # ========================================================
+
+    @app.on_message(
+        filters.command("clearjunk")
+        & admin_only
+    )
+    async def clear_junk_handler(
+        client,
+        message
+    ):
+
+        if message.chat.type not in [
+            "group",
+            "supergroup"
+        ]:
+            await message.reply_text(
+                "❌ <b>This command can only be used in a group.</b>"
+            )
+            return
+
+        status = await message.reply_text(
+            "🧹 <b>Cleaning recent messages...</b>"
+        )
+
+        deleted = 0
+        checked = 0
+
+        try:
+
+            async for msg in client.get_chat_history(
+                message.chat.id,
+                limit=200
+            ):
+
+                checked += 1
+
+                try:
+                    await client.delete_messages(
+                        message.chat.id,
+                        msg.id
+                    )
+
+                    deleted += 1
+
+                except Exception as e:
+                    logger.warning(
+                        "Could not delete message %s: %s",
+                        msg.id,
+                        e
+                    )
+
+            try:
+                await status.delete()
+            except Exception:
+                pass
+
+            await message.reply_text(
+                "🧹 <b>Cleanup Completed</b>\n\n"
+                f"🗑 <b>Messages Deleted:</b> "
+                f"<code>{deleted}</code>\n"
+                f"🔎 <b>Messages Checked:</b> "
+                f"<code>{checked}</code>"
+            )
+
+        except Exception as e:
+
+            logger.exception(
+                "Clear junk error: %s",
+                e
+            )
+
+            try:
+                await status.edit_text(
+                    "❌ <b>Cleanup failed.</b>\n\n"
+                    f"<code>{escape(str(e))}</code>"
+                )
+            except Exception:
+                pass
+
+    # ========================================================
+    # /clearjunkgroup
+    # Delete more recent messages from the current group
+    # ========================================================
+
+    @app.on_message(
+        filters.command("clearjunkgroup")
+        & admin_only
+    )
+    async def clear_junk_group_handler(
+        client,
+        message
+    ):
+
+        if message.chat.type not in [
+            "group",
+            "supergroup"
+        ]:
+            await message.reply_text(
+                "❌ <b>This command can only be used in a group.</b>"
+            )
+            return
+
+        status = await message.reply_text(
+            "🧹 <b>Cleaning group messages...</b>"
+        )
+
+        deleted = 0
+        checked = 0
+
+        try:
+
+            async for msg in client.get_chat_history(
+                message.chat.id,
+                limit=500
+            ):
+
+                checked += 1
+
+                try:
+                    await client.delete_messages(
+                        message.chat.id,
+                        msg.id
+                    )
+
+                    deleted += 1
+
+                except Exception as e:
+                    logger.warning(
+                        "Could not delete message %s: %s",
+                        msg.id,
+                        e
+                    )
+
+            try:
+                await status.delete()
+            except Exception:
+                pass
+
+            await message.reply_text(
+                "🧹 <b>Group Cleanup Completed</b>\n\n"
+                f"🗑 <b>Messages Deleted:</b> "
+                f"<code>{deleted}</code>\n"
+                f"🔎 <b>Messages Checked:</b> "
+                f"<code>{checked}</code>"
+            )
+
+        except Exception as e:
+
+            logger.exception(
+                "Clear junk group error: %s",
+                e
+            )
+
+            try:
+                await status.edit_text(
+                    "❌ <b>Group cleanup failed.</b>\n\n"
+                    f"<code>{escape(str(e))}</code>"
+                )
+            except Exception:
+                pass
+    
+  
