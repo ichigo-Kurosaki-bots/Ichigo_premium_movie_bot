@@ -563,9 +563,6 @@ def register_start_handlers(
             "🔥 <b>Tʀᴇɴᴅɪɴɢ</b>\n"
             "Sᴇᴇ Wʜᴀᴛ Uѕᴇʀs Aʀᴇ Sᴇᴀʀᴄʜɪɴɢ Fᴏʀ.\n\n"
 
-            "📢 <b>Uᴘᴅᴀᴛᴇs</b>\n"
-            "Sᴛᴀʏ ᴜᴘᴅᴀᴛᴇᴅ Wɪᴛʜ Tʜᴇ Lᴀᴛᴇsᴛ Cᴏɴᴛᴇɴᴛ.\n\n"
-
             "<b>Mᴀɪɴᴛᴀɪɴᴇᴅ ʙʏ: @Mr_Mohammed_29</b>"
         )
 
@@ -857,8 +854,8 @@ def register_start_handlers(
             f"🆓 Fʀᴇᴇ Rᴇǫᴜᴇsᴛs: "
             f"<b>{FREE_REQUESTS}</b>\n\n"
 
-            "💎 Aᴄᴛɪᴠᴀᴛᴇ Pʀᴇᴍɪᴜᴍ Aғᴛᴇʀ Yᴏᴜʀ "
-            "Fʀᴇᴇ Rᴇǫᴜᴇsᴛs Aʀᴇ Fɪɴɪsʜᴇᴅ."
+            "<b> Aᴄᴛɪᴠᴀᴛᴇ Pʀᴇᴍɪᴜᴍ Aғᴛᴇʀ Yᴏᴜʀ "
+            "Fʀᴇᴇ Rᴇǫᴜᴇsᴛs Aʀᴇ Fɪɴɪsʜᴇᴅ.</b>"
         )
 
         await callback.message.edit_text(
