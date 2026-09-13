@@ -897,7 +897,27 @@ def register_admin_handlers(app):
         message
     ):
 
+        checking_message = None
+
         try:
+
+            # ----------------------------------------------------
+            # INDEX STATUS IMAGE
+            # ----------------------------------------------------
+   
+            INDEX_STATUS_IMAGE_URL = "https://graph.org/file/ab9086afb983c6cfae7d7-2d89195fff84a26ce9.jpg"
+
+            # ----------------------------------------------------
+            # CHECKING MESSAGE WITH IMAGE
+            # ----------------------------------------------------
+
+            checking_message = await client.send_photo(
+                chat_id=message.chat.id,
+                photo=INDEX_STATUS_IMAGE_URL,
+                caption=(
+                    "🔎 <b>ᴄʜᴇᴄᴋɪɴɢ ɪɴᴅᴇx ғɪʟᴇs...</b>"
+                )
+            )
 
             # ----------------------------------------------------
             # GET INDEXER STATE
@@ -937,10 +957,10 @@ def register_admin_handlers(app):
                 )
 
             elif total_size >= 1024 ** 2:
-
+  
                 size_text = (
-                    f"{total_size / (1024 ** 2):.2f} MB"
-                )
+                     f"{total_size / (1024 ** 2):.2f} MB"
+                 )
 
             elif total_size >= 1024:
 
@@ -950,41 +970,114 @@ def register_admin_handlers(app):
 
             else:
 
-                size_text = (
-                    f"{total_size} B"
+                 size_text = (
+                     f"{total_size} B"
+                 )
+
+            # ----------------------------------------------------
+            # FINAL STATUS
+            # ----------------------------------------------------
+
+            await checking_message.edit_caption(
+
+                caption=(
+                    "📚 <b>Iɴᴅᴇxᴇʀ Sᴛᴀᴛᴜs</b>\n\n"
+
+                    f"<b>›› Tᴏᴛᴀʟ Iɴᴅᴇxᴇᴅ Fɪʟᴇs:</b> "
+                    f"<b>{total_files:,}</b>\n\n"
+
+                    f"<b>›› Tᴏᴛᴀʟ Iɴᴅᴇxᴇᴅ Sᴛᴏʀᴀɢᴇ:</b> "
+                    f"<b>{size_text}</b>\n\n"
+
+                    f"<b>›› Lᴀsᴛ Mᴇssᴀɢᴇ ID:</b> "
+                    f"<code>{last_message}</code>\n\n"
+
+                    "<b>›› Pᴏᴡᴇʀᴇᴅ Bʏ : @Aero_Unity</b>"
                 )
-
-            # ----------------------------------------------------
-            # RESPONSE
-            # ----------------------------------------------------
-
-            await message.reply_text(
-
-                "📚 <b>INDEXER STATUS</b>\n\n"
-
-                f"🎬 <b>Total Indexed Files:</b> "
-                f"<b>{total_files:,}</b>\n\n"
-
-                f"💾 <b>Total Indexed Storage:</b> "
-                f"<b>{size_text}</b>\n\n"
-
-                f"🆔 <b>Last Message ID:</b> "
-                f"<code>{last_message}</code>\n\n"
-
-                "✅ <b>Database: MongoDB</b>"
             )
 
-        except Exception as e:
+            # ----------------------------------------------------
+            # WAIT 30 SECONDS
+            # ----------------------------------------------------
 
+            await asyncio.sleep(30)
+
+            # ----------------------------------------------------
+            # DELETE STATUS MESSAGE
+            # ----------------------------------------------------
+
+            try:
+                await checking_message.delete()
+            except Exception:
+                pass
+
+            # ----------------------------------------------------
+            # DELETE /indexstatus COMMAND
+            # ----------------------------------------------------
+
+            try:
+                await message.delete()
+            except Exception:
+                pass
+
+        except Exception as e:
             logger.exception(
                 "Indexer status error: %s",
                 e
             )
 
-            await message.reply_text(
-                "❌ <b>Could not get indexer status.</b>\n\n"
-                f"<code>{e}</code>"
-            )
+            # ----------------------------------------------------
+            # ERROR MESSAGE
+            # ----------------------------------------------------
+
+            if checking_message:
+
+                try:
+
+                    await checking_message.edit_caption(
+                        caption=(
+                            "❌ <b>Could not get indexer status.</b>\n\n"
+                            f"<code>{e}</code>"
+                        )
+                    )
+
+                    await asyncio.sleep(30)
+
+                    try:
+                        await checking_message.delete()
+                    except Exception:
+                        pass
+
+                except Exception:
+                    pass
+
+            else:
+
+                try:
+
+                    error_message = await message.reply_text(
+                        "❌ <b>Could not get indexer status.</b>\n\n"
+                        f"<code>{e}</code>"
+                    )
+
+                    await asyncio.sleep(30)
+
+                    try:
+                        await error_message.delete()
+                    except Exception:
+                        pass
+
+                except Exception:
+                    pass
+
+        # ----------------------------------------------------
+        # DELETE /indexstatus COMMAND
+        # ----------------------------------------------------
+
+        try:
+            await message.delete()
+        except Exception:
+            pass
 
 
     # ========================================================
@@ -1009,13 +1102,12 @@ def register_admin_handlers(app):
             await reset_indexer()
 
             await message.reply_text(
-                "✅ <b>Indexer position reset.</b>\n\n"
-                "The next indexing run will start "
-                "from the beginning."
+                "✅ <b>Iɴᴅᴇxᴇʀ Pᴏsɪᴛɪᴏɴ Rᴇsᴇᴛ.</b>\n\n"
+                "<b>Tʜᴇ Nᴇxᴛ Iɴᴅᴇxɪɴɢ Rᴜɴ ᴡɪʟʟ Sᴛᴀʀᴛ "
+                "Fʀᴏᴍ Tʜᴇ Bᴇɢɪɴɴɪɴɢ</b>"
             )
 
         except Exception as e:
-
             logger.exception(
                 "Reset index error: %s",
                 e
@@ -1077,8 +1169,7 @@ def register_admin_handlers(app):
         # ----------------------------------------------------
 
         status = await message.reply_text(
-            "<b>Broadcast Started...</b>\n\n"
-            "<b>⏳ Preparing broadcast...</b>"
+            "<b>Bʀᴏᴀᴅᴄᴀsᴛ Sᴛᴀʀᴛᴇᴅ...</b>"
         )
 
         # ----------------------------------------------------
@@ -1385,18 +1476,18 @@ def register_admin_handlers(app):
                 try:
 
                     await status.edit_text(
-                        "📢 <b>Broadcasting...</b>\n\n"
+                        "📢 <b>Bʀᴏᴀᴅᴄᴀsᴛɪɴɢ...</b>\n\n"
 
-                        f"👥 <b>Total Users:</b> "
+                        f"👥 <b>Tᴏᴛᴀʟ Usᴇʀs:</b> "
                         f"<code>{total}</code>\n\n"
 
-                        f"✅ <b>Sent:</b> "
+                        f"✅ <b>Sᴇɴᴛ:</b> "
                         f"<code>{success}</code>\n"
 
-                        f"❌ <b>Failed:</b> "
+                        f"❌ <b>Fᴀɪʟᴇᴅ:</b> "
                         f"<code>{failed}</code>\n\n"
 
-                        f"📊 <b>Progress:</b> "
+                        f"📊 <b>Pʀᴏɢʀᴇss:</b> "
                         f"<code>{processed}/{total}</code>"
                     )
 
@@ -1411,18 +1502,18 @@ def register_admin_handlers(app):
         try:
 
             await status.edit_text(
-                "📢 <b>Broadcast Completed!</b>\n\n"
+                "📢 <b>Bʀᴏᴀᴅᴄᴀsᴛ Cᴏᴍᴘʟᴇᴛᴇᴅ!</b>\n\n"
 
-                f"👥 <b>Total Users:</b> "
+                f"👥 <b>Tᴏᴛᴀʟ Usᴇʀs:</b> "
                 f"<code>{total}</code>\n\n"
 
-                f"✅ <b>Successfully Sent:</b> "
+                f"✅ <b>Sᴜᴄᴄᴇssғᴜʟʟʏ Sᴇɴᴛ:</b> "
                 f"<code>{success}</code>\n"
 
-                f"❌ <b>Failed:</b> "
+                f"❌ <b>Fᴀɪʟᴇᴅ:</b> "
                 f"<code>{failed}</code>\n\n"
 
-                f"📊 <b>Completed:</b> "
+                f"📊 <b>Cᴏᴍᴘʟᴇᴛᴇᴅ:</b> "
                 f"<code>{success + failed}/{total}</code>"
             )
 
@@ -1450,7 +1541,7 @@ def register_admin_handlers(app):
             )
 
         status = await message.reply_text(
-            "🧹 <b>Cleaning recent messages...</b>"
+            "🧹 <b>Cʟᴇᴀɴɪɴɢ Rᴇᴄᴇɴᴛ Mᴇssᴀɢᴇs...</b>"
         )
 
         deleted = 0
@@ -1486,10 +1577,10 @@ def register_admin_handlers(app):
                 pass
 
             await message.reply_text(
-                "🧹 <b>Cleanup Completed</b>\n\n"
-                f"🗑 <b>Messages Deleted:</b> "
+                "🧹 <b>Cʟᴇᴀɴᴜᴘ Cᴏᴍᴘʟᴇᴛᴇᴅ</b>\n\n"
+                f"🗑 <b>Mᴇssᴀɢᴇs Dᴇʟᴇᴛᴇᴅ:</b> "
                 f"<code>{deleted}</code>\n"
-                f"🔎 <b>Messages Checked:</b> "
+                f"🔎 <b>Mᴇssᴀɢᴇs Cʜᴇᴄᴋᴇᴅ:</b> "
                 f"<code>{checked}</code>"
             )
 
@@ -1532,7 +1623,7 @@ def register_admin_handlers(app):
             return
    
         status = await message.reply_text(
-            "🧹 <b>Cleaning group messages...</b>"
+            "🧹 <b>Cʟᴇᴀɴɪɴɢ Gʀᴏᴜᴘ Mᴇssᴀɢᴇs...</b>"
         )
 
         deleted = 0
@@ -1568,10 +1659,10 @@ def register_admin_handlers(app):
                 pass
 
             await message.reply_text(
-                "🧹 <b>Group Cleanup Completed</b>\n\n"
-                f"🗑 <b>Messages Deleted:</b> "
+                "🧹 <b>Gʀᴏᴜᴘ Cʟᴇᴀɴᴜᴘ Cᴏᴍᴘʟᴇᴛᴇᴅ</b>\n\n"
+                f"🗑 <b>Mᴇssᴀɢᴇs Dᴇʟᴇᴛᴇᴅ:</b> "
                 f"<code>{deleted}</code>\n"
-                f"🔎 <b>Messages Checked:</b> "
+                f"🔎 <b>Mᴇssᴀɢᴇs Cʜᴇᴄᴋᴇᴅ:</b> "
                 f"<code>{checked}</code>"
             )
 
@@ -1590,5 +1681,3 @@ def register_admin_handlers(app):
             except Exception:
                 pass
     
-  
-
