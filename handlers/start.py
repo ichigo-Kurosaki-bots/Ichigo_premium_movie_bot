@@ -1,6 +1,22 @@
 import os
 import asyncio
 import logging
+import random
+
+START_REACTIONS = [
+    "❤️",
+    "🔥",
+    "😍",
+    "⚡️",
+    "🎭",
+    "👾",
+    "✨️",
+    "🎉",
+    "🎊",
+    "☄️",
+    "🏆",
+    "☠️"
+]
 
 from pyrogram.errors import MessageNotModified
 from pyrogram import filters
@@ -437,7 +453,8 @@ def register_start_handlers(
                 message.from_user.first_name
                 or "User"
             ),
-            remaining=remaining
+            remaining=remaining,
+            user_id=user_id
         )
 
         keyboard = start_buttons(
@@ -452,34 +469,53 @@ def register_start_handlers(
 
             try:
 
-                await message.reply_photo(
-
+                sent = await message.reply_photo(
                     photo=START_IMAGE,
-
                     caption=text,
-
                     reply_markup=keyboard
                 )
 
+                try:
+                    await client.send_reaction(
+                        chat_id=sent.chat.id,
+                        message_id=sent.id,
+                        emoji=random.choice(
+                        START_REACTIONS
+                        ),
+                        big=True
+                    )
+
+                except Exception as e:
+                    logger.warning(
+                        "START REACTION ERROR: %s",
+                        e
+                    )
                 return
-
-            except Exception as e:
-
-                logger.warning(
-                    "START IMAGE SEND FAILED: %s",
-                    e
-                )
 
         # ----------------------------------------------------
         # TEXT
         # ----------------------------------------------------
 
-        await message.reply_text(
-
+        sent = await message.reply_text(
             text,
-
             reply_markup=keyboard
         )
+ 
+        try:
+            await client.send_reaction(
+                chat_id=sent.chat.id,
+                message_id=sent.id,
+                emoji=random.choice(
+                START_REACTIONS
+                ),
+                big=True
+            )
+
+        except Exception as e:
+            logger.warning(
+                "START REACTION ERROR: %s",
+                e
+            )
 
     # ========================================================
     # FEATURES
@@ -591,7 +627,7 @@ def register_start_handlers(
 
             "• <b>ᴄʜᴀɴɴᴇʟ: "
             "<a href=\"https://t.me/Aero_Unity\">"
-            "ᴀᴇʀᴏ ᴜɴɪᴛʏ</a></b>\n\n"
+            "ᴀᴇʀᴏ ᴜɴɪᴛʏ</a></b>\n"
 
             "<b>Bᴜɪʟᴅ Sᴛᴀᴛᴜs: ᴠ3 [sᴛᴀʙʟᴇ]</b>"
         )
@@ -944,7 +980,8 @@ def register_start_handlers(
 
         text = build_start_text(
             first_name,
-            remaining
+            remaining,
+            user_id
         )
 
         keyboard = start_buttons(
