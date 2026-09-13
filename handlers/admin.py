@@ -412,116 +412,8 @@ def register_admin_handlers(app):
 
 
     # ========================================================
-    # /user USER_ID
+    # /premiumuser 
     # ========================================================
-
-    @app.on_message(
-        filters.command("user")
-        & admin_only
-    )
-    async def user_handler(
-        client,
-        message
-    ):
-
-        if len(message.command) < 2:
-
-            await message.reply_text(
-                "❌ <b>Usage:</b>\n\n"
-                "<code>/user USER_ID</code>\n\n"
-                "<b>Example:</b>\n"
-                "<code>/user 123456789</code>"
-            )
-
-            return
-
-        try:
-
-            user_id = int(
-                message.command[1]
-            )
-
-        except ValueError:
-
-            await message.reply_text(
-                "❌ User ID must be a number."
-            )
-
-            return
-
-        user = await get_user(
-            user_id
-        )
-
-        if not user:
-
-            await message.reply_text(
-                "❌ User not found."
-            )
-
-            return
-
-        username = user.get(
-            "username",
-            ""
-        )
-
-        first_name = user.get(
-            "first_name",
-            ""
-        )
-
-        premium = user.get(
-            "premium",
-            False
-        )
-
-        plan = user.get(
-            "plan"
-        ) or "Free"
-
-        paid_amount = user.get(
-            "paid_amount",
-            0
-        )
-
-        remaining = user.get(
-            "remaining_requests",
-            0
-        )
-
-        used = user.get(
-            "total_requests_used",
-            0
-        )
-
-        text = (
-            "👤 <b>User Information</b>\n\n"
-
-            f"🆔 ID: <code>{user_id}</code>\n"
-            f"👤 Name: <b>{first_name}</b>\n"
-            f"🔹 Username: "
-            f"<b>@{username}</b>\n"
-            if username
-            else
-            "👤 <b>User Information</b>\n\n"
-            f"🆔 ID: <code>{user_id}</code>\n"
-            f"👤 Name: <b>{first_name}</b>\n"
-        )
-
-        text += (
-            f"💎 Premium: "
-            f"<b>{'Yes' if premium else 'No'}</b>\n"
-            f"📦 Plan: <b>{plan}</b>\n"
-            f"💰 Paid: <b>₹{paid_amount}</b>\n"
-            f"🎟 Remaining: <b>{remaining}</b>\n"
-            f"📊 Used: <b>{used}</b>"
-        )
-
-        await message.reply_text(
-            text
-        )
-
     @app.on_message(
         filters.command("premiumuser")
         & admin_only
@@ -557,8 +449,8 @@ def register_admin_handlers(app):
             if not premium_users:
 
                 await message.reply_text(
-                    "💎 <b>PREMIUM USERS</b>\n\n"
-                    "❌ No Premium users found."
+                    "<b>Pʀᴇᴍɪᴜᴍ Usᴇʀs</b>\n\n"
+                    "Nᴏ Pʀᴇᴍɪᴜᴍ Usᴇʀs Fᴏᴜɴᴅ."
                 )
 
                 return
@@ -568,8 +460,8 @@ def register_admin_handlers(app):
             # ------------------------------------------------
 
             text = (
-                "💎 <b>PREMIUM USERS</b>\n\n"
-                f"👥 <b>Total Premium Users:</b> "
+                " <b>Pʀᴇᴍɪᴜᴍ Usᴇʀs</b>\n\n"
+                f"👥 <b>Tᴏᴛᴀʟ Pʀᴇᴍɪᴜᴍ Usᴇʀs:</b> "
                 f"<code>{len(premium_users)}</code>\n\n"
             )
 
@@ -628,11 +520,11 @@ def register_admin_handlers(app):
                     )
 
                 text += (
-                    f"   📦 Plan: <b>{escape(str(plan))}</b>\n"
-                    f"   💰 Paid: <b>₹{paid_amount}</b>\n"
-                    f"   🎬 Plan Requests: "
+                    f"   ›› Pʟᴀɴ: <b>{escape(str(plan))}</b>\n"
+                    f"   ›› Pᴀɪᴅ: <b>₹{paid_amount}</b>\n"
+                    f"   ›› Pʟᴀɴ Rᴇǫᴜᴇsᴛs: "
                     f"<b>{premium_requests}</b>\n"
-                    f"   🎟 Remaining: "
+                    f"   ›› Rᴇᴍᴀɪɴɪɴɢ: "
                     f"<b>{remaining}</b>\n\n"
                 )
 
@@ -684,7 +576,6 @@ def register_admin_handlers(app):
         if len(message.command) < 3:
 
             await message.reply_text(
-                "❌ <b>Usage:</b>\n\n"
                 "<code>/activate USER_ID AMOUNT</code>\n\n"
                 "<b>Example:</b>\n"
                 "<code>/activate 123456789 100</code>"
@@ -759,18 +650,18 @@ def register_admin_handlers(app):
             return
 
         await message.reply_text(
-            "✅ <b>Premium Activated</b>\n\n"
+            "✅ <b>Pʀᴇᴍɪᴜᴍ Aᴄᴛɪᴠᴀᴛᴇᴅ</b>\n\n"
 
-            f"🆔 User: "
+            f"<b>›› Usᴇʀ: </b> "
             f"<code>{user_id}</code>\n"
 
-            f"📦 Plan: "
+            f"<b>›› Pʟᴀɴ: </b> "
             f"<b>{plan.get('name', 'Premium')}</b>\n"
 
-            f"💰 Amount: "
+            f"<b>›› Aᴍᴏᴜɴᴛ: </b> "
             f"<b>₹{amount}</b>\n"
 
-            f"🎬 Requests: "
+            f"<b>›› Rᴇǫᴜᴇsᴛs: </b> "
             f"<b>{plan.get('requests', 0)}</b>"
         )
 
@@ -779,18 +670,18 @@ def register_admin_handlers(app):
             await client.send_message(
                 user_id,
 
-                "🎉 <b>Your Premium is Activated!</b>\n\n"
+                "🎉 <b>Yᴏᴜʀ Pʟᴀɴ Is Aᴄᴛɪᴠᴀᴛᴇᴅ</b>\n\n"
 
-                f"📦 Plan: "
+                f"<b>›› Pʟᴀɴ: </b> "
                 f"<b>{plan.get('name', 'Premium')}</b>\n"
 
-                f"💰 Paid: "
+                f"<b>›› Pᴀɪᴅ: </b> "
                 f"<b>₹{amount}</b>\n"
 
-                f"🎬 Movie requests: "
+                f"<b>›› Mᴏᴠɪᴇ requests: </b> "
                 f"<b>{plan.get('requests', 0)}</b>\n\n"
 
-                "✅ You can now search and request movies."
+                "<b><i>✨️ Yᴏᴜ Cᴀɴ Nᴏᴡ Sᴇᴀʀᴄʜ ᴀɴᴅ Rᴇǫᴜᴇsᴛ Mᴏᴠɪᴇs, Sᴇʀɪᴇs, Dʀᴀᴍᴀs, Aɴɪᴍᴇs, TV Sᴇʀɪᴀʟs...</i></b>"
             )
 
         except Exception as e:
@@ -863,8 +754,8 @@ def register_admin_handlers(app):
             return
 
         await message.reply_text(
-            "✅ <b>Premium Deactivated</b>\n\n"
-            f"🆔 User: <code>{user_id}</code>"
+            "✅ <b>Pʀᴇᴍɪᴜᴍ Dᴇᴀᴄᴛɪᴠᴀᴛᴇᴅ</b>\n\n"
+            f"<b>›› Usᴇʀ: </b> <code>{user_id}</code>"
         )
 
         try:
@@ -872,8 +763,8 @@ def register_admin_handlers(app):
             await client.send_message(
                 user_id,
 
-                "ℹ️ <b>Premium Deactivated</b>\n\n"
-                "Your Premium access has been removed."
+                "ℹ️ <b>Pʀᴇᴍɪᴜᴍ Dᴇᴀᴄᴛɪᴠᴀᴛᴇᴅ</b>\n\n"
+                "<b>Sᴏʀʀʏ Tᴏ Sᴀʏ, Yᴏᴜʀ Pʀᴇᴍɪᴜᴍ Aᴄᴄᴇss Hᴀs Bᴇᴇɴ Rᴇᴍᴏᴠᴇᴅ</b>."
             )
 
         except Exception as e:
