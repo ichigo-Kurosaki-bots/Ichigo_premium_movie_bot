@@ -242,7 +242,9 @@ def register_admin_handlers(app):
             # ----------------------------------------------------
             # DATABASE STATS
             # ----------------------------------------------------
-
+            extracting_message = await message.reply_text(
+                "⏳ <b>Exᴛʀᴀᴄᴛɪɴɢ Sᴛᴀᴛs...</b>"
+            )
             stats = await get_stats()
 
             users = stats.get(
@@ -386,9 +388,15 @@ def register_admin_handlers(app):
                 "<b>Powered By: @Aero_Unity</b>"
             )
 
-            await message.reply_text(
+            await extracting_message.edit_text(
                 text
             )
+            await asyncio.sleep(30)
+
+            try:
+                await extracting_message.delete()
+            except Exception:
+                pass
 
         except Exception as e:
 
