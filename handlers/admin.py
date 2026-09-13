@@ -10,6 +10,7 @@ from pyrogram.types import (
 )
 
 from pyrogram import filters
+from pyrogram.enums import ChatType
 from config import OWNER_ID, ADMIN_IDS
 
 from database import (
@@ -1435,14 +1436,10 @@ def register_admin_handlers(app):
         message
     ):
 
-        if message.chat.type not in [
-            "group",
-            "supergroup"
-        ]:
-            await message.reply_text(
-                "❌ <b>This command can only be used in a group.</b>"
+        if message.chat.type != ChatType.PRIVATE:
+            return await message.reply_text(
+                "❌ This command can only be used in Bot PM."
             )
-            return
 
         status = await message.reply_text(
             "🧹 <b>Cleaning recent messages...</b>"
@@ -1518,14 +1515,14 @@ def register_admin_handlers(app):
     ):
 
         if message.chat.type not in [
-            "group",
-            "supergroup"
+            ChatType.GROUP,
+            ChatType.SUPERGROUP
         ]:
             await message.reply_text(
                 "❌ <b>This command can only be used in a group.</b>"
             )
             return
-
+   
         status = await message.reply_text(
             "🧹 <b>Cleaning group messages...</b>"
         )
@@ -1586,3 +1583,4 @@ def register_admin_handlers(app):
                 pass
     
   
+
