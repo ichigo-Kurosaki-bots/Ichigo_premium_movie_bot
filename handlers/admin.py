@@ -1047,367 +1047,374 @@ def register_admin_handlers(app):
         message
     ):
 
-        # ----------------------------------------------------
-        # CHECK REPLY
-        # ----------------------------------------------------
+    # ----------------------------------------------------
+    # CHECK REPLY
+    # ----------------------------------------------------
 
-        if not message.reply_to_message:
+    if not message.reply_to_message:
 
-            await message.reply_text(
-                "❌ <b>Reply to the message you want to broadcast.</b>"
-            )
-
-            return
-
-        source = message.reply_to_message
-
-        # ----------------------------------------------------
-        # STATUS MESSAGE
-        # ----------------------------------------------------
-
-        status = await message.reply_text(
-            "📢 <b>Broadcast Started...</b>\n\n"
-            "⏳ Preparing broadcast..."
+        await message.reply_text(
+            "❌ <b>Reply to the message you want to broadcast.</b>"
         )
 
-        # ----------------------------------------------------
-        # GET ALL USERS
-        # ----------------------------------------------------
+        return
+
+    source = message.reply_to_message
+
+    # ----------------------------------------------------
+    # STATUS MESSAGE
+    # ----------------------------------------------------
+
+    status = await message.reply_text(
+        "<b>Broadcast Started...</b>\n\n"
+        "<b>⏳ Preparing broadcast...</b>"
+    )
+
+    # ----------------------------------------------------
+    # GET ALL USERS
+    # ----------------------------------------------------
+
+    try:
+
+        user_ids = await get_all_user_ids()
+
+    except Exception as e:
+
+        logger.exception(
+            "Failed to get users for broadcast: %s",
+            e
+        )
+
+        await status.edit_text(
+            "❌ <b>Broadcast Failed</b>\n\n"
+            "Could not get users from the database."
+        )
+
+        return
+
+    # ----------------------------------------------------
+    # REMOVE INVALID / DUPLICATE IDS
+    # ----------------------------------------------------
+
+    clean_user_ids = []
+
+    for user_id in user_ids:
 
         try:
 
-            user_ids = await get_all_user_ids()
+            user_id = int(user_id)
 
-        except Exception as e:
+            if user_id not in clean_user_ids:
+                clean_user_ids.append(user_id)
 
-            logger.exception(
-                "Failed to get users for broadcast: %s",
-                e
-            )
+        except (TypeError, ValueError):
 
-            await status.edit_text(
-                "❌ <b>Broadcast Failed</b>\n\n"
-                "Could not get users from the database."
-            )
+            continue
 
-            return
+    user_ids = clean_user_ids
 
-        # ----------------------------------------------------
-        # REMOVE INVALID / DUPLICATE IDS
-        # ----------------------------------------------------
+    total = len(user_ids)
 
-        clean_user_ids = []
+    # ----------------------------------------------------
+    # NO USERS
+    # ----------------------------------------------------
 
-        for user_id in user_ids:
+    if total == 0:
 
-            try:
+        await status.edit_text(
+            "❌ <b>No users found.</b>"
+        )
 
-                user_id = int(user_id)
+        return
 
-                if user_id not in clean_user_ids:
-                    clean_user_ids.append(user_id)
+    # ----------------------------------------------------
+    # COUNTERS
+    # ----------------------------------------------------
 
-            except (TypeError, ValueError):
+    success = 0
+    failed = 0
 
-                continue
+    # ----------------------------------------------------
+    # BROADCAST LOOP
+    # ----------------------------------------------------
 
-        user_ids = clean_user_ids
+    for user_id in user_ids:
 
-        total = len(user_ids)
+        try:
 
-        # ----------------------------------------------------
-        # NO USERS
-        # ----------------------------------------------------
+            # ------------------------------------------------
+            # TEXT MESSAGE
+            # ------------------------------------------------
 
-        if total == 0:
+            if source.text:
 
-            await status.edit_text(
-                "❌ <b>No users found.</b>"
-            )
+                text = source.text.strip()
 
-            return
+                if text:
 
-        # ----------------------------------------------------
-        # COUNTERS
-        # ----------------------------------------------------
-
-        success = 0
-        failed = 0
-
-        # ----------------------------------------------------
-        # BROADCAST LOOP
-        # ----------------------------------------------------
-
-        for user_id in user_ids:
-
-            try:
-
-                # ------------------------------------------------
-                # TEXT MESSAGE
-                # ------------------------------------------------
-
-                if source.text:
-
-                    text = source.text.strip()
-
-                    if text:
-
-                        formatted_text = (
-                            "<blockquote>"
-                            "<b>"
-                            f"{escape(text)}"
-                            "</b>"
-                            "</blockquote>"
-                        )
-
-                        await client.send_message(
-                            chat_id=user_id,
-                            text=formatted_text
-                        )
-
-                # ------------------------------------------------
-                # PHOTO
-                # ------------------------------------------------
-
-                elif source.photo:
-
-                    caption = source.caption or ""
-
-                    if caption:
-
-                        caption = (
-                            "<blockquote>"
-                            "<b>"
-                            f"{escape(caption)}"
-                            "</b>"
-                            "</blockquote>"
-                        )
-
-                    await client.send_photo(
-                        chat_id=user_id,
-                        photo=source.photo.file_id,
-                        caption=caption or None,
-                        parse_mode="html"
+                    formatted_text = (
+                        "<blockquote>"
+                        "<b>"
+                        f"{escape(text)}"
+                        "</b>"
+                        "</blockquote>"
                     )
 
-                # ------------------------------------------------
-                # VIDEO
-                # ------------------------------------------------
-
-                elif source.video:
-
-                    caption = source.caption or ""
-
-                    if caption:
-
-                        caption = (
-                            "<blockquote>"
-                            "<b>"
-                            f"{escape(caption)}"
-                            "</b>"
-                            "</blockquote>"
-                        )
-
-                    await client.send_video(
+                    await client.send_message(
                         chat_id=user_id,
-                        video=source.video.file_id,
-                        caption=caption or None,
-                        parse_mode="html"
+                        text=formatted_text,
+                        reply_markup=source.reply_markup
                     )
 
-                # ------------------------------------------------
-                # DOCUMENT
-                # ------------------------------------------------
+            # ------------------------------------------------
+            # PHOTO
+            # ------------------------------------------------
 
-                elif source.document:
+            elif source.photo:
 
-                    caption = source.caption or ""
+                caption = source.caption or ""
 
-                    if caption:
+                if caption:
 
-                        caption = (
-                            "<blockquote>"
-                            "<b>"
-                            f"{escape(caption)}"
-                            "</b>"
-                            "</blockquote>"
-                        )
-
-                    await client.send_document(
-                        chat_id=user_id,
-                        document=source.document.file_id,
-                        caption=caption or None,
-                        parse_mode="html"
+                    caption = (
+                        "<blockquote>"
+                        "<b>"
+                        f"{escape(caption)}"
+                        "</b>"
+                        "</blockquote>"
                     )
 
-                # ------------------------------------------------
-                # AUDIO
-                # ------------------------------------------------
-
-                elif source.audio:
-
-                    caption = source.caption or ""
-
-                    if caption:
-
-                        caption = (
-                            "<blockquote>"
-                            "<b>"
-                            f"{escape(caption)}"
-                            "</b>"
-                            "</blockquote>"
-                        )
-
-                    await client.send_audio(
-                        chat_id=user_id,
-                        audio=source.audio.file_id,
-                        caption=caption or None,
-                        parse_mode="html"
-                    )
-
-                # ------------------------------------------------
-                # VOICE
-                # ------------------------------------------------
-
-                elif source.voice:
-
-                    caption = source.caption or ""
-
-                    if caption:
-
-                        caption = (
-                            "<blockquote>"
-                            "<b>"
-                            f"{escape(caption)}"
-                            "</b>"
-                            "</blockquote>"
-                        )
-
-                    await client.send_voice(
-                        chat_id=user_id,
-                        voice=source.voice.file_id,
-                        caption=caption or None,
-                        parse_mode="html"
-                    )
-
-                # ------------------------------------------------
-                # ANIMATION / GIF
-                # ------------------------------------------------
-
-                elif source.animation:
-
-                    caption = source.caption or ""
-
-                    if caption:
-
-                        caption = (
-                            "<blockquote>"
-                            "<b>"
-                            f"{escape(caption)}"
-                            "</b>"
-                            "</blockquote>"
-                        )
-
-                    await client.send_animation(
-                        chat_id=user_id,
-                        animation=source.animation.file_id,
-                        caption=caption or None,
-                        parse_mode="html"
-                    )
-
-                # ------------------------------------------------
-                # STICKER
-                # ------------------------------------------------
-
-                elif source.sticker:
-
-                    await client.send_sticker(
-                        chat_id=user_id,
-                        sticker=source.sticker.file_id
-                    )
-
-                # ------------------------------------------------
-                # OTHER MESSAGE TYPES
-                # ------------------------------------------------
-
-                else:
-
-                    await client.copy_message(
-                        chat_id=user_id,
-                        from_chat_id=source.chat.id,
-                        message_id=source.id
-                    )
-
-                success += 1
-
-            except Exception as e:
-
-                failed += 1
-
-                logger.warning(
-                    "Broadcast failed for user %s: %s",
-                    user_id,
-                    e
+                await client.send_photo(
+                    chat_id=user_id,
+                    photo=source.photo.file_id,
+                    caption=caption or None,
+                    parse_mode="html",
+                    reply_markup=source.reply_markup
                 )
 
             # ------------------------------------------------
-            # SMALL DELAY
+            # VIDEO
             # ------------------------------------------------
 
-            await asyncio.sleep(0.05)
+            elif source.video:
 
-            # ------------------------------------------------
-            # UPDATE STATUS
-            # ------------------------------------------------
+                caption = source.caption or ""
 
-            processed = success + failed
+                if caption:
 
-            if processed % 25 == 0:
-
-                try:
-
-                    await status.edit_text(
-                        "📢 <b>Broadcasting...</b>\n\n"
-
-                        f"👥 <b>Total Users:</b> "
-                        f"<code>{total}</code>\n\n"
-
-                        f"✅ <b>Sent:</b> "
-                        f"<code>{success}</code>\n"
-
-                        f"❌ <b>Failed:</b> "
-                        f"<code>{failed}</code>\n\n"
-
-                        f"📊 <b>Progress:</b> "
-                        f"<code>{processed}/{total}</code>"
+                    caption = (
+                        "<blockquote>"
+                        "<b>"
+                        f"{escape(caption)}"
+                        "</b>"
+                        "</blockquote>"
                     )
 
-                except Exception:
+                await client.send_video(
+                    chat_id=user_id,
+                    video=source.video.file_id,
+                    caption=caption or None,
+                    parse_mode="html",
+                    reply_markup=source.reply_markup
+                )
 
-                    pass
+            # ------------------------------------------------
+            # DOCUMENT
+            # ------------------------------------------------
 
-        # ----------------------------------------------------
-        # FINAL RESULT
-        # ----------------------------------------------------
+            elif source.document:
 
-        try:
+                caption = source.caption or ""
 
-            await status.edit_text(
-                "📢 <b>Broadcast Completed!</b>\n\n"
+                if caption:
 
-                f"👥 <b>Total Users:</b> "
-                f"<code>{total}</code>\n\n"
+                    caption = (
+                        "<blockquote>"
+                        "<b>"
+                        f"{escape(caption)}"
+                        "</b>"
+                        "</blockquote>"
+                    )
 
-                f"✅ <b>Successfully Sent:</b> "
-                f"<code>{success}</code>\n"
+                await client.send_document(
+                    chat_id=user_id,
+                    document=source.document.file_id,
+                    caption=caption or None,
+                    parse_mode="html",
+                    reply_markup=source.reply_markup
+                )
 
-                f"❌ <b>Failed:</b> "
-                f"<code>{failed}</code>\n\n"
+            # ------------------------------------------------
+            # AUDIO
+            # ------------------------------------------------
 
-                f"📊 <b>Completed:</b> "
-                f"<code>{success + failed}/{total}</code>"
+            elif source.audio:
+
+                caption = source.caption or ""
+
+                if caption:
+
+                    caption = (
+                        "<blockquote>"
+                        "<b>"
+                        f"{escape(caption)}"
+                        "</b>"
+                        "</blockquote>"
+                    )
+
+                await client.send_audio(
+                    chat_id=user_id,
+                    audio=source.audio.file_id,
+                    caption=caption or None,
+                    parse_mode="html",
+                    reply_markup=source.reply_markup
+                )
+
+            # ------------------------------------------------
+            # VOICE
+            # ------------------------------------------------
+
+            elif source.voice:
+
+                caption = source.caption or ""
+
+                if caption:
+
+                    caption = (
+                        "<blockquote>"
+                        "<b>"
+                        f"{escape(caption)}"
+                        "</b>"
+                        "</blockquote>"
+                    )
+
+                await client.send_voice(
+                    chat_id=user_id,
+                    voice=source.voice.file_id,
+                    caption=caption or None,
+                    parse_mode="html",
+                    reply_markup=source.reply_markup
+                )
+
+            # ------------------------------------------------
+            # ANIMATION / GIF
+            # ------------------------------------------------
+
+            elif source.animation:
+
+                caption = source.caption or ""
+
+                if caption:
+
+                    caption = (
+                        "<blockquote>"
+                        "<b>"
+                        f"{escape(caption)}"
+                        "</b>"
+                        "</blockquote>"
+                    )
+
+                await client.send_animation(
+                    chat_id=user_id,
+                    animation=source.animation.file_id,
+                    caption=caption or None,
+                    parse_mode="html",
+                    reply_markup=source.reply_markup
+                )
+
+            # ------------------------------------------------
+            # STICKER
+            # ------------------------------------------------
+
+            elif source.sticker:
+
+                await client.send_sticker(
+                    chat_id=user_id,
+                    sticker=source.sticker.file_id
+                )
+
+            # ------------------------------------------------
+            # OTHER MESSAGE TYPES
+            # ------------------------------------------------
+
+            else:
+
+                await client.copy_message(
+                    chat_id=user_id,
+                    from_chat_id=source.chat.id,
+                    message_id=source.id
+                )
+
+            success += 1
+
+        except Exception as e:
+
+            failed += 1
+
+            logger.warning(
+                "Broadcast failed for user %s: %s",
+                user_id,
+                e
             )
 
-        except Exception:
+        # ------------------------------------------------
+        # SMALL DELAY
+        # ------------------------------------------------
 
-            pass
+        await asyncio.sleep(0.05)
+
+        # ------------------------------------------------
+        # UPDATE STATUS
+        # ------------------------------------------------
+
+        processed = success + failed
+
+        if processed % 25 == 0:
+
+            try:
+
+                await status.edit_text(
+                    "📢 <b>Broadcasting...</b>\n\n"
+
+                    f"👥 <b>Total Users:</b> "
+                    f"<code>{total}</code>\n\n"
+
+                    f"✅ <b>Sent:</b> "
+                    f"<code>{success}</code>\n"
+
+                    f"❌ <b>Failed:</b> "
+                    f"<code>{failed}</code>\n\n"
+
+                    f"📊 <b>Progress:</b> "
+                    f"<code>{processed}/{total}</code>"
+                )
+
+            except Exception:
+
+                pass
+
+    # ----------------------------------------------------
+    # FINAL RESULT
+    # ----------------------------------------------------
+
+    try:
+
+        await status.edit_text(
+            "📢 <b>Broadcast Completed!</b>\n\n"
+
+            f"👥 <b>Total Users:</b> "
+            f"<code>{total}</code>\n\n"
+
+            f"✅ <b>Successfully Sent:</b> "
+            f"<code>{success}</code>\n"
+
+            f"❌ <b>Failed:</b> "
+            f"<code>{failed}</code>\n\n"
+
+            f"📊 <b>Completed:</b> "
+            f"<code>{success + failed}/{total}</code>"
+        )
+
+    except Exception:
+
+        pass
