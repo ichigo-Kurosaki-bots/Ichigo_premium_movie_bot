@@ -598,7 +598,7 @@ def build_filter_text(
     )
 
     text = (
-        "⚙️ <b>Sᴇᴀʀᴄ Fɪʟᴛᴇʀs</b>\n\n"
+        "⚙️ <b>Sᴇᴀʀᴄh Fɪʟᴛᴇʀs</b>\n\n"
     )
 
     if current_filters:
@@ -767,7 +767,7 @@ def build_filter_buttons(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    f"🌐 {language}",
+                    f"›› {language}",
                     callback_data=(
                         f"setfilter_{session_id}_"
                         f"language_{language}"
@@ -785,7 +785,7 @@ def build_filter_buttons(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    f"📅 {year}",
+                    f"›› {year}",
                     callback_data=(
                         f"setfilter_{session_id}_"
                         f"year_{year}"
@@ -803,7 +803,7 @@ def build_filter_buttons(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    f"🎞 {quality}",
+                    f"›› {quality}",
                     callback_data=(
                         f"setfilter_{session_id}_"
                         f"quality_{quality}"
@@ -821,7 +821,7 @@ def build_filter_buttons(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    f"📺 Season {season}",
+                    f"›› Season {season}",
                     callback_data=(
                         f"setfilter_{session_id}_"
                         f"season_{season}"
@@ -839,7 +839,7 @@ def build_filter_buttons(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    f"🎬 Episode {episode}",
+                    f"›› Episode {episode}",
                     callback_data=(
                         f"setfilter_{session_id}_"
                         f"episode_{episode}"
@@ -1741,7 +1741,7 @@ async def handle_sendall_deep_link(
             "<b>⏳️ ᴅᴜᴇ ᴛᴏ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs...</b>\n\n"
             "<b>›› ʏᴏᴜʀ ғɪʟᴇs ᴡɪʟʟ ʙ ᴅᴇʟᴇᴛᴇᴅ ᴡɪᴛʜɪɴ 5 min</b>"
             "<b>sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
-            "<b> ɴᴏᴛᴇ : ᴜsᴇ <li>ᴠʟᴄ ᴘʟᴀʏᴇʀ</li> ᴏʀ <li>ᴍx ᴘʟᴀʏᴇʀ</li> ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>",
+            "<b> ɴᴏᴛᴇ : ᴜsᴇ <i>ᴠʟᴄ ᴘʟᴀʏᴇʀ</i> ᴏʀ <i>ᴍx ᴘʟᴀʏᴇʀ</i> ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>",
             parse_mode=enums.ParseMode.HTML,
             reply_to_message_id=last_sent.id if last_sent else None
         )
@@ -1846,7 +1846,6 @@ def register_search_handlers(app):
             "delfsub",
             "fsublist",
             "channel",
-            "user",
             "premiumuser",
             "activate",
             "deactivate",
