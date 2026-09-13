@@ -669,7 +669,6 @@ def register_fsub_admin_handlers(app):
         if len(message.command) < 2:
 
             await message.reply_text(
-                "❌ <b>Usage:</b>\n\n"
                 "<code>/addfsub @channel</code>\n\n"
                 "<b>Private channel:</b>\n"
                 "<code>/addfsub -1001234567890 "
@@ -790,22 +789,21 @@ def register_fsub_admin_handlers(app):
         if not success:
 
             await message.reply_text(
-                "⚠️ This channel is already "
-                "in the FSub list."
+                "<b>Tʜɪs Cʜᴀɴɴᴇʟ Is Aʟʀᴇᴀᴅʏ Iɴ Tʜᴇ Fᴏʀᴄᴇ Sᴜʙ Lɪsᴛ</b>"
             )
 
             return
 
         await message.reply_text(
-            "✅ <b>Force Subscribe Added</b>\n\n"
+            "✅ <b>Fᴏʀᴄᴇ Cʜᴀɴɴᴇʟ Aᴅᴅᴇᴅ</b>\n\n"
 
-            f"📢 <b>Channel:</b> "
+            f"<b>›› Cʜᴀɴɴᴇʟ Nᴀᴍᴇ:</b> "
             f"{chat.title}\n"
 
-            f"🆔 <b>ID:</b> "
+            f"<b>›› Cʜᴀɴɴᴇʟ ID:</b> "
             f"<code>{chat.id}</code>\n\n"
 
-            f"🔗 <b>Link:</b> "
+            f"<b>›› Cʜᴀɴɴᴇʟ Lɪɴᴋ:</b> "
             f"{invite_link}"
         )
 
@@ -867,15 +865,14 @@ def register_fsub_delete_handler(app):
         if not removed:
 
             await message.reply_text(
-                "❌ This channel is not "
-                "in the FSub list."
+                "<b>Tʜɪs Cʜᴀɴɴᴇʟ Is Nᴏᴛ Iɴ Fᴏʀᴄᴇ Sᴜʙ Lɪsᴛ</b>"
             )
 
             return
 
         await message.reply_text(
-            "✅ <b>Force Subscribe Removed</b>\n\n"
-            f"🆔 Channel ID: "
+            "✅ <b>Fᴏʀᴄᴇ Cʜᴀɴɴᴇʟ Rᴇᴍᴏᴠᴇᴅ</b>\n\n"
+            f"<b>›› Cʜᴀɴɴᴇʟ ID : </b> "
             f"<code>{chat_id}</code>"
         )
 
@@ -900,14 +897,14 @@ def register_fsub_list_handler(app):
         if not channels:
 
             await message.reply_text(
-                "📢 <b>Force Subscribe List</b>\n\n"
-                "❌ No FSub channels added."
+                "📢 <b>Fᴏʀᴄᴇ Cʜᴀɴɴᴇʟs Lɪsᴛ</b>\n\n"
+                "<b>Nᴏ Cʜᴀɴɴᴇʟs Fᴏᴜɴᴅ!</b>"
             )
 
             return
 
         text = (
-            "📢 <b>FORCE SUBSCRIBE CHANNELS</b>\n\n"
+            "📢 <b>Fᴏʀᴄᴇ Cʜᴀɴɴᴇʟs Lɪsᴛ</b>\n\n"
         )
 
         for index, channel in enumerate(
@@ -935,12 +932,12 @@ def register_fsub_list_handler(app):
             if username:
 
                 text += (
-                    f"┃ Username: "
+                    f"┃ <b>›› Usᴇʀɴᴀᴍᴇ: </b>"
                     f"@{username.lstrip('@')}\n"
                 )
 
             text += (
-                f"┖ ID: <code>{chat_id}</code>\n\n"
+                f"┖ <b>›› ID: <code>{chat_id}</code>\n\n"
             )
 
         keyboard = InlineKeyboardMarkup([
