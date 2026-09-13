@@ -43,7 +43,7 @@ def register_channel_handlers(app):
             if not groups:
                 await message.reply_text(
                     "📋 <b>TOTAL CONNECTED GROUPS</b>\n\n"
-                    "📊 <b>Total:</b> 0\n\n"
+                    "📊 <b>›› Total:</b> 0\n\n"
                     "❌ No connected groups found."
                 )
                 return
@@ -56,8 +56,8 @@ def register_channel_handlers(app):
             )
 
             text = (
-                "📋 <b>TOTAL CONNECTED GROUPS</b>\n\n"
-                f"📊 <b>Total:</b> {len(groups)}\n\n"
+                " <b>TOTAL CONNECTED GROUPS</b>\n\n"
+                f" <b>›› Total:</b> {len(groups)}\n\n"
             )
 
             # Build group list
