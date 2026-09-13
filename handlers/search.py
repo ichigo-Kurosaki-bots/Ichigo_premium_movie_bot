@@ -1859,7 +1859,9 @@ def register_search_handlers(app):
             "unban",
             "banlist",
             "maintenance",
-            "broadcast"
+            "broadcast",
+            "clearjunk",
+            "clearjunkgroup"
         ])
     )
     async def movie_search_handler(
