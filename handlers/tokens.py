@@ -131,15 +131,15 @@ def build_token_text(
 
         "⌛ <b>Hᴏᴡ ᴛᴏ Eᴀʀɴ?</b>\n"
 
-        "• Cʟᴀɪᴍ ʏᴏᴜʀ <b>Daily Reward</b> below!\n"
-        "• Eᴀʀɴ <b>50 tokens</b> every day.\n"
-        "• Uѕᴇ tokens to unlock Premium.\n\n"
+        "• Cʟᴀɪᴍ ʏᴏᴜʀ <b>Dᴀɪʟʏ Rᴇᴡᴀʀᴅ</b> below!\n"
+        "• Eᴀʀɴ <b>𝟻𝟶 Tᴏᴋᴇɴs</b> ᴇᴠᴇʀʏ ᴅᴀʏ.\n"
+        "• Usᴇ Tᴏᴋᴇɴs Tᴏ Uɴʟᴏᴄᴋ Pʀᴇᴍɪᴜᴍ.\n\n"
 
-        "💎 <b>100 Tᴏᴋᴇɴѕ</b> = "
-        "<b>Starter Premium</b>\n"
+        "• <b>100 Tᴏᴋᴇɴѕ</b> = "
+        "<b>Sᴛᴀʀᴛᴇʀ Pʀᴇᴍɪᴜᴍ</b>\n"
 
-        "🎬 Starter Premium gives "
-        "<b>20 movie requests</b>."
+        "• Sᴛᴀʀᴛᴇʀ Pʀᴇᴍɪᴜᴍ Pʟᴀɴ "
+        "<b>ɢɪᴠᴇs 𝟸𝟶 ᴍᴏᴠɪᴇs ʀᴇǫᴜᴇsᴛs</b>."
     )
 
 # ============================================================
@@ -305,7 +305,7 @@ def register_token_handlers(app):
         await asyncio.sleep(0.5)
 
         await animation.edit_text(
-            "ᴀᴅᴅɪɴɢ..."
+            "›› ᴀᴅᴅɪɴɢ..."
         )
 
         await asyncio.sleep(0.5)
@@ -360,8 +360,7 @@ def register_token_handlers(app):
                 pass
 
             await message.reply_text(
-                "❌ <b>Fᴀɪʟᴇᴅ ᴛᴏ ᴄʟᴀɪᴍ ᴛᴏᴋᴇɴs.</b>\n\n"
-                "Please try again later."
+                "❌ <b>Fᴀɪʟᴇᴅ ᴛᴏ ᴄʟᴀɪᴍ ᴛᴏᴋᴇɴs.</b>"
             )
 
             return
@@ -549,14 +548,14 @@ def register_token_handlers(app):
         await callback.answer()
 
         text = (
-            "💎 <b>Pʀᴇᴍɪᴜᴍ Wɪᴛʜ Tᴏᴋᴇɴs</b>\n\n"
+            " <b>Pʀᴇᴍɪᴜᴍ Wɪᴛʜ Tᴏᴋᴇɴs</b>\n\n"
 
-            "Use your tokens to activate "
-            "any available Premium plan.\n\n"
+            "<b>Usᴇ Yᴏᴜʀ Tᴏᴋᴇɴs Tᴏ Aᴄᴛɪᴠᴀᴛᴇ "
+            "Aɴʏ Aᴠᴀɪʟᴀʙʟᴇ Pʀᴇᴍɪᴜᴍ Pʟᴀɴ.</b>\n\n"
 
-            "🎟 <b>1 Token = ₹1 plan value</b>\n\n"
+            "🎟 <b><i>1 Token = ₹1 plan value</i></b>\n\n"
 
-            "Select the plan you want below:"
+            "<b>›› Sᴇʟᴇᴄᴛ Tʜᴇ Pʟᴀɴ Yᴏᴜ Wᴀɴᴛ Bᴇʟᴏᴡ</b>"
         )
 
         await callback.message.edit_text(
@@ -686,15 +685,15 @@ def register_token_handlers(app):
 
         await callback.message.edit_text(
 
-            "🎉 <b>Premium Activated!</b>\n\n"
+            "🎉 <b>Pʀᴇᴍɪᴜᴍ Aᴄᴛɪᴠᴀᴛᴇᴅ!</b>\n\n"
 
-            f"💎 <b>Plan:</b> {plan_name}\n"
-            f"🎟 <b>Tokens Used:</b> {amount}\n"
-            f"🎬 <b>Movie Requests:</b> {requests}\n"
-            f"💰 <b>Remaining Tokens:</b> {balance}\n\n"
+            f"<b>›› Pʟᴀɴ:</b> {plan_name}\n"
+            f"<b>›› Tᴏᴋᴇɴs Usᴇᴅ:</b> {amount}\n"
+            f"<b>›› Mᴏᴠɪᴇ Rᴇǫᴜᴇsᴛs:</b> {requests}\n"
+            f"<b>›› Rᴇᴍᴀɪɴɪɴɢ Tᴏᴋᴇɴs:</b> {balance}\n\n"
 
-            f"✅ Your <b>{plan_name}</b> plan is now active.\n"
-            f"You can now use your <b>{requests}</b> movie requests.",
+            f"<i> Yᴏᴜʀ </i><b>{plan_name}</b> <i> Pʟᴀɴ Is Nᴏᴡ Aᴄᴛɪᴠᴇ</i>\n"
+            f"<i>Yᴏᴜ ᴄᴀɴ ɴᴏᴡ ᴜsᴇ ʏᴏᴜʀ</i> <b>{requests}</b> <i>Mᴏᴠɪᴇ Rᴇǫᴜᴇsᴛs</i>",
 
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -715,7 +714,7 @@ def register_token_handlers(app):
         )
 
         await callback.answer(
-            f"🎉 {amount} tokens redeemed!",
+            f"🎉 {amount} Tᴏᴋᴇɴs Rᴇᴅᴇᴇᴍᴇᴅ!",
             show_alert=True
         )
 
