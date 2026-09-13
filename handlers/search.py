@@ -2,6 +2,7 @@ import asyncio
 import logging
 import re
 import time
+from urllib.parse import quote_plus
 
 from html import escape as html_escape
 from pyrogram import filters, enums
@@ -574,7 +575,7 @@ def build_search_text(
         f"<b>›› ʀᴇsᴜʟᴛ ɪɴ :</b> "
         f"{search_time:.2f} Sᴇᴄᴏɴᴅs\n"
 
-        f'<b>›› Rᴇǫᴜᴇsᴛᴇᴅ Bʏ : <a href="tg://user?id={requested_by_id}">{html_escape(requested_by_name or "User")}</a></b>\n'
+        f"<b>›› Rᴇǫᴜᴇsᴛᴇᴅ Bʏ : {requested_by}</b>\n"
         
         f"<b>›› Pᴏᴡᴇʀᴇᴅ Bʏ:</b> "
         f"<b>@Aero_Unity</b>\n\n"
@@ -1948,7 +1949,9 @@ def register_search_handlers(app):
                         ),
                         InlineKeyboardButton(
                             "• Cʜᴇᴄᴋ Sᴘᴇʟʟɪɴɢ •",
-                            url=f"https://www.google.com/search?q={query}"
+                            url=("https://www.google.com/search?q="
+                                         f"{quote_plus(query)}"
+                            )
                         )
                     ]
                 ])
