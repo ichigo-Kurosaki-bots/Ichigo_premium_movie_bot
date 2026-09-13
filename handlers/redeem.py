@@ -26,8 +26,6 @@ def register_redeem_handlers(app):
         if len(message.command) < 2:
 
             await message.reply_text(
-                "🎟️ <b>Redeem Premium Code</b>\n\n"
-                "Use:\n"
                 "<code>/redeem CODE</code>\n\n"
                 "Example:\n"
                 "<code>/redeem PMB-AB12-CD34</code>"
@@ -48,8 +46,8 @@ def register_redeem_handlers(app):
         if not code_data:
 
             await message.reply_text(
-                "❌ <b>Invalid Redeem Code</b>\n\n"
-                "This code does not exist."
+                "❌ <b>Iɴᴠᴀʟɪᴅ Rᴇᴅᴇᴇᴍ Cᴏᴅᴇ</b>\n\n"
+                "<b>Tʜɪs Cᴏᴅᴇ Dᴏᴇs Nᴏᴛ Exɪᴛs</b>."
             )
 
             return
@@ -61,8 +59,8 @@ def register_redeem_handlers(app):
         if code_data.get("used"):
 
             await message.reply_text(
-                "❌ <b>Code Already Used</b>\n\n"
-                "This code has already been redeemed."
+                "❌ <b>Cᴏᴅᴇ Aʟʀᴇᴀᴅʏ Usᴇᴅ</b>\n\n"
+                "<b>Tʜɪs Cᴏᴅᴇ Hᴀs Aʟʀᴇᴀᴅʏ Bᴇᴇɴ Rᴇᴅᴇᴇᴍᴇᴅ</b>"
             )
 
             return
@@ -80,8 +78,8 @@ def register_redeem_handlers(app):
         except (TypeError, ValueError):
 
             await message.reply_text(
-                "❌ <b>Invalid Code</b>\n\n"
-                "The amount linked to this code is invalid."
+                "❌ <b>Iɴᴠᴀʟɪᴅ Cᴏᴅᴇ</b>\n\n"
+                "Tʜᴇ ᴀᴍᴏᴜɴᴛ ʟɪɴᴋᴇᴅ ᴛᴏ ᴛʜɪs ᴄᴏᴅᴇ ɪs ɪɴᴠᴀʟɪᴅ."
             )
 
             return
@@ -97,10 +95,10 @@ def register_redeem_handlers(app):
         if not plan:
 
             await message.reply_text(
-                "❌ <b>Plan Not Found</b>\n\n"
-                f"This code is worth ₹{amount}, "
-                "but no Premium plan exists for this amount.\n\n"
-                "Please contact the owner."
+                "‼️ <b>Pʟᴀɴ Nᴏᴛ Fᴏᴜɴᴅ</b>\n\n"
+                f"›› Tʜɪs Cᴏᴅᴇ Is Wᴏʀᴛʜ ₹{amount}, "
+                "<b>›› Bᴜᴛ Nᴏ Pʀᴇᴍɪᴜᴍ Pʟᴀɴ Exɪᴛs Fᴏʀ Tʜɪs Aᴍᴏᴜɴᴛ</b>.\n\n"
+                "<b>›› Pʟᴇᴀsᴇ Cᴏɴᴛᴀᴄᴛ Tʜᴇ Oᴡɴᴇʀ [@Mr_Mohammed_29]</b>."
             )
 
             return
@@ -126,8 +124,8 @@ def register_redeem_handlers(app):
         if requests <= 0:
 
             await message.reply_text(
-                "❌ <b>Invalid Premium Plan</b>\n\n"
-                "This plan has no valid movie requests."
+                "❌ <b>Iɴᴠᴀʟɪᴅ Pʀᴇᴍɪᴜᴍ Cᴏᴅᴇ</b>\n\n"
+                "<b>›› Tʜɪs ᴘʟᴀɴ ʜᴀs ɴᴏ ᴠᴀʟɪᴅ ᴍᴏᴠɪᴇ ʀᴇǫᴜᴇsᴛs</b>"
             )
 
             return
@@ -171,9 +169,8 @@ def register_redeem_handlers(app):
             )
 
             await message.reply_text(
-                "❌ <b>Activation Failed</b>\n\n"
-                "Your code was not used.\n"
-                "Please contact the owner."
+                "❌ <b>Aᴄᴛɪᴠᴀᴛɪᴏɴ Fᴀɪʟᴇᴅ</b>\n\n"
+                "<b>›› Pʟᴇᴀsᴇ Cᴏɴᴛᴀᴄᴛ Tʜᴇ Oᴡɴᴇʀ [@Mr_Mohammed_29]</b>"
             )
 
             return
@@ -181,9 +178,8 @@ def register_redeem_handlers(app):
         if not activated:
 
             await message.reply_text(
-                "❌ <b>Activation Failed</b>\n\n"
-                "Your code was not used.\n"
-                "Please contact the owner."
+                "❌ <b>Aᴄᴛɪᴠᴀᴛɪᴏɴ Fᴀɪʟᴇᴅ</b>\n\n"
+                "<b>›› Pʟᴇᴀsᴇ Cᴏɴᴛᴀᴄᴛ Tʜᴇ Oᴡɴᴇʀ [@Mr_Mohammed_29]</b>"
             )
 
             return
@@ -206,11 +202,11 @@ def register_redeem_handlers(app):
             )
 
             await message.reply_text(
-                "⚠️ <b>Premium Activated</b>\n\n"
-                f"📦 Plan: <b>{plan_name}</b>\n"
-                f"🎬 Requests: <b>{requests}</b>\n\n"
-                "Your Premium access is active.\n"
-                "Please contact the owner about the code."
+                " <b>Pʀᴇᴍɪᴜᴍ Aᴄᴛɪᴠᴀᴛᴇᴅ</b>\n\n"
+                f"<b>›› Pʟᴀɴ: {plan_name}</b>\n"
+                f"<b>›› Rᴇǫᴜᴇsᴛs : {requests}</b>\n\n"
+                "<b>Yᴏᴜʀ Pʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇss ɪs ᴀᴄᴛɪᴠᴇ.</b>\n"
+                "<b>Pʟᴇᴀsᴇ ᴄᴏɴᴛᴀᴄᴛ ᴛʜᴇ ᴏᴡɴᴇʀ [@Mr_Mohammed_29] ᴀʙᴏᴜᴛ ᴛʜᴇ ᴄᴏᴅᴇ.</b>"
             )
 
             return
@@ -220,13 +216,12 @@ def register_redeem_handlers(app):
         # ---------------------------------------------
 
         await message.reply_text(
-            "🎉 <b>Premium Activated!</b>\n\n"
-            f"📦 Plan: <b>{plan_name}</b>\n"
-            f"💰 Amount: <b>₹{amount}</b>\n"
-            f"🎬 Requests: <b>{requests}</b>\n"
-            f"🎟️ Code: <code>{code}</code>\n\n"
-            "✅ Your Premium plan is now active.\n"
-            "🍿 Enjoy the bot!"
+            "🎉 <b>Pʀᴇᴍɪᴜᴍ Aᴄᴛɪᴠᴀᴛᴇᴅ</b>\n\n"
+            f"<b>›› Pʟᴀɴ: {plan_name}</b>\n"
+            f"<b>›› Aᴍᴏᴜɴᴛ: ₹{amount}</b>\n"
+            f"<b>›› Rᴇǫᴜᴇsᴛs: <b>{requests}</b>\n"
+            f"<b>›› Cᴏᴅᴇ: </b> <code>{code}</code>\n\n"
+            "<b>›› ✅Yᴏᴜʀ Pʀᴇᴍɪᴜᴍ ᴘʟᴀɴ ɪs ɴᴏᴡ ᴀᴄᴛɪᴠᴇ</b>\n"
         )
         
         # ---------------------------------------------
@@ -238,8 +233,6 @@ def register_redeem_handlers(app):
             await callback_query.answer()
 
             await callback_query.message.edit_text(
-                "🎟️ <b>Redeem Premium Code</b>\n\n"
-                "Use the command below:\n\n"
                 "<code>/redeem YOUR_CODE</code>\n\n"
                 "Example:\n"
                 "<code>/redeem PMB-AB12-CD34</code>"
