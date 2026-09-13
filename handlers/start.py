@@ -1001,35 +1001,58 @@ def register_start_handlers(
         if START_IMAGE:
 
             try:
-
-                await client.send_photo(
-
-                    chat_id=user_id,
-
-                    photo=START_IMAGE,
-
-                    caption=text,
-
-                    reply_markup=keyboard
+                sent = await client.send_photo(
+                chat_id=user_id,
+                photo=START_IMAGE,
+                caption=text,
+                reply_markup=keyboard
                 )
+
+                try:
+                    await client.send_reaction(
+                        chat_id=sent.chat.id,
+                        message_id=sent.id,
+                        emoji=random.choice(
+                            START_REACTIONS
+                        ),
+                        big=True
+                    )
+     
+                except Exception as e:
+                    logger.warning(
+                        "START BACK REACTION ERROR: %s",
+                        e
+                    )
 
                 return
 
             except Exception as e:
-
                 logger.warning(
                     "START BACK IMAGE ERROR: %s",
                     e
                 )
 
-        await client.send_message(
-
-            chat_id=user_id,
-
+        sent = await client.send_message(  
+            chat_id=user_id, 
             text=text,
-
             reply_markup=keyboard
         )
+
+        try:
+            await client.send_reaction(
+                chat_id=sent.chat.id,
+                message_id=sent.id,
+                emoji=random.choice(
+                    START_REACTIONS
+                ),
+                big=True
+            )
+
+        except Exception as e:
+            logger.warning(
+                "START BACK REACTION ERROR: %s",
+                e
+            )
 
     # ========================================================
     # CLOSE
