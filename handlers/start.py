@@ -476,21 +476,31 @@ def register_start_handlers(
                 )
 
                 try:
+
                     await client.send_reaction(
                         chat_id=sent.chat.id,
                         message_id=sent.id,
                         emoji=random.choice(
-                        START_REACTIONS
+                            START_REACTIONS
                         ),
                         big=True
                     )
 
                 except Exception as e:
+
                     logger.warning(
                         "START REACTION ERROR: %s",
                         e
                     )
+
                 return
+
+            except Exception as e:
+
+                logger.warning(
+                    "START IMAGE SEND FAILED: %s",
+                    e
+                )
 
         # ----------------------------------------------------
         # TEXT
@@ -500,18 +510,20 @@ def register_start_handlers(
             text,
             reply_markup=keyboard
         )
- 
+
         try:
+
             await client.send_reaction(
                 chat_id=sent.chat.id,
                 message_id=sent.id,
                 emoji=random.choice(
-                START_REACTIONS
+                    START_REACTIONS
                 ),
                 big=True
             )
 
         except Exception as e:
+
             logger.warning(
                 "START REACTION ERROR: %s",
                 e
