@@ -122,7 +122,8 @@ def start_buttons(
 
 def build_start_text(
     first_name,
-    remaining
+    remaining,
+    user_id
 ):
 
     first_name = (
@@ -130,9 +131,17 @@ def build_start_text(
         or "User"
     )
 
+    from html import escape
+
+    clickable_name = (
+        f'<a href="tg://user?id={user_id}">'
+        f'{escape(first_name.upper())}'
+        f'</a>'
+    )
+
     return (
 
-        f"👋 <b>Hey {first_name.upper()} "
+        f"👋 <b>Hey {clickable_name} "
         f"Mʏ Nᴀᴍᴇ Is Pʀᴇᴍɪᴜᴍ Mᴏᴠɪᴇ Bᴏᴛ</b>\n\n"
 
         "<b>I ᴀᴍ A Pᴏᴡᴇʀғᴜʟ Mᴏᴠɪᴇ Sᴇᴀʀᴄʜ Bᴏᴛ.</b> "
@@ -148,7 +157,10 @@ def build_start_text(
         "<b>Aᴄᴛɪᴠᴀᴛᴇ Pʀᴇᴍɪᴜᴍ Aғᴛᴇʀ Yᴏᴜʀ "
         "ғʀᴇᴇ ʀᴇǫᴜᴇsᴛs ᴀʀᴇ ғɪɴɪsʜᴇᴅ.</b>\n\n"
 
-        "<b>Mᴀɪɴᴛᴀɪɴᴇᴅ ʙʏ: @Mr_Mohammed_29</b>"
+        '<b>Mᴀɪɴᴛᴀɪɴᴇᴅ ʙʏ: '
+        '<a href="tg://user?id=7284759394">'
+        'ᴍᴏʜᴀᴍᴍᴇᴅ'
+        '</a></b>'
     )
 
 # ============================================================
