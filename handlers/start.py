@@ -278,6 +278,34 @@ def register_start_handlers(
             )
 
         # ----------------------------------------------------
+        # PERMANENT LINK
+        # ----------------------------------------------------
+
+
+        if (
+            payload.startswith("pl_")
+            or payload.startswith("pb_")
+        ):
+
+            from handlers.permanent_links import (
+                handle_permanent_link
+            )
+
+            await handle_permanent_link(
+
+                client=client,
+
+                message=message,
+
+                token=payload,
+
+                user_id=user_id
+            )
+
+            return
+
+
+        # ----------------------------------------------------
         # FILE DEEP LINK
         # ----------------------------------------------------
 
