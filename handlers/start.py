@@ -1,22 +1,6 @@
 import os
 import asyncio
 import logging
-import random
-
-START_REACTIONS = [
-    "❤️",
-    "🔥",
-    "😍",
-    "⚡️",
-    "🎭",
-    "👾",
-    "✨️",
-    "🎉",
-    "🎊",
-    "☄️",
-    "🏆",
-    "☠️"
-]
 
 from pyrogram.errors import MessageNotModified
 from pyrogram import filters
@@ -503,26 +487,6 @@ def register_start_handlers(
                     reply_markup=keyboard
                 )
 
-                try:
-
-                    await client.send_reaction(
-                        chat_id=sent.chat.id,
-                        message_id=sent.id,
-                        emoji=random.choice(
-                            START_REACTIONS
-                        ),
-                        big=True
-                    )
-
-                except Exception as e:
-
-                    logger.warning(
-                        "START REACTION ERROR: %s",
-                        e
-                    )
-
-                return
-
             except Exception as e:
 
                 logger.warning(
@@ -534,28 +498,12 @@ def register_start_handlers(
         # TEXT
         # ----------------------------------------------------
 
-        sent = await message.reply_text(
+        await message.reply_text(
             text,
             reply_markup=keyboard
         )
-
-        try:
-
-            await client.send_reaction(
-                chat_id=sent.chat.id,
-                message_id=sent.id,
-                emoji=random.choice(
-                    START_REACTIONS
-                ),
-                big=True
-            )
-
-        except Exception as e:
-
-            logger.warning(
-                "START REACTION ERROR: %s",
-                e
-            )
+            
+            
 
     # ========================================================
     # FEATURES
@@ -1038,28 +986,12 @@ def register_start_handlers(
         if START_IMAGE:
 
             try:
-                sent = await client.send_photo(
-                chat_id=user_id,
-                photo=START_IMAGE,
-                caption=text,
-                reply_markup=keyboard
+                await client.send_photo(
+                    chat_id=user_id,
+                    photo=START_IMAGE,
+                    caption=text,
+                    reply_markup=keyboard
                 )
-
-                try:
-                    await client.send_reaction(
-                        chat_id=sent.chat.id,
-                        message_id=sent.id,
-                        emoji=random.choice(
-                            START_REACTIONS
-                        ),
-                        big=True
-                    )
-     
-                except Exception as e:
-                    logger.warning(
-                        "START BACK REACTION ERROR: %s",
-                        e
-                    )
 
                 return
 
@@ -1069,27 +1001,11 @@ def register_start_handlers(
                     e
                 )
 
-        sent = await client.send_message(  
+        await client.send_message(  
             chat_id=user_id, 
             text=text,
             reply_markup=keyboard
         )
-
-        try:
-            await client.send_reaction(
-                chat_id=sent.chat.id,
-                message_id=sent.id,
-                emoji=random.choice(
-                    START_REACTIONS
-                ),
-                big=True
-            )
-
-        except Exception as e:
-            logger.warning(
-                "START BACK REACTION ERROR: %s",
-                e
-            )
 
     # ========================================================
     # CLOSE
