@@ -1,7 +1,13 @@
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 import logging
-
+from premium import get_plan_by_amount
 from pyrogram import filters
-
 from database import (
     create_user,
     get_redeem_code,
@@ -9,10 +15,14 @@ from database import (
     activate_premium,
 )
 
-from premium import get_plan_by_amount
-
 logger = logging.getLogger(__name__)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def register_redeem_handlers(app):
 
@@ -34,7 +44,6 @@ def register_redeem_handlers(app):
             return
 
         code = message.command[1].strip().upper()
-
         user_id = message.from_user.id
 
         # ---------------------------------------------
@@ -238,4 +247,9 @@ def register_redeem_handlers(app):
                 "<code>/redeem PMB-AB12-CD34</code>"
             )
 
-    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
