@@ -1412,163 +1412,172 @@ def register_admin_handlers(app):
 
             pass
 
-    # ========================================================
-    # /clearjunk
-    # Delete recent messages from the current group
-    # ========================================================
+        # ============================================================
+        # /clearjunk
+        # Delete recent messages using message IDs
+        # ============================================================
 
-    @app.on_message(
-        filters.command("clearjunk")
-        & admin_only
-    )
-    async def clear_junk_handler(
-        client,
-        message
-    ):
+        @app.on_message(
+            filters.command("clearjunk")
+            & admin_only
+        )
+        async def clear_junk_handler(client, message):
 
-        if message.chat.type != ChatType.PRIVATE:
-            return await message.reply_text(
-                "❌ This command can only be used in Bot PM."
+            if message.chat.type != ChatType.PRIVATE:
+                return await message.reply_text(
+                    "❌ <b>This command can only be used in Bot PM.</b>"
             )
 
-        status = await message.reply_text(
-            "🧹 <b>Cʟᴇᴀɴɪɴɢ Rᴇᴄᴇɴᴛ Mᴇssᴀɢᴇs...</b>"
-        )
+            status = await message.reply_text(
+                "🧹 <b>Cʟᴇᴀɴɪɴɢ Lᴀsᴛ 200 Mᴇssᴀɢᴇs...</b>"
+            )
 
-        deleted = 0
-        checked = 0
+            deleted = 0
 
-        try:
+            try:
+                # Telegram bots cannot use get_chat_history().
+                # Use the known message-ID range instead.
 
-            async for msg in client.get_chat_history(
-                message.chat.id,
-                limit=200
-            ):
+                start_id = max(1, message.id - 200)
+                end_id = message.id
 
-                checked += 1
+                message_ids = list(
+                    range(start_id, end_id + 1)
+                )
+
+                # Telegram delete methods work better in small batches.
+                for i in range(0, len(message_ids), 100):
+
+                    batch = message_ids[i:i + 100]
+
+                    try:
+                        result = await client.delete_messages(
+                            chat_id=message.chat.id,
+                            message_ids=batch
+                        )
+
+                        if isinstance(result, list):
+                            deleted += len(result)
+                        else:
+                            deleted += len(batch)
+
+                    except Exception as e:
+                        logger.warning(
+                            f"Clear junk batch failed: {e}"
+                        )
+ 
+                try:
+                    await status.delete()
+                except Exception:
+                    pass
 
                 try:
-                    await client.delete_messages(
-                        message.chat.id,
-                        msg.id
+                    await message.reply_text(
+                        "🧹 <b>Cʟᴇᴀɴᴜᴘ Cᴏᴍᴘʟᴇᴛᴇ</b>\n\n"
+                        f"🗑 <b>Mᴇssᴀɢᴇs Dᴇʟᴇᴛᴇᴅ:</b> "
+                        f"<code>{deleted}</code>"
                     )
-
-                    deleted += 1
-
+     
                 except Exception as e:
                     logger.warning(
-                        "Could not delete message %s: %s",
-                        msg.id,
-                        e
+                        f"Clear junk result message failed: {e}"
                     )
 
-            try:
-                await status.delete()
-            except Exception:
-                pass
-
-            await message.reply_text(
-                "🧹 <b>Cʟᴇᴀɴᴜᴘ Cᴏᴍᴘʟᴇᴛᴇᴅ</b>\n\n"
-                f"🗑 <b>Mᴇssᴀɢᴇs Dᴇʟᴇᴛᴇᴅ:</b> "
-                f"<code>{deleted}</code>\n"
-                f"🔎 <b>Mᴇssᴀɢᴇs Cʜᴇᴄᴋᴇᴅ:</b> "
-                f"<code>{checked}</code>"
-            )
-
-        except Exception as e:
-
-            logger.exception(
-                "Clear junk error: %s",
-                e
-            )
-
-            try:
-                await status.edit_text(
-                    "❌ <b>Cleanup failed.</b>\n\n"
-                    f"<code>{escape(str(e))}</code>"
+            except Exception as e:
+                logger.exception(
+                    f"Clear junk error: {e}"
                 )
-            except Exception:
-                pass
-
-    # ========================================================
-    # /clearjunkgroup
-    # Delete more recent messages from the current group
-    # ========================================================
-
-    @app.on_message(
-        filters.command("clearjunkgroup")
-        & admin_only
-    )
-    async def clear_junk_group_handler(
-        client,
-        message
-    ):
-
-        if message.chat.type not in [
-            ChatType.GROUP,
-            ChatType.SUPERGROUP
-        ]:
-            await message.reply_text(
-                "❌ <b>This command can only be used in a group.</b>"
-            )
-            return
-   
-        status = await message.reply_text(
-            "🧹 <b>Cʟᴇᴀɴɪɴɢ Gʀᴏᴜᴘ Mᴇssᴀɢᴇs...</b>"
-        )
-
-        deleted = 0
-        checked = 0
-
-        try:
-
-            async for msg in client.get_chat_history(
-                message.chat.id,
-                limit=500
-            ):
-
-                checked += 1
 
                 try:
-                    await client.delete_messages(
-                        message.chat.id,
-                        msg.id
+                    await status.edit_text(
+                        "❌ <b>Cʟᴇᴀɴᴜᴘ Fᴀɪʟᴇᴅ</b>\n\n"
+                        f"<code>{str(e)}</code>"
                     )
+                except Exception:
+                    pass
 
-                    deleted += 1
+        # ============================================================
+        # /clearjunkgroup
+        # Delete recent 500 messages in the group
+        # ============================================================
 
-                except Exception as e:
-                    logger.warning(
-                        "Could not delete message %s: %s",
-                        msg.id,
-                        e
-                    )
+        @app.on_message(
+            filters.command("clearjunkgroup")
+            & admin_only
+        )
+        async def clear_junk_group_handler(client, message):
 
-            try:
-                await status.delete()
-            except Exception:
-                pass
-
-            await message.reply_text(
-                "🧹 <b>Gʀᴏᴜᴘ Cʟᴇᴀɴᴜᴘ Cᴏᴍᴘʟᴇᴛᴇᴅ</b>\n\n"
-                f"🗑 <b>Mᴇssᴀɢᴇs Dᴇʟᴇᴛᴇᴅ:</b> "
-                f"<code>{deleted}</code>\n"
-                f"🔎 <b>Mᴇssᴀɢᴇs Cʜᴇᴄᴋᴇᴅ:</b> "
-                f"<code>{checked}</code>"
-            )
-
-        except Exception as e:
-
-            logger.exception(
-                "Clear junk group error: %s",
-                e
-            )
-
-            try:
-                await status.edit_text(
-                    "❌ <b>Group cleanup failed.</b>\n\n"
-                    f"<code>{escape(str(e))}</code>"
+            if message.chat.type not in [
+                ChatType.GROUP,
+                ChatType.SUPERGROUP
+            ]:
+                await message.reply_text(
+                    "❌ <b>This command can only be used in a group.</b>"
                 )
-            except Exception:
-                pass
+                return
+
+            status = await message.reply_text(
+                 "🧹 <b>Cʟᴇᴀɴɪɴɢ Lᴀsᴛ 500 Mᴇssᴀɢᴇs...</b>"
+            )
+
+            deleted = 0
+
+            try:
+        
+                start_id = max(1, message.id - 500)
+                end_id = message.id
     
+                message_ids = list(
+                    range(start_id, end_id + 1)
+                )
+
+                # Delete in batches of 100.
+                for i in range(0, len(message_ids), 100):
+
+                    batch = message_ids[i:i + 100]
+
+                    try:
+                        result = await client.delete_messages(
+                            chat_id=message.chat.id,
+                            message_ids=batch
+                        )
+
+                        if isinstance(result, list):
+                            deleted += len(result)
+                        else:
+                            deleted += len(batch)
+  
+                    except Exception as e:
+                        logger.warning(
+                            f"Clear group batch failed: {e}"
+                        )
+
+                try:
+                    await status.delete()
+                except Exception:
+                    pass
+
+                try:
+                    await message.reply_text(
+                        "🧹 <b>Gʀᴏᴜᴘ Cʟᴇᴀɴᴜᴘ Cᴏᴍᴘʟᴇᴛᴇ</b>\n\n"
+                        f"🗑 <b>Mᴇssᴀɢᴇs Dᴇʟᴇᴛᴇᴅ:</b> "
+                        f"<code>{deleted}</code>"
+                    )
+
+                except Exception as e:
+                    logger.warning(
+                        f"Clear group result message failed: {e}"
+                )
+
+            except Exception as e:
+                logger.exception(
+                    f"Clear junk group error: {e}"
+                )
+
+                try:
+                    await status.edit_text(
+                        "❌ <b>Gʀᴏᴜᴘ Cʟᴇᴀɴᴜᴘ Fᴀɪʟᴇᴅ</b>\n\n"
+                        f"<code>{str(e)}</code>"
+                    )
+                except Exception:
+                    pass
