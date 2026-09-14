@@ -1,9 +1,8 @@
-# ============================================================
-# handlers/permanent_links.py
-# ============================================================
 
+import asyncio
 import logging
 import re
+from html import escape
 
 from pyrogram import filters, enums
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -27,6 +26,7 @@ logger = logging.getLogger(__name__)
 # ============================================================
 
 MAX_BATCH_FILES = 50
+DELETE_AFTER = 300
 
 UPDATES_URL = "https://t.me/Aero_Unity"
 
@@ -54,6 +54,56 @@ async def owner_required(message):
         return False
 
     return True
+
+
+# ============================================================
+# DELETE MESSAGE AFTER 5 MINUTES
+# ============================================================
+
+async def delete_after_5_minutes(
+    client,
+    chat_id,
+    message_id
+):
+
+    try:
+
+        await asyncio.sleep(DELETE_AFTER)
+
+        try:
+
+            await client.delete_messages(
+                chat_id,
+                message_id
+            )
+
+            logger.info(
+                "PERMANENT FILE/WARNING DELETED | "
+                "chat=%s | message=%s",
+                chat_id,
+                message_id
+            )
+
+        except Exception as e:
+
+            logger.warning(
+                "Failed to delete message | "
+                "chat=%s | message=%s | error=%s",
+                chat_id,
+                message_id,
+                e
+            )
+
+    except asyncio.CancelledError:
+
+        pass
+
+    except Exception as e:
+
+        logger.warning(
+            "Delete timer error | %s",
+            e
+        )
 
 
 # ============================================================
@@ -312,6 +362,62 @@ def has_supported_media(message):
 
 
 # ============================================================
+# FILE CAPTION
+# ============================================================
+
+def build_file_caption(
+    database_message
+):
+
+    original_caption = (
+        getattr(
+            database_message,
+            "caption",
+            None
+        )
+        or ""
+    ).strip()
+
+    if original_caption:
+
+        safe_caption = escape(
+            original_caption
+        )
+
+        return (
+            f"<b>{safe_caption}</b>\n\n"
+            f'<b>🔗 <a href="{UPDATES_URL}">'
+            f"Aᴇʀᴏ Uɴɪᴛʏ Uᴘᴅᴀᴛᴇs"
+            f"</a></b>"
+        )
+
+    return (
+        "<b>📁 Yᴏᴜʀ Rᴇǫᴜᴇsᴛᴇᴅ Fɪʟᴇ</b>\n\n"
+        f'<b>🔗 <a href="{UPDATES_URL}">'
+        f"Aᴇʀᴏ Uɴɪᴛʏ Uᴘᴅᴀᴛᴇs"
+        f"</a></b>"
+    )
+
+
+# ============================================================
+# FILE KEYBOARD
+# ============================================================
+
+def build_file_keyboard():
+
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "• Uᴘᴅᴀᴛᴇs •",
+                    url=UPDATES_URL
+                )
+            ]
+        ]
+    )
+
+
+# ============================================================
 # SEND ONE PERMANENT FILE
 # ============================================================
 
@@ -340,12 +446,29 @@ async def send_permanent_file(
 
     try:
 
-        await client.copy_message(
+        caption = build_file_caption(
+            database_message
+        )
+
+        sent_message = await client.copy_message(
             chat_id=user_id,
             from_chat_id=DATABASE_CHANNEL_ID,
             message_id=database_message.id,
+            caption=caption,
+            parse_mode=enums.ParseMode.HTML,
+            reply_markup=build_file_keyboard(),
             protect_content=protected
         )
+
+        if sent_message:
+
+            asyncio.create_task(
+                delete_after_5_minutes(
+                    client,
+                    user_id,
+                    sent_message.id
+                )
+            )
 
         logger.info(
             "PERMANENT FILE SENT | "
@@ -368,6 +491,62 @@ async def send_permanent_file(
         )
 
         return False
+
+
+# ============================================================
+# SEND WARNING
+# ============================================================
+
+async def send_delete_warning(
+    client,
+    user_id,
+    batch=False
+):
+
+    if batch:
+
+        text = (
+            "<b>⚠️ Tʜᴇ ʀᴇǫᴜᴇsᴛᴇᴅ ғɪʟᴇs ᴡɪʟʟ "
+            "ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴀғᴛᴇʀ 5 ᴍɪɴᴜᴛᴇs.</b>"
+        )
+
+    else:
+
+        text = (
+            "<b>⚠️ Tʜɪs ғɪʟᴇ ᴡɪʟʟ "
+            "ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴀғᴛᴇʀ 5 ᴍɪɴᴜᴛᴇs.</b>"
+        )
+
+    try:
+
+        warning = await client.send_message(
+            user_id,
+            text,
+            parse_mode=enums.ParseMode.HTML
+        )
+
+        if warning:
+
+            asyncio.create_task(
+                delete_after_5_minutes(
+                    client,
+                    user_id,
+                    warning.id
+                )
+            )
+
+        return warning
+
+    except Exception as e:
+
+        logger.warning(
+            "Failed to send delete warning | "
+            "user=%s | error=%s",
+            user_id,
+            e
+        )
+
+        return None
 
 
 # ============================================================
@@ -502,6 +681,14 @@ async def handle_permanent_link(
                 parse_mode=enums.ParseMode.HTML
             )
 
+            return
+
+        await send_delete_warning(
+            client,
+            user_id,
+            batch=False
+        )
+
         return
 
     # ========================================================
@@ -563,6 +750,14 @@ async def handle_permanent_link(
                 parse_mode=enums.ParseMode.HTML
             )
 
+            return
+
+        await send_delete_warning(
+            client,
+            user_id,
+            batch=True
+        )
+
         return
 
     # ========================================================
@@ -623,6 +818,14 @@ async def handle_permanent_link(
                 "❌ <b>No files were found in this batch.</b>",
                 parse_mode=enums.ParseMode.HTML
             )
+
+            return
+
+        await send_delete_warning(
+            client,
+            user_id,
+            batch=True
+        )
 
         return
 
