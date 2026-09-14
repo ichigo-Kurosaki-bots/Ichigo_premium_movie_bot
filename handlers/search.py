@@ -1860,7 +1860,10 @@ def register_search_handlers(app):
             "maintenance",
             "broadcast",
             "clearjunk",
-            "clearjunkgroup"
+            "clearjunkgroup",
+            "plink",
+            "pbatch",
+            "batch"
         ])
     )
     async def movie_search_handler(
