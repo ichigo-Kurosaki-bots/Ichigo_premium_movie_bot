@@ -1,8 +1,22 @@
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 import asyncio
 import logging
 import re
-from html import escape
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
+from html import escape
 from pyrogram import filters, enums
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -16,9 +30,21 @@ from handlers.fsub import (
     send_fsub_message
 )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 logger = logging.getLogger(__name__)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # CONFIG
@@ -29,6 +55,12 @@ DELETE_AFTER = 300
 
 UPDATES_URL = "https://t.me/Aero_Unity"
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # OWNER CHECK
@@ -43,6 +75,12 @@ def is_owner(message):
     except Exception:
         return False
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 async def owner_required(message):
     if not is_owner(message):
@@ -54,6 +92,12 @@ async def owner_required(message):
 
     return True
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # DELETE MESSAGE AFTER 5 MINUTES
@@ -104,6 +148,12 @@ async def delete_after_5_minutes(
             e
         )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # MESSAGE / LINK HELPERS
@@ -145,7 +195,13 @@ def get_message_id_from_link(text):
         return username, message_id
 
     return None
-
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def parse_message_reference(value):
 
@@ -163,11 +219,23 @@ def parse_message_reference(value):
 
     return get_message_id_from_link(value)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def make_single_token(message_id):
 
     return f"pl_{message_id}"
-
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def make_batch_token(
     first_id,
@@ -187,6 +255,12 @@ def make_batch_token(
         f"{last_id}"
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 async def make_start_link(
     client,
@@ -215,6 +289,12 @@ async def make_start_link(
 
         return None
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # FORWARDED MESSAGE ORIGINAL SOURCE
@@ -297,6 +377,12 @@ def get_original_message_reference(
         int(original_message_id)
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # DATABASE MESSAGE
@@ -338,6 +424,12 @@ async def get_database_message(
 
         return None
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # MEDIA CHECK
@@ -359,6 +451,12 @@ def has_supported_media(message):
         ]
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # FILE CAPTION
@@ -397,6 +495,12 @@ def build_file_caption(
         f'</a></b>'
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # FILE KEYBOARD
@@ -415,6 +519,12 @@ def build_file_keyboard():
         ]
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # SEND ONE PERMANENT FILE
@@ -495,6 +605,12 @@ async def send_permanent_file(
 
         return False
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # SEND WARNING
@@ -567,6 +683,12 @@ async def send_delete_warning(
 
         return None
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # SEND BATCH
@@ -619,6 +741,12 @@ async def send_permanent_batch(
 
     return sent, False
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # HANDLE PERMANENT LINK
@@ -861,6 +989,12 @@ async def handle_permanent_link(
         parse_mode=enums.ParseMode.HTML
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # /PLINK
@@ -1046,6 +1180,12 @@ async def plink_handler(
         )
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # GET BATCH REFERENCE
@@ -1079,6 +1219,12 @@ def get_batch_reply_reference(
 
     return int(original_message_id)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # GENERATE BATCH LINK
@@ -1391,7 +1537,13 @@ async def generate_batch_link(
             ]
         )
     )
-
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # /BATCH
@@ -1408,7 +1560,13 @@ async def batch_handler(
         message=message,
         protected=False
     )
-
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # /PBATCH
@@ -1426,6 +1584,12 @@ async def pbatch_handler(
         protected=True
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # REGISTER HANDLERS
@@ -1463,3 +1627,10 @@ def register_permanent_link_handlers(app):
     logger.info(
         "Permanent link handlers registered - OWNER ONLY"
     )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
