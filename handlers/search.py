@@ -1,9 +1,23 @@
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 import asyncio
 import logging
 import re
 import time
-from urllib.parse import quote_plus
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
+from urllib.parse import quote_plus
 from html import escape as html_escape
 from pyrogram import filters, enums
 from pyrogram.errors import MessageNotModified
@@ -11,6 +25,13 @@ from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup
 )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 from config import (
     RESULTS_PER_PAGE,
@@ -45,6 +66,13 @@ from handlers.fsub import (
 
 logger = logging.getLogger(__name__)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 # ============================================================
 # CONSTANTS
 # ============================================================
@@ -56,6 +84,13 @@ SEARCH_PAGE_SIZE = int(
 MAX_SEARCH_RESULTS = int(
     MAX_RESULTS or 50
 )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # QUERY HELPERS
@@ -75,18 +110,39 @@ def clean_query(query):
     )
 
     return query
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def normalize_query(query):
 
     query = clean_query(query)
 
     return query.lower()
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def escape_regex(text):
 
     return re.escape(
         str(text)
     )
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def create_search_patterns(query):
 
@@ -113,6 +169,13 @@ def create_search_patterns(query):
         )
 
     return patterns
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # RESULT HELPERS
@@ -207,6 +270,13 @@ def get_result_title(result):
 
     return " | ".join(parts)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 def extract_year_from_result(result):
     title = get_result_title(result)
 
@@ -220,6 +290,13 @@ def extract_year_from_result(result):
 
     return "—"
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 def get_result_message_id(result):
 
     value = result.get(
@@ -230,6 +307,13 @@ def get_result_message_id(result):
         return int(value)
     except Exception:
         return None
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def get_result_language(result):
 
@@ -241,6 +325,13 @@ def get_result_language(result):
         return ""
 
     return str(value).strip()
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def get_result_year(result):
 
@@ -315,6 +406,13 @@ def get_result_year(result):
         return match.group(1)
 
     return ""
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def get_result_quality(result):
 
@@ -366,6 +464,13 @@ def get_result_quality(result):
             return match.group(1)
 
     return ""
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def format_file_size(size):
 
@@ -382,6 +487,12 @@ def format_file_size(size):
 
     return f"{size / (1024 * 1024):.0f} MB"
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def get_result_file_size(result):
 
@@ -393,6 +504,13 @@ def get_result_file_size(result):
     )
 
     return format_file_size(value)
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # SEARCH RESULT BUTTONS
@@ -524,6 +642,13 @@ def search_result_buttons(
         buttons
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 # ============================================================
 # SEARCH TEXT
 # ============================================================
@@ -584,6 +709,14 @@ def build_search_text(
     )
 
     return text
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 # ============================================================
 # FILTER TEXT
 # ============================================================
@@ -642,7 +775,7 @@ def build_filter_text(
     if languages:
 
         text += (
-            "🌐 <b>Lᴀɴɢᴜᴀɢᴇ</b>\n"
+            "›› <b>Lᴀɴɢᴜᴀɢᴇ</b>\n"
         )
 
         text += ", ".join(
@@ -655,7 +788,7 @@ def build_filter_text(
     if years:
 
         text += (
-            "📅 <b>Yᴇᴀʀ</b>\n"
+            "›› <b>Yᴇᴀʀ</b>\n"
         )
 
         text += ", ".join(
@@ -668,7 +801,7 @@ def build_filter_text(
     if qualities:
 
         text += (
-            "🎞 <b>Qᴜᴀʟɪᴛʏ</b>\n"
+            "›› <b>Qᴜᴀʟɪᴛʏ</b>\n"
         )
 
         text += ", ".join(
@@ -681,7 +814,7 @@ def build_filter_text(
     if seasons:
 
         text += (
-            "📺 <b>Sᴇᴀsᴏɴ</b>\n"
+            "›› <b>Sᴇᴀsᴏɴ</b>\n"
         )
 
         text += ", ".join(
@@ -694,7 +827,7 @@ def build_filter_text(
     if episodes:
 
         text += (
-            "🎬 <b>Eᴘɪsᴏᴅᴇ</b>\n"
+            "›› <b>Eᴘɪsᴏᴅᴇ</b>\n"
         )
 
         text += ", ".join(
@@ -720,6 +853,12 @@ def build_filter_text(
 
     return text
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def build_filter_buttons(
     session_id,
@@ -880,6 +1019,13 @@ def build_filter_buttons(
         buttons
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 # ============================================================
 # SEARCH
 # ============================================================
@@ -929,6 +1075,12 @@ async def search_movies(
 
     return results, has_next
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 async def advanced_search(
     query,
@@ -951,6 +1103,12 @@ async def advanced_search(
 
     return results, has_next
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 async def search_exact_title(
     query,
@@ -966,6 +1124,13 @@ async def search_exact_title(
 
     return results
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 # ============================================================
 # FILTER OPTIONS
 # ============================================================
@@ -980,6 +1145,12 @@ async def get_available_filter_options(
         filters=filters_data or {}
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 async def get_available_years(
     query,
@@ -996,6 +1167,12 @@ async def get_available_years(
         []
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 async def get_available_languages(
     query,
@@ -1012,6 +1189,12 @@ async def get_available_languages(
         []
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 async def get_available_qualities(
     query,
@@ -1028,6 +1211,12 @@ async def get_available_qualities(
         []
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 async def get_available_seasons(
     query,
@@ -1044,6 +1233,12 @@ async def get_available_seasons(
         []
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 async def get_available_episodes(
     query,
@@ -1059,6 +1254,13 @@ async def get_available_episodes(
         "episodes",
         []
     )
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # SEARCH SESSION HELPERS
@@ -1076,6 +1278,12 @@ async def create_session(
         filters=filters_data or {}
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 async def get_session(
     session_id,
@@ -1087,6 +1295,12 @@ async def get_session(
         user_id=user_id
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 async def update_filters(
     session_id,
@@ -1100,6 +1314,12 @@ async def update_filters(
         filters=filters_data or {}
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 async def get_filters(
     session_id,
@@ -1110,6 +1330,13 @@ async def get_filters(
         session_id=session_id,
         user_id=user_id
     )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # USER HELPER
@@ -1153,6 +1380,13 @@ async def ensure_user(
         first_name=first_name,
         username=username
     )
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # AUTO DELETE FILE AFTER 5 MINUTES
@@ -1179,6 +1413,12 @@ async def delete_file_after_5_minutes(message):
             e
         )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 async def delete_search_results_after_5_minutes(client, chat_id, message_id):
     try:
@@ -1199,6 +1439,13 @@ async def delete_search_results_after_5_minutes(client, chat_id, message_id):
             f"Failed to delete search results "
             f"{chat_id}:{message_id}: {e}"
         )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # DATABASE FILE DELIVERY
@@ -1280,6 +1527,13 @@ async def send_database_file(
         )
 
         return None
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # FILE DEEP LINK
@@ -1567,6 +1821,13 @@ async def handle_file_deep_link(
 
     return sent
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 # ============================================================
 # SEND ALL DEEP LINK
 # ============================================================
@@ -1749,6 +2010,13 @@ async def handle_sendall_deep_link(
             delete_file_after_5_minutes(warning_message)
         )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 # ============================================================
 # REFRESH SEARCH RESULTS
 # ============================================================
@@ -1816,6 +2084,12 @@ async def refresh_filtered_results(
             e
         )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # REGISTER SEARCH HANDLERS
@@ -2008,6 +2282,13 @@ def register_search_handlers(app):
             )
         )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
     # ========================================================
     # SEARCH PAGE
     # ========================================================
@@ -2128,6 +2409,13 @@ def register_search_handlers(app):
             )
 
         await callback.answer()
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # FILE BUTTON
@@ -2224,6 +2512,13 @@ def register_search_handlers(app):
             message_id=message_id,
             user_id=user_id
         )
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # SEND ALL
@@ -2302,6 +2597,13 @@ def register_search_handlers(app):
             page=page,
             user_id=user_id
         )
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # FILTER PAGE
@@ -2395,6 +2697,13 @@ def register_search_handlers(app):
            )
 
         await callback.answer()
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # SET FILTER
@@ -2518,6 +2827,13 @@ def register_search_handlers(app):
                 e,
                 exc_info=True
             )
+            
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # CLEAR FILTERS
@@ -2609,6 +2925,13 @@ def register_search_handlers(app):
         await callback.answer(
             "Filters cleared."
         )
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # FILTER BACK
@@ -2697,6 +3020,13 @@ def register_search_handlers(app):
             )
 
         await callback.answer()
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # CLOSE SEARCH
@@ -2736,6 +3066,13 @@ def register_search_handlers(app):
             pass
 
         await callback.answer()
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # NO-OP
@@ -2752,3 +3089,11 @@ def register_search_handlers(app):
     ):
 
         await callback.answer()
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
