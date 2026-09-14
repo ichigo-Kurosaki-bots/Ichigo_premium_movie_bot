@@ -1,6 +1,20 @@
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 import os
 import asyncio
 import logging
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 from pyrogram.errors import MessageNotModified
 from pyrogram import filters
@@ -8,6 +22,13 @@ from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup
 )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 from config import (
     FREE_REQUESTS
@@ -37,6 +58,13 @@ from handlers.search import (
 
 logger = logging.getLogger(__name__)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 # ============================================================
 # CONFIG
 # ============================================================
@@ -55,6 +83,13 @@ MOVIES_GROUP_URL = os.getenv(
     "MOVIES_GROUP_URL",
     "https://t.me/+YaRuf7dVB6RlZWJl"
 )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # START BUTTONS
@@ -115,6 +150,13 @@ def start_buttons(
             ]
         ]
     )
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # START TEXT
@@ -162,6 +204,13 @@ def build_start_text(
         'ᴍᴏʜᴀᴍᴍᴇᴅ'
         '</a></b>'
     )
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # ENSURE USER
@@ -214,6 +263,13 @@ async def ensure_start_user(
         )
 
     return user
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # REGISTER
@@ -578,6 +634,13 @@ def register_start_handlers(
 
         await callback.answer()
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
     # ========================================================
     # ABOUT
     # ========================================================
@@ -652,6 +715,13 @@ def register_start_handlers(
             )
 
         await callback.answer()
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # HOME
@@ -715,6 +785,13 @@ def register_start_handlers(
             pass
 
         await callback.answer()
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # ACCOUNT
@@ -763,6 +840,13 @@ def register_start_handlers(
         )
 
         await callback.answer()
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # PREMIUM
@@ -790,6 +874,13 @@ def register_start_handlers(
             pass
 
         await callback.answer()
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # HELP
@@ -851,6 +942,13 @@ def register_start_handlers(
         )
 
         await callback.answer()
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # SEARCH HELP
@@ -894,6 +992,13 @@ def register_start_handlers(
         )
 
         await callback.answer()
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # START BACK
@@ -1006,6 +1111,13 @@ def register_start_handlers(
             text=text,
             reply_markup=keyboard
         )
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # CLOSE
@@ -1033,6 +1145,13 @@ def register_start_handlers(
                 "CLOSE MESSAGE DELETE ERROR: %s",
                 e
             )
+            
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # PREMIUM BACK
@@ -1054,3 +1173,10 @@ def register_start_handlers(
             format_plans(),
             reply_markup=premium_buttons()
         )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
