@@ -66,6 +66,10 @@ from handlers.redeem import (
     register_redeem_handlers
 )
 
+from handlers.permanent_links import (
+    register_permanent_link_handlers
+)
+
 from indexer import (
     handle_database_post
 )
@@ -257,6 +261,10 @@ async def main():
     register_redeem_handlers(app)
 
     logger.info("TEST 6")
+
+    register_permanent_link_handlers(app)
+
+    logger.info("PERMANENT LINKS HANDLERS REGISTERED")
     
     register_start_handlers(app)
 
