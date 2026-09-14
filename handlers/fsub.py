@@ -526,9 +526,28 @@ def register_fsub_callback_handler(app):
 
                         await handle_sendall_deep_link(
                             client=client,
-                            message=callback.message,
+                            message=callback_query.message,
                             session_id=session_id,
                             page=page,
+                            user_id=user_id
+                        )
+                        
+                    # ========================================
+                    # PERMANENT LINK REQUEST
+                    # ========================================
+
+                    elif deep_link.startswith(
+                        ("pl_", "ba_", "pb_")
+                    ):
+
+                        from handlers.permanent_links import (
+                            handle_permanent_link
+                        )
+
+                        await handle_permanent_link(
+                            client=client,
+                            message=callback_query.message,
+                            token=deep_link,
                             user_id=user_id
                         )
 
