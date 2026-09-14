@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 import re
@@ -384,18 +383,18 @@ def build_file_caption(
             original_caption
         )
 
+        # The actual file caption/title itself
+        # is clickable and opens the Updates channel.
         return (
-            f"<b>{safe_caption}</b>\n\n"
-            f'<b>🔗 <a href="{UPDATES_URL}">'
-            f"Aᴇʀᴏ Uɴɪᴛʏ Uᴘᴅᴀᴛᴇs"
-            f"</a></b>"
+            f'<b><a href="{UPDATES_URL}">'
+            f'{safe_caption}'
+            f'</a></b>'
         )
 
     return (
-        "<b>📁 Yᴏᴜʀ Rᴇǫᴜᴇsᴛᴇᴅ Fɪʟᴇ</b>\n\n"
-        f'<b>🔗 <a href="{UPDATES_URL}">'
-        f"Aᴇʀᴏ Uɴɪᴛʏ Uᴘᴅᴀᴛᴇs"
-        f"</a></b>"
+        f'<b><a href="{UPDATES_URL}">'
+        f'📁 Yᴏᴜʀ Rᴇǫᴜᴇsᴛᴇᴅ Fɪʟᴇ'
+        f'</a></b>'
     )
 
 
@@ -460,6 +459,10 @@ async def send_permanent_file(
             protect_content=protected
         )
 
+        # ----------------------------------------------------
+        # DELETE FILE AFTER 5 MINUTES
+        # ----------------------------------------------------
+
         if sent_message:
 
             asyncio.create_task(
@@ -506,15 +509,27 @@ async def send_delete_warning(
     if batch:
 
         text = (
-            "<b>⚠️ Tʜᴇ ʀᴇǫᴜᴇsᴛᴇᴅ ғɪʟᴇs ᴡɪʟʟ "
-            "ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴀғᴛᴇʀ 5 ᴍɪɴᴜᴛᴇs.</b>"
+            "<b>⌛ Dᴜᴇ Tᴏ Cᴏᴘʏʀɪɢʜᴛ Iѕѕᴜᴇѕ...</b>\n\n"
+            "<b>» Yᴏᴜʀ Fɪʟᴇѕ Wɪʟʟ Bᴇ Dᴇʟᴇᴛᴇᴅ Wɪᴛʜɪɴ 5 Mɪɴ\n"
+            "Sᴏ Pʟᴇᴀѕᴇ Fᴏʀᴡᴀʀᴅ Tʜᴇᴍ Tᴏ Aɴʏ Oᴛʜᴇʀ\n"
+            "Pʟᴀᴄᴇ Oʀ Sᴀᴠᴇᴅ Mᴇѕѕᴀɢᴇѕ Fᴏʀ Fᴜᴛᴜʀᴇ\n"
+            "Aᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n\n"
+            "<b>Nᴏᴛᴇ : Uѕᴇ VLC Pʟᴀʏᴇʀ Oʀ MX Pʟᴀʏᴇʀ\n"
+            "Tᴏ Wᴀᴛᴄʜ Tʜᴇ Eᴘɪѕᴏᴅᴇѕ Wɪᴛʜ Gᴏᴏᴅ\n"
+            "Exᴘᴇʀɪᴇɴᴄᴇ</b>"
         )
 
     else:
 
         text = (
-            "<b>⚠️ Tʜɪs ғɪʟᴇ ᴡɪʟʟ "
-            "ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴀғᴛᴇʀ 5 ᴍɪɴᴜᴛᴇs.</b>"
+            "<b>⌛ Dᴜᴇ Tᴏ Cᴏᴘʏʀɪɢʜᴛ Iѕѕᴜᴇѕ...</b>\n\n"
+            "<b>» Yᴏᴜʀ Fɪʟᴇ Wɪʟʟ Bᴇ Dᴇʟᴇᴛᴇᴅ Wɪᴛʜɪɴ 5 Mɪɴ\n"
+            "Sᴏ Pʟᴇᴀѕᴇ Fᴏʀᴡᴀʀᴅ Iᴛ Tᴏ Aɴʏ Oᴛʜᴇʀ\n"
+            "Pʟᴀᴄᴇ Oʀ Sᴀᴠᴇᴅ Mᴇѕѕᴀɢᴇѕ Fᴏʀ Fᴜᴛᴜʀᴇ\n"
+            "Aᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n\n"
+            "<b>Nᴏᴛᴇ : Uѕᴇ VLC Pʟᴀʏᴇʀ Oʀ MX Pʟᴀʏᴇʀ\n"
+            "Tᴏ Wᴀᴛᴄʜ Tʜᴇ Eᴘɪѕᴏᴅᴇ Wɪᴛʜ Gᴏᴏᴅ\n"
+            "Exᴘᴇʀɪᴇɴᴄᴇ</b>"
         )
 
     try:
@@ -524,6 +539,10 @@ async def send_delete_warning(
             text,
             parse_mode=enums.ParseMode.HTML
         )
+
+        # ----------------------------------------------------
+        # DELETE WARNING AFTER 5 MINUTES
+        # ----------------------------------------------------
 
         if warning:
 
@@ -683,6 +702,7 @@ async def handle_permanent_link(
 
             return
 
+        # Warning comes AFTER the file
         await send_delete_warning(
             client,
             user_id,
@@ -752,6 +772,7 @@ async def handle_permanent_link(
 
             return
 
+        # Warning comes AFTER all batch files
         await send_delete_warning(
             client,
             user_id,
@@ -821,6 +842,7 @@ async def handle_permanent_link(
 
             return
 
+        # Warning comes AFTER all protected batch files
         await send_delete_warning(
             client,
             user_id,
