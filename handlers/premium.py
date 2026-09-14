@@ -1,8 +1,22 @@
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 from pyrogram import filters
 from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup
 )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 from config import (
     OWNER_ID,
@@ -32,6 +46,12 @@ from utils.buttons import (
     home_buttons
 )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # ADMIN CHECK
@@ -44,10 +64,16 @@ def is_admin(user_id):
 
     return user_id in ADMIN_IDS
 
-
 # ============================================================
 # REGISTER PREMIUM HANDLERS
 # ============================================================
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def register_premium_handlers(app):
 
@@ -73,6 +99,12 @@ def register_premium_handlers(app):
             reply_markup=premium_buttons()
         )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # /myplan
@@ -224,7 +256,7 @@ def register_premium_handlers(app):
                 f"• 🎟 <b>Rᴇᴍᴀɪɴɪɴɢ :</b> "
                 f"<b>{remaining}</b>\n\n"
 
-                "<i>✅ Your Premium plan is currently active.</i>"
+                "<b><i>✅ Yᴏᴜʀ Pʀᴇᴍɪᴜᴍ ᴘʟᴀɴ ɪs ᴄᴜʀʀᴇɴᴛʟʏ ᴀᴄᴛɪᴠᴇ .</i></b>"
             )
 
         else:
@@ -233,7 +265,7 @@ def register_premium_handlers(app):
                 f"• 🎬 <b>Fʀᴇᴇ Rᴇǫᴜᴇѕᴛѕ Lᴇғᴛ :</b> "
                 f"<b>{remaining}</b>\n\n"
 
-                "<i>You don't have any active Premium plan.</i>"
+                "<b><i>Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ ᴀɴʏ ᴀᴄᴛɪᴠᴇ Pʀᴇᴍɪᴜᴍ ᴘʟᴀɴ.</i></b>"
             )
 
         # ----------------------------------------------------
@@ -286,18 +318,7 @@ def register_premium_handlers(app):
             text,
             reply_markup=buttons
         )
-
-
-    # ========================================================
-    # PREMIUM PLAN SELECTION
-    #
-    # callback:
-    # plan_10
-    # plan_20
-    # plan_50
-    # etc.
-    # ========================================================
-
+        
     @app.on_callback_query(
         filters.regex(
             r"^plan_\d+$"
@@ -347,17 +368,17 @@ def register_premium_handlers(app):
         )
 
         text = (
-            "💎 <b>Premium Plan</b>\n\n"
+            " <b>Pʀᴇᴍɪᴜᴍ Pʟᴀɴ</b>\n\n"
+            
+            f"<b>›› Pʟᴀɴ: {name}</b>\n"
+            f"<b>›› Aᴍᴏᴜɴᴛ: ₹{amount}</b>\n"
+            f"<b>›› Rᴇǫᴜᴇsᴛs: {requests}</b>\n\n"
 
-            f"📦 Plan: <b>{name}</b>\n"
-            f"💰 Price: <b>₹{amount}</b>\n"
-            f"🎬 Requests: <b>{requests}</b>\n\n"
+            "<b><i>Aғᴛᴇʀ ᴘᴀʏᴍᴇɴᴛ, sᴇɴᴅ ʏᴏᴜʀ</i></b>"
+            "<b>Tᴇʟᴇɢʀᴀᴍ Usᴇʀ ID Tᴏ Tʜᴇ Oᴡɴᴇʀ.</b>\n\n"
 
-            "After payment, send your "
-            "<b>Telegram User ID</b> to the owner.\n\n"
-
-            "The owner will verify the payment "
-            "and activate your plan."
+            "<b>Tʜᴇ ᴏᴡɴᴇʀ ᴡɪʟʟ ᴠᴇʀɪғʏ ᴛʜᴇ ᴘᴀʏᴍᴇɴᴛ "
+            "ᴀɴᴅ ᴀᴄᴛɪᴠᴀᴛᴇ ʏᴏᴜʀ ᴘʟᴀɴ.</b>"
         )
 
         await callback.message.edit_text(
@@ -368,7 +389,13 @@ def register_premium_handlers(app):
         )
 
         await callback.answer()
-
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # PAYMENT INSTRUCTIONS
@@ -425,28 +452,28 @@ def register_premium_handlers(app):
         user_id = callback.from_user.id
 
         text = (
-            "💳 <b>Payment Instructions</b>\n\n"
+            "💳 <b>Pᴀʏᴍᴇɴᴛ Iɴsᴛʀᴜᴄᴛɪᴏɴs</b>\n\n"
 
-            f"📦 Plan: <b>{name}</b>\n"
-            f"💰 Amount: <b>₹{amount}</b>\n"
-            f"🎬 Requests: <b>{requests}</b>\n\n"
+            f"<b>›› Pʟᴀɴ: {name}</b>\n"
+            f"<b>›› Aᴍᴏᴜɴᴛ: ₹{amount}</b>\n"
+            f"<b>›› Rᴇǫᴜᴇsᴛs: {requests}</b>\n\n"
 
             "━━━━━━━━━━━━━━━━━━\n\n"
 
-            "👤 <b>Contact the bot owner to pay.</b>\n\n"
+            "👤 <b>Cᴏɴᴛᴀᴄᴛ ᴛʜᴇ ʙᴏᴛ ᴏᴡɴᴇʀ ᴛᴏ ᴘᴀʏ.</b>\n\n"
 
-            "After completing the payment, "
-            "send the following information to "
-            "the owner:\n\n"
+            "<b>Aғᴛᴇʀ ᴄᴏᴍᴘʟᴇᴛɪɴɢ ᴛʜᴇ ᴘᴀʏᴍᴇɴᴛ, "
+            "sᴇɴᴅ ᴛʜᴇ ғᴏʟʟᴏᴡɪɴɢ ɪɴғᴏʀᴍᴀᴛɪᴏɴ ᴛᴏ "
+            "ᴛʜᴇ Oᴡɴᴇʀ:</b>\n\n"
 
-            f"🆔 Your Telegram ID:\n"
+            f"<b>›› Yᴏᴜʀ Tᴇʟᴇɢʀᴀᴍ ID:</b>\n"
             f"<code>{user_id}</code>\n\n"
 
-            f"💰 Paid amount:\n"
+            f"<b>›› Pᴀɪᴅ Aᴍᴏᴜɴᴛ: </b>\n"
             f"<code>₹{amount}</code>\n\n"
 
-            "The owner will verify your payment "
-            "and activate the Premium plan."
+            "<b>Tʜᴇ ᴏᴡɴᴇʀ ᴡɪʟʟ ᴠᴇʀɪғʏ ᴛʜᴇ ᴘᴀʏᴍᴇɴᴛ "
+            "ᴀɴᴅ ᴀᴄᴛɪᴠᴀᴛᴇ ᴛʜᴇ Pʀᴇᴍɪᴜᴍ ᴘʟᴀɴ.</b>"
         )
 
         await callback.message.edit_text(
@@ -455,17 +482,15 @@ def register_premium_handlers(app):
         )
 
         await callback.answer()
-
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
-    # OWNER: /addpremium
-    #
-    # Usage:
-    #
-    # /addpremium USER_ID AMOUNT
-    #
-    # Example:
-    #
     # /addpremium 123456789 20
     # ========================================================
 
@@ -484,7 +509,7 @@ def register_premium_handlers(app):
         if not is_admin(admin_id):
 
             await message.reply_text(
-                "🚫 <b>Access denied.</b>"
+                "🚫 <b>Aᴄᴄᴇss Dᴇɴɪᴇᴅ</b>"
             )
 
             return
@@ -493,10 +518,7 @@ def register_premium_handlers(app):
 
             await message.reply_text(
                 "❌ <b>Invalid format.</b>\n\n"
-
-                "<b>Usage:</b>\n"
-                "<code>/addpremium USER_ID AMOUNT</code>\n\n"
-
+                
                 "<b>Example:</b>\n"
                 "<code>/addpremium 123456789 20</code>"
             )
@@ -588,18 +610,18 @@ def register_premium_handlers(app):
         # ----------------------------------------------------
 
         await message.reply_text(
-            "✅ <b>Premium activated!</b>\n\n"
-
-            f"👤 User ID: "
+            "✅ <b>Pʀᴇᴍɪᴜᴍ Aᴄᴛɪᴠᴀᴛᴇᴅ!</b>\n\n"
+            
+            f"<b>›› Usᴇʀ ID: </b> "
             f"<code>{target_user_id}</code>\n"
 
-            f"📦 Plan: "
+            f"<b>›› Pʟᴀɴ: </b>"
             f"<b>{plan.get('name', 'Premium')}</b>\n"
 
-            f"💰 Amount: "
+            f"<b>›› Aᴍᴏᴜɴᴛ: </b> "
             f"<b>₹{amount}</b>\n"
 
-            f"🎬 Requests: "
+            f"<b>›› Rᴇǫᴜᴇsᴛs: </b>"
             f"<b>{plan.get('requests', 0)}</b>"
         )
 
@@ -612,19 +634,19 @@ def register_premium_handlers(app):
             await client.send_message(
                 target_user_id,
 
-                "🎉 <b>Premium Activated!</b>\n\n"
+                "🎉 <b>Pʀᴇᴍɪᴜᴍ Aᴄᴛɪᴠᴀᴛᴇᴅ!</b>\n\n"
 
-                f"📦 Plan: "
+                f"<b>›› Pʟᴀɴ: </b> "
                 f"<b>{plan.get('name', 'Premium')}</b>\n"
 
-                f"💰 Amount: "
+                f"<b>›› Aᴍᴏᴜɴᴛ: </b>"
                 f"<b>₹{amount}</b>\n"
 
-                f"🎬 Requests: "
+                f"<b>›› Rᴇǫᴜᴇsᴛs: </b>"
                 f"<b>{plan.get('requests', 0)}</b>\n\n"
 
-                "✅ Your Premium plan is now active.\n"
-                "You can search for movies and request files."
+                "<b>✅ Yᴏᴜʀ Pʀᴇᴍɪᴜᴍ ᴘʟᴀɴ ɪs ɴᴏᴡ ᴀᴄᴛɪᴠᴇ .</b>\n"
+                "<b>Yᴏᴜ ᴄᴀɴ sᴇᴀʀᴄʜ ғᴏʀ ᴍᴏᴠɪᴇs ᴀɴᴅ ʀᴇǫᴜᴇsᴛ ғɪʟᴇs.</b>"
             )
 
         except Exception as e:
@@ -633,12 +655,14 @@ def register_premium_handlers(app):
                 f"Premium notification error: {e}"
             )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
-    # OWNER: /removepremium
-    #
-    # Usage:
-    #
     # /removepremium USER_ID
     # ========================================================
 
@@ -657,7 +681,7 @@ def register_premium_handlers(app):
         if not is_admin(admin_id):
 
             await message.reply_text(
-                "🚫 <b>Access denied.</b>"
+                "🚫 <b>Aᴄᴄᴇss Dᴇɴɪᴇᴅ.</b>"
             )
 
             return
@@ -665,11 +689,8 @@ def register_premium_handlers(app):
         if len(message.command) < 2:
 
             await message.reply_text(
-                "❌ <b>Invalid format.</b>\n\n"
-
-                "<b>Usage:</b>\n"
-                "<code>/removepremium USER_ID</code>\n\n"
-
+                "❌ <b>Invalid ID</b>\n\n"
+                
                 "<b>Example:</b>\n"
                 "<code>/removepremium 123456789</code>"
             )
@@ -715,8 +736,8 @@ def register_premium_handlers(app):
             return
 
         await message.reply_text(
-            "✅ <b>Premium removed.</b>\n\n"
-            f"👤 User ID: "
+            "✅ <b>Pʀᴇᴍɪᴜᴍ Rᴇᴍᴏᴠᴇᴅ.</b>\n\n"
+            f"<b>›› Usᴇʀ ID: </b> "
             f"<code>{target_user_id}</code>"
         )
 
@@ -725,9 +746,9 @@ def register_premium_handlers(app):
             await client.send_message(
                 target_user_id,
 
-                "ℹ️ <b>Premium Removed</b>\n\n"
-                "Your Premium plan has been removed "
-                "by the administrator."
+                "ℹ️ <b>Pʀᴇᴍɪᴜᴍ Rᴇᴍᴏᴠᴇᴅ</b>\n\n"
+                "<b>Sᴏʀʀʏ Tᴏ Sᴀʏ, Yᴏᴜʀ Pʀᴇᴍɪᴜᴍ ᴘʟᴀɴ ʜᴀs ʙᴇᴇɴ ʀᴇᴍᴏᴠᴇᴅ "
+                "Bʏ Tʜᴇ Oᴡɴᴇʀ</b>"
             )
 
         except Exception as e:
@@ -735,3 +756,10 @@ def register_premium_handlers(app):
             print(
                 f"Premium removal notification error: {e}"
         )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
