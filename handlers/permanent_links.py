@@ -6,9 +6,13 @@ import logging
 import re
 
 from pyrogram import filters, enums
-from pyrogram.types import InlineKeyboardMarkup
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from config import DATABASE_CHANNEL_ID
+from config import (
+    DATABASE_CHANNEL_ID,
+    OWNER_ID
+)
+
 from handlers.fsub import (
     check_all_fsubs,
     send_fsub_message
@@ -24,31 +28,52 @@ logger = logging.getLogger(__name__)
 
 MAX_BATCH_FILES = 50
 
+UPDATES_URL = "https://t.me/Aero_Unity"
+
+
+# ============================================================
+# OWNER CHECK
+# ============================================================
+
+def is_owner(message):
+    try:
+        return (
+            message.from_user
+            and int(message.from_user.id) == int(OWNER_ID)
+        )
+    except Exception:
+        return False
+
+
+async def owner_required(message):
+    if not is_owner(message):
+        await message.reply_text(
+            "❌ <b>Only the Owner can use this command.</b>",
+            parse_mode=enums.ParseMode.HTML
+        )
+        return False
+
+    return True
+
 
 # ============================================================
 # MESSAGE / LINK HELPERS
 # ============================================================
 
 def get_message_id_from_link(text):
-    """
-    Supports:
-
-    https://t.me/c/1234567890/123
-    https://t.me/channelname/123
-    """
 
     if not text:
         return None
 
     text = text.strip()
 
-    # Private channel link
     match = re.search(
         r"(?:https?://)?t\.me/c/(\d+)/(\d+)",
         text
     )
 
     if match:
+
         channel_number = match.group(1)
         message_id = int(match.group(2))
 
@@ -58,13 +83,13 @@ def get_message_id_from_link(text):
 
         return channel_id, message_id
 
-    # Public channel link
     match = re.search(
         r"(?:https?://)?t\.me/([A-Za-z0-9_]+)/(\d+)",
         text
     )
 
     if match:
+
         username = match.group(1)
         message_id = int(match.group(2))
 
@@ -74,15 +99,6 @@ def get_message_id_from_link(text):
 
 
 def parse_message_reference(value):
-    """
-    Supports:
-
-    12345
-
-    https://t.me/c/1234567890/12345
-
-    https://t.me/channelname/12345
-    """
 
     if not value:
         return None
@@ -90,15 +106,17 @@ def parse_message_reference(value):
     value = value.strip()
 
     if value.isdigit():
-        return DATABASE_CHANNEL_ID, int(value)
+
+        return (
+            DATABASE_CHANNEL_ID,
+            int(value)
+        )
 
     return get_message_id_from_link(value)
 
 
 def make_single_token(message_id):
-    """
-    Protected single-file permanent link.
-    """
+
     return f"pl_{message_id}"
 
 
@@ -107,15 +125,12 @@ def make_batch_token(
     last_id,
     protected=False
 ):
-    """
-    Normal:
-        ba_FIRST_LAST
 
-    Protected:
-        pb_FIRST_LAST
-    """
-
-    prefix = "pb_" if protected else "ba_"
+    prefix = (
+        "pb_"
+        if protected
+        else "ba_"
+    )
 
     return (
         f"{prefix}"
@@ -128,9 +143,6 @@ async def make_start_link(
     client,
     token
 ):
-    """
-    Create Telegram bot deep link.
-    """
 
     try:
 
@@ -162,20 +174,9 @@ async def make_start_link(
 def get_original_message_reference(
     message
 ):
-    """
-    Get the original channel/message ID from
-    a forwarded Telegram message.
-
-    Supports modern Pyrogram forward_origin
-    and older forward fields.
-    """
 
     original_chat_id = None
     original_message_id = None
-
-    # --------------------------------------------------------
-    # Modern Pyrogram
-    # --------------------------------------------------------
 
     try:
 
@@ -213,10 +214,6 @@ def get_original_message_reference(
             "forward_origin read failed: %s",
             e
         )
-
-    # --------------------------------------------------------
-    # Older Pyrogram fields
-    # --------------------------------------------------------
 
     if not original_message_id:
 
@@ -260,12 +257,6 @@ async def get_database_message(
     client,
     message_id
 ):
-    """
-    Retrieve a known message from the database channel.
-
-    IMPORTANT:
-    This does NOT use get_chat_history().
-    """
 
     try:
 
@@ -282,6 +273,7 @@ async def get_database_message(
             "empty",
             False
         ):
+
             return None
 
         return message
@@ -329,10 +321,6 @@ async def send_permanent_file(
     message_id,
     protected=False
 ):
-    """
-    Copy one original database-channel message
-    to the user's private chat.
-    """
 
     database_message = (
         await get_database_message(
@@ -347,6 +335,7 @@ async def send_permanent_file(
     if not has_supported_media(
         database_message
     ):
+
         return False
 
     try:
@@ -392,9 +381,6 @@ async def send_permanent_batch(
     last_id,
     protected=False
 ):
-    """
-    Send database messages between first_id and last_id.
-    """
 
     if first_id > last_id:
 
@@ -430,6 +416,7 @@ async def send_permanent_batch(
         )
 
         if success:
+
             sent += 1
 
     return sent, False
@@ -445,15 +432,6 @@ async def handle_permanent_link(
     token,
     user_id=None
 ):
-    """
-    Handles:
-
-    pl_<message_id>
-
-    ba_<first_id>_<last_id>
-
-    pb_<first_id>_<last_id>
-    """
 
     if not user_id:
 
@@ -661,20 +639,16 @@ async def handle_permanent_link(
 
 # ============================================================
 # /PLINK
+# OWNER ONLY
 # ============================================================
 
 async def plink_handler(
     client,
     message
 ):
-    """
-    /plink
 
-    Works in Bot PM by replying to a forwarded
-    Database-channel media message.
-
-    Also works directly inside the Database channel.
-    """
+    if not await owner_required(message):
+        return
 
     if not message.reply_to_message:
 
@@ -823,19 +797,28 @@ async def plink_handler(
         return
 
     # ========================================================
-    # SEND LINK
+    # SEND RESULT
     # ========================================================
 
     await message.reply_text(
         (
             "🔗 <b>Pᴇʀᴍᴀɴᴇɴᴛ Lɪɴᴋ Gᴇɴᴇʀᴀᴛᴇᴅ</b>\n\n"
-            "🔐 <b>Protected:</b> Yes\n"
-            f"🆔 <b>File ID:</b> "
-            f"{original_message_id}\n\n"
-            f"🔗 <b>Link:</b>\n{link}"
+            f"🔗 <b><a href=\"{link}\">Oᴘᴇɴ Pᴇʀᴍᴀɴᴇɴᴛ Lɪɴᴋ</a></b>\n\n"
+            f"<b>Powered By: "
+            f"<a href=\"{UPDATES_URL}\">Aᴇʀᴏ Uɴɪᴛʏ</a></b>"
         ),
         parse_mode=enums.ParseMode.HTML,
-        disable_web_page_preview=True
+        disable_web_page_preview=False,
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "• Uᴘᴅᴀᴛᴇs •",
+                        url=UPDATES_URL
+                    )
+                ]
+            ]
+        )
     )
 
 
@@ -846,10 +829,6 @@ async def plink_handler(
 def get_batch_reply_reference(
     replied
 ):
-    """
-    Get the original Database message ID
-    from a forwarded message.
-    """
 
     if not replied:
         return None
@@ -870,6 +849,7 @@ def get_batch_reply_reference(
     if str(original_chat_id) != str(
         DATABASE_CHANNEL_ID
     ):
+
         return None
 
     return int(original_message_id)
@@ -884,28 +864,9 @@ async def generate_batch_link(
     message,
     protected=False
 ):
-    """
-    Supports Bot PM:
 
-    /batch 100 120
-
-    /pbatch 100 120
-
-    /batch https://t.me/c/1234567890/100 https://t.me/c/1234567890/120
-
-    /pbatch https://t.me/c/1234567890/100 https://t.me/c/1234567890/120
-
-    OR:
-
-    Reply to forwarded Database file with:
-
-    /batch 120
-
-    /pbatch 120
-
-    The replied file becomes FIRST ID.
-    The command argument becomes LAST ID.
-    """
+    if not await owner_required(message):
+        return
 
     text = (
         message.text
@@ -914,10 +875,6 @@ async def generate_batch_link(
     )
 
     command_parts = text.split()
-
-    # ========================================================
-    # COMMAND NAME
-    # ========================================================
 
     command_name = (
         "pbatch"
@@ -939,13 +896,8 @@ async def generate_batch_link(
             )
         )
 
-        # ----------------------------------------------------
-        # If replied message is from DB
-        # ----------------------------------------------------
-
         if first_id:
 
-            # /batch <last>
             if len(command_parts) == 2:
 
                 last_ref = (
@@ -957,9 +909,7 @@ async def generate_batch_link(
                 if not last_ref:
 
                     await message.reply_text(
-                        (
-                            "❌ <b>Invalid last message.</b>"
-                        ),
+                        "❌ <b>Invalid last message.</b>",
                         parse_mode=enums.ParseMode.HTML
                     )
 
@@ -1052,10 +1002,6 @@ async def generate_batch_link(
 
         first_chat, first_id = first_ref
         last_chat, last_id = last_ref
-
-        # ----------------------------------------------------
-        # Both must be database channel
-        # ----------------------------------------------------
 
         if str(first_chat) != str(
             DATABASE_CHANNEL_ID
@@ -1191,33 +1137,47 @@ async def generate_batch_link(
     # ========================================================
 
     batch_type = (
-        "Protected Batch"
+        "Pʀᴏᴛᴇᴄᴛᴇᴅ Bᴀᴛᴄʜ"
         if protected
-        else "Normal Batch"
+        else "Nᴏʀᴍᴀʟ Bᴀᴛᴄʜ"
     )
 
     await message.reply_text(
         (
             "🔗 <b>Pᴇʀᴍᴀɴᴇɴᴛ Bᴀᴛᴄʜ Lɪɴᴋ Gᴇɴᴇʀᴀᴛᴇᴅ</b>\n\n"
-            f"📦 <b>Type:</b> {batch_type}\n"
-            f"📁 <b>Files:</b> {total}\n"
-            f"🔢 <b>Range:</b> "
+            f"📦 <b>Tʏᴘᴇ:</b> {batch_type}\n"
+            f"📁 <b>Fɪʟᴇs:</b> {total}\n"
+            f"🔢 <b>Rᴀɴɢᴇ:</b> "
             f"{first_id} - {last_id}\n\n"
-            f"🔗 <b>Link:</b>\n{link}"
+            f"🔗 <b><a href=\"{link}\">Oᴘᴇɴ Bᴀᴛᴄʜ Lɪɴᴋ</a></b>\n\n"
+            f"<b>Powered By: "
+            f"<a href=\"{UPDATES_URL}\">Aᴇʀᴏ Uɴɪᴛʏ</a></b>"
         ),
         parse_mode=enums.ParseMode.HTML,
-        disable_web_page_preview=True
+        disable_web_page_preview=False,
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "• Uᴘᴅᴀᴛᴇs •",
+                        url=UPDATES_URL
+                    )
+                ]
+            ]
+        )
     )
 
 
 # ============================================================
 # /BATCH
+# OWNER ONLY
 # ============================================================
 
 async def batch_handler(
     client,
     message
 ):
+
     await generate_batch_link(
         client=client,
         message=message,
@@ -1227,12 +1187,14 @@ async def batch_handler(
 
 # ============================================================
 # /PBATCH
+# OWNER ONLY
 # ============================================================
 
 async def pbatch_handler(
     client,
     message
 ):
+
     await generate_batch_link(
         client=client,
         message=message,
@@ -1247,7 +1209,7 @@ async def pbatch_handler(
 def register_permanent_link_handlers(app):
 
     # --------------------------------------------------------
-    # /plink
+    # /plink - OWNER ONLY - PRIVATE PM
     # --------------------------------------------------------
 
     app.on_message(
@@ -1256,7 +1218,7 @@ def register_permanent_link_handlers(app):
     )(plink_handler)
 
     # --------------------------------------------------------
-    # /batch
+    # /batch - OWNER ONLY - PRIVATE PM
     # --------------------------------------------------------
 
     app.on_message(
@@ -1265,7 +1227,7 @@ def register_permanent_link_handlers(app):
     )(batch_handler)
 
     # --------------------------------------------------------
-    # /pbatch
+    # /pbatch - OWNER ONLY - PRIVATE PM
     # --------------------------------------------------------
 
     app.on_message(
@@ -1274,5 +1236,5 @@ def register_permanent_link_handlers(app):
     )(pbatch_handler)
 
     logger.info(
-        "Permanent link handlers registered"
+        "Permanent link handlers registered - OWNER ONLY"
     )
