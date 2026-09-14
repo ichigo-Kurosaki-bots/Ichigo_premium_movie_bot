@@ -1,3 +1,10 @@
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 import asyncio
 from datetime import datetime
 from config import PREMIUM_PLANS
@@ -7,6 +14,13 @@ from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup
 )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 from database import (
     get_user,
@@ -25,6 +39,12 @@ from utils.buttons import (
     premium_buttons
 )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # TOKEN BUTTONS
@@ -53,6 +73,12 @@ def token_buttons():
         ]
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # TOKEN PREMIUM REDEEM BUTTONS
@@ -98,6 +124,12 @@ def token_redeem_buttons():
 
     return InlineKeyboardMarkup(buttons)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # TOKEN PANEL TEXT
@@ -141,6 +173,13 @@ def build_token_text(
         "• Sᴛᴀʀᴛᴇʀ Pʀᴇᴍɪᴜᴍ Pʟᴀɴ "
         "<b>ɢɪᴠᴇs 𝟸𝟶 ᴍᴏᴠɪᴇs ʀᴇǫᴜᴇsᴛs</b>."
     )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # REGISTER TOKEN HANDLERS
@@ -218,7 +257,16 @@ def register_token_handlers(app):
             ),
             reply_markup=token_buttons()
         )
-
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+    # -------------------
+    # /gentoken 
+    # -------------------
     @app.on_message(
         filters.command("gentoken")
         & filters.private
@@ -410,6 +458,12 @@ def register_token_handlers(app):
             "ғᴏʀ ᴜɴʟɪᴍɪᴛᴇᴅ movie search"
         )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # DAILY CLAIM BUTTON
@@ -520,7 +574,13 @@ def register_token_handlers(app):
             "🎉 +50 Tᴏᴋᴇɴs Aᴅᴅᴇᴅ!",
             show_alert=True
         )
-
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # PREMIUM BUTTON
@@ -565,6 +625,12 @@ def register_token_handlers(app):
 
         await callback.answer()
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # REDEEM 100 TOKENS
@@ -718,6 +784,12 @@ def register_token_handlers(app):
             show_alert=True
         )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # BACK TO TOKEN PANEL
@@ -786,6 +858,12 @@ def register_token_handlers(app):
 
         await callback.answer()
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # CLOSE
@@ -819,3 +897,10 @@ def register_token_handlers(app):
             pass
 
         await callback.answer()
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
