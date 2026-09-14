@@ -6,10 +6,13 @@ import logging
 import re
 
 from pyrogram import filters, enums
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.types import InlineKeyboardMarkup
 
 from config import DATABASE_CHANNEL_ID
-from handlers.fsub import check_all_fsubs, send_fsub_message
+from handlers.fsub import (
+    check_all_fsubs,
+    send_fsub_message
+)
 
 
 logger = logging.getLogger(__name__)
@@ -19,22 +22,21 @@ logger = logging.getLogger(__name__)
 # CONFIG
 # ============================================================
 
-# Maximum number of files allowed in one batch link.
-# This prevents accidental huge message floods.
 MAX_BATCH_FILES = 50
 
 
 # ============================================================
-# HELPERS
+# MESSAGE / LINK HELPERS
 # ============================================================
 
 def get_message_id_from_link(text):
     """
-    Extract Telegram message ID from:
-    
+    Supports:
+
     https://t.me/c/1234567890/123
     https://t.me/channelname/123
     """
+
     if not text:
         return None
 
@@ -79,8 +81,11 @@ def parse_message_reference(value):
 
     https://t.me/c/1234567890/12345
 
-    https://t.me/channel/12345
+    https://t.me/channelname/12345
     """
+
+    if not value:
+        return None
 
     value = value.strip()
 
@@ -92,49 +97,163 @@ def parse_message_reference(value):
 
 def make_single_token(message_id):
     """
-    Protected permanent single-file link.
+    Protected single-file permanent link.
     """
     return f"pl_{message_id}"
 
 
-def make_batch_token(first_id, last_id, protected=False):
+def make_batch_token(
+    first_id,
+    last_id,
+    protected=False
+):
     """
-    Batch token.
+    Normal:
+        ba_FIRST_LAST
+
+    Protected:
+        pb_FIRST_LAST
     """
+
     prefix = "pb_" if protected else "ba_"
 
-    return f"{prefix}{first_id}_{last_id}"
+    return (
+        f"{prefix}"
+        f"{first_id}_"
+        f"{last_id}"
+    )
 
 
-async def get_bot_username(client):
+async def make_start_link(
+    client,
+    token
+):
     """
-    Get bot username for permanent links.
+    Create Telegram bot deep link.
     """
-    me = await client.get_me()
 
-    if not me.username:
+    try:
+
+        me = await client.get_me()
+
+        if not me.username:
+            return None
+
+        return (
+            f"https://t.me/"
+            f"{me.username}"
+            f"?start={token}"
+        )
+
+    except Exception as e:
+
+        logger.error(
+            "Failed to create start link: %s",
+            e
+        )
+
         return None
 
-    return me.username
 
+# ============================================================
+# FORWARDED MESSAGE ORIGINAL SOURCE
+# ============================================================
 
-async def make_start_link(client, token):
+def get_original_message_reference(
+    message
+):
     """
-    Create Telegram deep link.
-    """
-    username = await get_bot_username(client)
+    Get the original channel/message ID from
+    a forwarded Telegram message.
 
-    if not username:
+    Supports modern Pyrogram forward_origin
+    and older forward fields.
+    """
+
+    original_chat_id = None
+    original_message_id = None
+
+    # --------------------------------------------------------
+    # Modern Pyrogram
+    # --------------------------------------------------------
+
+    try:
+
+        forward_origin = getattr(
+            message,
+            "forward_origin",
+            None
+        )
+
+        if forward_origin:
+
+            original_message_id = getattr(
+                forward_origin,
+                "message_id",
+                None
+            )
+
+            origin_chat = getattr(
+                forward_origin,
+                "chat",
+                None
+            )
+
+            if origin_chat:
+
+                original_chat_id = getattr(
+                    origin_chat,
+                    "id",
+                    None
+                )
+
+    except Exception as e:
+
+        logger.warning(
+            "forward_origin read failed: %s",
+            e
+        )
+
+    # --------------------------------------------------------
+    # Older Pyrogram fields
+    # --------------------------------------------------------
+
+    if not original_message_id:
+
+        original_message_id = getattr(
+            message,
+            "forward_from_message_id",
+            None
+        )
+
+    if not original_chat_id:
+
+        forward_chat = getattr(
+            message,
+            "forward_from_chat",
+            None
+        )
+
+        if forward_chat:
+
+            original_chat_id = getattr(
+                forward_chat,
+                "id",
+                None
+            )
+
+    if not original_message_id:
+
         return None
 
     return (
-        f"https://t.me/{username}"
-        f"?start={token}"
+        original_chat_id,
+        int(original_message_id)
     )
 
 
 # ============================================================
-# DATABASE CHANNEL MESSAGE CHECK
+# DATABASE MESSAGE
 # ============================================================
 
 async def get_database_message(
@@ -142,27 +261,33 @@ async def get_database_message(
     message_id
 ):
     """
-    Retrieve one known message from the database channel.
+    Retrieve a known message from the database channel.
 
-    This uses get_messages() with a known message ID.
-    It does NOT use get_chat_history().
+    IMPORTANT:
+    This does NOT use get_chat_history().
     """
 
     try:
+
         message = await client.get_messages(
             DATABASE_CHANNEL_ID,
-            message_id
+            int(message_id)
         )
 
         if not message:
             return None
 
-        if getattr(message, "empty", False):
+        if getattr(
+            message,
+            "empty",
+            False
+        ):
             return None
 
         return message
 
     except Exception as e:
+
         logger.error(
             "Failed to get database message "
             "%s: %s",
@@ -178,9 +303,6 @@ async def get_database_message(
 # ============================================================
 
 def has_supported_media(message):
-    """
-    Check whether the message contains supported media.
-    """
 
     if not message:
         return False
@@ -192,13 +314,13 @@ def has_supported_media(message):
             message.audio,
             message.animation,
             message.voice,
-            message.photo,
+            message.photo
         ]
     )
 
 
 # ============================================================
-# SEND ONE FILE
+# SEND ONE PERMANENT FILE
 # ============================================================
 
 async def send_permanent_file(
@@ -208,19 +330,23 @@ async def send_permanent_file(
     protected=False
 ):
     """
-    Copy one file from the database channel
-    to the user's PM.
+    Copy one original database-channel message
+    to the user's private chat.
     """
 
-    message = await get_database_message(
-        client,
-        message_id
+    database_message = (
+        await get_database_message(
+            client,
+            message_id
+        )
     )
 
-    if not message:
+    if not database_message:
         return False
 
-    if not has_supported_media(message):
+    if not has_supported_media(
+        database_message
+    ):
         return False
 
     try:
@@ -228,12 +354,12 @@ async def send_permanent_file(
         await client.copy_message(
             chat_id=user_id,
             from_chat_id=DATABASE_CHANNEL_ID,
-            message_id=message.id,
+            message_id=database_message.id,
             protect_content=protected
         )
 
         logger.info(
-            "Permanent file sent | "
+            "PERMANENT FILE SENT | "
             "user=%s | message_id=%s | protected=%s",
             user_id,
             message_id,
@@ -245,7 +371,7 @@ async def send_permanent_file(
     except Exception as e:
 
         logger.error(
-            "Permanent file delivery failed | "
+            "PERMANENT FILE SEND ERROR | "
             "user=%s | message_id=%s | error=%s",
             user_id,
             message_id,
@@ -267,14 +393,15 @@ async def send_permanent_batch(
     protected=False
 ):
     """
-    Send a range of database-channel messages.
-
-    Only known message IDs are requested.
-    No history enumeration is used.
+    Send database messages between first_id and last_id.
     """
 
     if first_id > last_id:
-        first_id, last_id = last_id, first_id
+
+        first_id, last_id = (
+            last_id,
+            first_id
+        )
 
     total = (
         last_id
@@ -283,6 +410,7 @@ async def send_permanent_batch(
     )
 
     if total > MAX_BATCH_FILES:
+
         return 0, True
 
     sent = 0
@@ -292,11 +420,13 @@ async def send_permanent_batch(
         last_id + 1
     ):
 
-        success = await send_permanent_file(
-            client=client,
-            user_id=user_id,
-            message_id=message_id,
-            protected=protected
+        success = (
+            await send_permanent_file(
+                client=client,
+                user_id=user_id,
+                message_id=message_id,
+                protected=protected
+            )
         )
 
         if success:
@@ -316,9 +446,7 @@ async def handle_permanent_link(
     user_id=None
 ):
     """
-    Main permanent-link handler.
-
-    Supported tokens:
+    Handles:
 
     pl_<message_id>
 
@@ -379,14 +507,16 @@ async def handle_permanent_link(
 
         message_id = int(raw_id)
 
-        sent = await send_permanent_file(
-            client=client,
-            user_id=user_id,
-            message_id=message_id,
-            protected=True
+        success = (
+            await send_permanent_file(
+                client=client,
+                user_id=user_id,
+                message_id=message_id,
+                protected=True
+            )
         )
 
-        if not sent:
+        if not success:
 
             await client.send_message(
                 user_id,
@@ -404,34 +534,33 @@ async def handle_permanent_link(
 
         parts = token[3:].split("_")
 
-        if len(parts) != 2:
-            await client.send_message(
-                user_id,
-                "❌ <b>Invalid batch link.</b>",
-                parse_mode=enums.ParseMode.HTML
+        if (
+            len(parts) != 2
+            or not all(
+                part.isdigit()
+                for part in parts
             )
-            return
-
-        if not all(
-            part.isdigit()
-            for part in parts
         ):
+
             await client.send_message(
                 user_id,
                 "❌ <b>Invalid batch link.</b>",
                 parse_mode=enums.ParseMode.HTML
             )
+
             return
 
         first_id = int(parts[0])
         last_id = int(parts[1])
 
-        sent, too_many = await send_permanent_batch(
-            client=client,
-            user_id=user_id,
-            first_id=first_id,
-            last_id=last_id,
-            protected=False
+        sent, too_many = (
+            await send_permanent_batch(
+                client=client,
+                user_id=user_id,
+                first_id=first_id,
+                last_id=last_id,
+                protected=False
+            )
         )
 
         if too_many:
@@ -440,8 +569,8 @@ async def handle_permanent_link(
                 user_id,
                 (
                     "❌ <b>Batch too large.</b>\n\n"
-                    f"Maximum allowed files: "
-                    f"<b>{MAX_BATCH_FILES}</b>"
+                    f"Maximum allowed: "
+                    f"<b>{MAX_BATCH_FILES}</b> files."
                 ),
                 parse_mode=enums.ParseMode.HTML
             )
@@ -466,34 +595,33 @@ async def handle_permanent_link(
 
         parts = token[3:].split("_")
 
-        if len(parts) != 2:
-            await client.send_message(
-                user_id,
-                "❌ <b>Invalid protected batch link.</b>",
-                parse_mode=enums.ParseMode.HTML
+        if (
+            len(parts) != 2
+            or not all(
+                part.isdigit()
+                for part in parts
             )
-            return
-
-        if not all(
-            part.isdigit()
-            for part in parts
         ):
+
             await client.send_message(
                 user_id,
                 "❌ <b>Invalid protected batch link.</b>",
                 parse_mode=enums.ParseMode.HTML
             )
+
             return
 
         first_id = int(parts[0])
         last_id = int(parts[1])
 
-        sent, too_many = await send_permanent_batch(
-            client=client,
-            user_id=user_id,
-            first_id=first_id,
-            last_id=last_id,
-            protected=True
+        sent, too_many = (
+            await send_permanent_batch(
+                client=client,
+                user_id=user_id,
+                first_id=first_id,
+                last_id=last_id,
+                protected=True
+            )
         )
 
         if too_many:
@@ -502,8 +630,8 @@ async def handle_permanent_link(
                 user_id,
                 (
                     "❌ <b>Batch too large.</b>\n\n"
-                    f"Maximum allowed files: "
-                    f"<b>{MAX_BATCH_FILES}</b>"
+                    f"Maximum allowed: "
+                    f"<b>{MAX_BATCH_FILES}</b> files."
                 ),
                 parse_mode=enums.ParseMode.HTML
             )
@@ -540,13 +668,12 @@ async def plink_handler(
     message
 ):
     """
-    Generate permanent link for one media message.
-
-    Usage:
-
-    Reply to a database-channel media:
-
     /plink
+
+    Works in Bot PM by replying to a forwarded
+    Database-channel media message.
+
+    Also works directly inside the Database channel.
     """
 
     if not message.reply_to_message:
@@ -554,7 +681,7 @@ async def plink_handler(
         await message.reply_text(
             (
                 "❌ <b>Reply to a media message "
-                "with /plink</b>"
+                "with /plink.</b>"
             ),
             parse_mode=enums.ParseMode.HTML
         )
@@ -563,23 +690,105 @@ async def plink_handler(
 
     replied = message.reply_to_message
 
-    # --------------------------------------------------------
-    # Only allow database channel
-    # --------------------------------------------------------
+    original_chat_id = None
+    original_message_id = None
 
-    if message.chat.id != DATABASE_CHANNEL_ID:
+    # ========================================================
+    # DIRECT DATABASE CHANNEL
+    # ========================================================
+
+    if str(message.chat.id) == str(
+        DATABASE_CHANNEL_ID
+    ):
+
+        original_chat_id = DATABASE_CHANNEL_ID
+        original_message_id = replied.id
+
+    # ========================================================
+    # FORWARDED DATABASE MESSAGE IN BOT PM
+    # ========================================================
+
+    else:
+
+        reference = (
+            get_original_message_reference(
+                replied
+            )
+        )
+
+        if reference:
+
+            (
+                original_chat_id,
+                original_message_id
+            ) = reference
+
+    # ========================================================
+    # CHECK ORIGINAL MESSAGE
+    # ========================================================
+
+    if not original_message_id:
 
         await message.reply_text(
             (
-                "❌ <b>/plink can only be used "
-                "inside the database channel.</b>"
+                "❌ <b>Could not find the original "
+                "Database message.</b>\n\n"
+                "Forward a file from the Database channel "
+                "and reply to it with <code>/plink</code>."
             ),
             parse_mode=enums.ParseMode.HTML
         )
 
         return
 
-    if not has_supported_media(replied):
+    # ========================================================
+    # DATABASE CHANNEL CHECK
+    # ========================================================
+
+    if str(original_chat_id) != str(
+        DATABASE_CHANNEL_ID
+    ):
+
+        await message.reply_text(
+            (
+                "❌ <b>This file is not from "
+                "the Database channel.</b>"
+            ),
+            parse_mode=enums.ParseMode.HTML
+        )
+
+        return
+
+    # ========================================================
+    # GET ORIGINAL MESSAGE
+    # ========================================================
+
+    database_message = (
+        await get_database_message(
+            client,
+            original_message_id
+        )
+    )
+
+    if not database_message:
+
+        await message.reply_text(
+            (
+                "❌ <b>Original Database message "
+                "was not found.</b>"
+            ),
+            parse_mode=enums.ParseMode.HTML
+        )
+
+        return
+
+    # ========================================================
+    # MEDIA CHECK
+    # ========================================================
+
+    if not has_supported_media(
+        database_message
+    ):
 
         await message.reply_text(
             (
@@ -591,8 +800,12 @@ async def plink_handler(
 
         return
 
+    # ========================================================
+    # CREATE LINK
+    # ========================================================
+
     token = make_single_token(
-        replied.id
+        original_message_id
     )
 
     link = await make_start_link(
@@ -609,10 +822,16 @@ async def plink_handler(
 
         return
 
+    # ========================================================
+    # SEND LINK
+    # ========================================================
+
     await message.reply_text(
         (
             "🔗 <b>Pᴇʀᴍᴀɴᴇɴᴛ Lɪɴᴋ Gᴇɴᴇʀᴀᴛᴇᴅ</b>\n\n"
-            f"🔐 <b>Protected:</b> Yes\n\n"
+            "🔐 <b>Protected:</b> Yes\n"
+            f"🆔 <b>File ID:</b> "
+            f"{original_message_id}\n\n"
             f"🔗 <b>Link:</b>\n{link}"
         ),
         parse_mode=enums.ParseMode.HTML,
@@ -621,7 +840,43 @@ async def plink_handler(
 
 
 # ============================================================
-# BATCH COMMAND PARSER
+# GET BATCH REFERENCE
+# ============================================================
+
+def get_batch_reply_reference(
+    replied
+):
+    """
+    Get the original Database message ID
+    from a forwarded message.
+    """
+
+    if not replied:
+        return None
+
+    reference = (
+        get_original_message_reference(
+            replied
+        )
+    )
+
+    if not reference:
+        return None
+
+    original_chat_id, original_message_id = (
+        reference
+    )
+
+    if str(original_chat_id) != str(
+        DATABASE_CHANNEL_ID
+    ):
+        return None
+
+    return int(original_message_id)
+
+
+# ============================================================
+# GENERATE BATCH LINK
 # ============================================================
 
 async def generate_batch_link(
@@ -630,9 +885,7 @@ async def generate_batch_link(
     protected=False
 ):
     """
-    Generate /batch or /pbatch link.
-
-    Supported:
+    Supports Bot PM:
 
     /batch 100 120
 
@@ -641,74 +894,200 @@ async def generate_batch_link(
     /batch https://t.me/c/1234567890/100 https://t.me/c/1234567890/120
 
     /pbatch https://t.me/c/1234567890/100 https://t.me/c/1234567890/120
+
+    OR:
+
+    Reply to forwarded Database file with:
+
+    /batch 120
+
+    /pbatch 120
+
+    The replied file becomes FIRST ID.
+    The command argument becomes LAST ID.
     """
 
-    command_parts = (
-        message.text or ""
-    ).split()
-
-    if len(command_parts) != 3:
-
-        command_name = (
-            "pbatch"
-            if protected
-            else "batch"
-        )
-
-        await message.reply_text(
-            (
-                f"❌ <b>Invalid format.</b>\n\n"
-                f"Usage:\n"
-                f"<code>/{command_name} FIRST LAST</code>\n\n"
-                f"Example:\n"
-                f"<code>/{command_name} 100 120</code>"
-            ),
-            parse_mode=enums.ParseMode.HTML
-        )
-
-        return
-
-    first_ref = parse_message_reference(
-        command_parts[1]
+    text = (
+        message.text
+        or message.caption
+        or ""
     )
 
-    last_ref = parse_message_reference(
-        command_parts[2]
+    command_parts = text.split()
+
+    # ========================================================
+    # COMMAND NAME
+    # ========================================================
+
+    command_name = (
+        "pbatch"
+        if protected
+        else "batch"
     )
 
-    if not first_ref or not last_ref:
+    # ========================================================
+    # REPLY TO FORWARDED FILE METHOD
+    # ========================================================
 
-        await message.reply_text(
-            "❌ <b>Invalid message references.</b>",
-            parse_mode=enums.ParseMode.HTML
+    replied = message.reply_to_message
+
+    if replied:
+
+        first_id = (
+            get_batch_reply_reference(
+                replied
+            )
         )
 
-        return
+        # ----------------------------------------------------
+        # If replied message is from DB
+        # ----------------------------------------------------
 
-    first_chat, first_id = first_ref
-    last_chat, last_id = last_ref
+        if first_id:
 
-    # --------------------------------------------------------
-    # Ensure both references belong to database channel
-    # --------------------------------------------------------
+            # /batch <last>
+            if len(command_parts) == 2:
 
-    if (
-        str(first_chat)
-        != str(DATABASE_CHANNEL_ID)
-        or
-        str(last_chat)
-        != str(DATABASE_CHANNEL_ID)
-    ):
+                last_ref = (
+                    parse_message_reference(
+                        command_parts[1]
+                    )
+                )
 
-        await message.reply_text(
-            (
-                "❌ <b>Both messages must belong "
-                "to the database channel.</b>"
-            ),
-            parse_mode=enums.ParseMode.HTML
+                if not last_ref:
+
+                    await message.reply_text(
+                        (
+                            "❌ <b>Invalid last message.</b>"
+                        ),
+                        parse_mode=enums.ParseMode.HTML
+                    )
+
+                    return
+
+                last_chat, last_id = last_ref
+
+                if str(last_chat) != str(
+                    DATABASE_CHANNEL_ID
+                ):
+
+                    await message.reply_text(
+                        (
+                            "❌ <b>The last message "
+                            "must be from the Database channel.</b>"
+                        ),
+                        parse_mode=enums.ParseMode.HTML
+                    )
+
+                    return
+
+            else:
+
+                await message.reply_text(
+                    (
+                        f"❌ <b>Reply to the first Database "
+                        f"file and use:</b>\n\n"
+                        f"<code>/{command_name} LAST_ID</code>\n\n"
+                        f"<b>Example:</b>\n"
+                        f"<code>/{command_name} 120</code>"
+                    ),
+                    parse_mode=enums.ParseMode.HTML
+                )
+
+                return
+
+        else:
+
+            first_id = None
+
+    else:
+
+        first_id = None
+
+    # ========================================================
+    # NORMAL TWO-REFERENCE METHOD
+    # ========================================================
+
+    if first_id is None:
+
+        if len(command_parts) != 3:
+
+            await message.reply_text(
+                (
+                    "❌ <b>Invalid format.</b>\n\n"
+                    f"Use:\n"
+                    f"<code>/{command_name} FIRST LAST</code>\n\n"
+                    "Example:\n"
+                    f"<code>/{command_name} 100 120</code>\n\n"
+                    "Or use Telegram links:\n"
+                    f"<code>/{command_name} "
+                    "https://t.me/c/1234567890/100 "
+                    "https://t.me/c/1234567890/120</code>"
+                ),
+                parse_mode=enums.ParseMode.HTML
+            )
+
+            return
+
+        first_ref = (
+            parse_message_reference(
+                command_parts[1]
+            )
         )
 
-        return
+        last_ref = (
+            parse_message_reference(
+                command_parts[2]
+            )
+        )
+
+        if not first_ref or not last_ref:
+
+            await message.reply_text(
+                "❌ <b>Invalid message references.</b>",
+                parse_mode=enums.ParseMode.HTML
+            )
+
+            return
+
+        first_chat, first_id = first_ref
+        last_chat, last_id = last_ref
+
+        # ----------------------------------------------------
+        # Both must be database channel
+        # ----------------------------------------------------
+
+        if str(first_chat) != str(
+            DATABASE_CHANNEL_ID
+        ):
+
+            await message.reply_text(
+                (
+                    "❌ <b>First message is not "
+                    "from the Database channel.</b>"
+                ),
+                parse_mode=enums.ParseMode.HTML
+            )
+
+            return
+
+        if str(last_chat) != str(
+            DATABASE_CHANNEL_ID
+        ):
+
+            await message.reply_text(
+                (
+                    "❌ <b>Last message is not "
+                    "from the Database channel.</b>"
+                ),
+                parse_mode=enums.ParseMode.HTML
+            )
+
+            return
+
+    # ========================================================
+    # VERIFY IDS
+    # ========================================================
 
     if first_id > last_id:
 
@@ -737,31 +1116,55 @@ async def generate_batch_link(
 
         return
 
-    # --------------------------------------------------------
-    # Verify at least first and last messages exist
-    # --------------------------------------------------------
+    # ========================================================
+    # VERIFY FIRST MESSAGE
+    # ========================================================
 
-    first_message = await get_database_message(
-        client,
-        first_id
+    first_message = (
+        await get_database_message(
+            client,
+            first_id
+        )
     )
 
-    last_message = await get_database_message(
-        client,
-        last_id
-    )
-
-    if not first_message or not last_message:
+    if not first_message:
 
         await message.reply_text(
             (
-                "❌ <b>One or more messages "
-                "could not be found.</b>"
+                "❌ <b>First Database message "
+                "was not found.</b>"
             ),
             parse_mode=enums.ParseMode.HTML
         )
 
         return
+
+    # ========================================================
+    # VERIFY LAST MESSAGE
+    # ========================================================
+
+    last_message = (
+        await get_database_message(
+            client,
+            last_id
+        )
+    )
+
+    if not last_message:
+
+        await message.reply_text(
+            (
+                "❌ <b>Last Database message "
+                "was not found.</b>"
+            ),
+            parse_mode=enums.ParseMode.HTML
+        )
+
+        return
+
+    # ========================================================
+    # CREATE TOKEN
+    # ========================================================
 
     token = make_batch_token(
         first_id,
@@ -783,7 +1186,11 @@ async def generate_batch_link(
 
         return
 
-    link_type = (
+    # ========================================================
+    # SEND RESULT
+    # ========================================================
+
+    batch_type = (
         "Protected Batch"
         if protected
         else "Normal Batch"
@@ -792,9 +1199,10 @@ async def generate_batch_link(
     await message.reply_text(
         (
             "🔗 <b>Pᴇʀᴍᴀɴᴇɴᴛ Bᴀᴛᴄʜ Lɪɴᴋ Gᴇɴᴇʀᴀᴛᴇᴅ</b>\n\n"
-            f"📦 <b>Type:</b> {link_type}\n"
+            f"📦 <b>Type:</b> {batch_type}\n"
             f"📁 <b>Files:</b> {total}\n"
-            f"🔢 <b>Range:</b> {first_id} - {last_id}\n\n"
+            f"🔢 <b>Range:</b> "
+            f"{first_id} - {last_id}\n\n"
             f"🔗 <b>Link:</b>\n{link}"
         ),
         parse_mode=enums.ParseMode.HTML,
