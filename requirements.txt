@@ -7,4 +7,4 @@ dnspython==2.6.1
 python-dotenv==1.0.1
 requests>=2.31.0
 psutil==6.0.0
-yt-dlp
+Pillow==10.4.0
