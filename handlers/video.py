@@ -181,9 +181,14 @@ async def download_media(
         "start_time": time.time(),
     })
 
+    # ========================================================
+    # PROGRESS HOOK
+    # ========================================================
+
     def progress_hook(data):
 
         try:
+
             status = data.get("status")
 
             if status == "downloading":
@@ -241,10 +246,15 @@ async def download_media(
                 })
 
         except Exception as e:
+
             LOGGER.error(
                 "Progress hook error: %s",
                 e
             )
+
+    # ========================================================
+    # POSTPROCESSOR HOOK
+    # ========================================================
 
     def postprocessor_hook(data):
 
@@ -253,7 +263,12 @@ async def download_media(
         except Exception:
             pass
 
+    # ========================================================
+    # YT-DLP OPTIONS
+    # ========================================================
+
     ydl_opts = {
+
         "format": (
             "bestvideo[height<=1080]+bestaudio/"
             "best[height<=1080]/"
@@ -304,10 +319,17 @@ async def download_media(
     # ========================================================
     # YOUTUBE OPTIONS
     # ========================================================
+    # Do NOT force android/web clients.
+    # Current yt-dlp chooses the supported client automatically.
+    # ========================================================
 
-    if "youtube.com" in url or "youtu.be" in url:
+    if (
+        "youtube.com" in url
+        or "youtu.be" in url
+    ):
 
         ydl_opts.update({
+
             "hls_prefer_native": True,
 
             "live_from_start": True,
@@ -317,15 +339,11 @@ async def download_media(
                 30
             ),
 
-            "extractor_args": {
-                "youtube": {
-                    "player_client": [
-                        "android",
-                        "web"
-                    ]
-                }
-            },
         })
+
+    # ========================================================
+    # DOWNLOAD
+    # ========================================================
 
     try:
 
@@ -351,14 +369,22 @@ async def download_media(
 
         progress_state["status"] = "finished"
 
+        # ====================================================
+        # FIND FILE
+        # ====================================================
+
         file_path = find_downloaded_file(
             prefix
         )
 
+        # ====================================================
+        # FALLBACK: GET FILEPATH FROM INFO
+        # ====================================================
+
         if not file_path:
 
-            # Try to get filename directly
             try:
+
                 requested = (
                     info.get(
                         "requested_downloads"
@@ -372,11 +398,36 @@ async def download_media(
                         "filepath"
                     )
 
-                    if filename and os.path.exists(
+                    if (
                         filename
+                        and os.path.exists(filename)
                     ):
+
                         file_path = filename
+
                         break
+
+            except Exception:
+                pass
+
+        # ====================================================
+        # FINAL FALLBACK
+        # ====================================================
+
+        if not file_path:
+
+            try:
+
+                filename = info.get(
+                    "_filename"
+                )
+
+                if (
+                    filename
+                    and os.path.exists(filename)
+                ):
+
+                    file_path = filename
 
             except Exception:
                 pass
@@ -390,6 +441,7 @@ async def download_media(
         )
 
         progress_state["status"] = "error"
+
         progress_state["error"] = str(e)
 
         return None, None
@@ -424,14 +476,29 @@ async def update_progress(
                 time.time() - start_time
             )
 
+            # ==================================================
+            # EXTRACTING
+            # ==================================================
+
             if status == "extracting":
+
+                downloaded = progress_state.get(
+                    "downloaded",
+                    0
+                )
 
                 text = (
                     "🔍 **Extracting...**\n\n"
-                    f"⏱ **Time:** `{format_time(elapsed)}`\n"
-                    "📦 **Downloaded:** "
-                    f"`{format_bytes(progress_state.get('downloaded', 0))}`"
+                    f"⏱ **Time:** "
+                    f"`{format_time(elapsed)}`\n"
+                    f"📦 **Downloaded:** "
+                    f"`{format_bytes(downloaded)}`\n\n"
+                    "🔄 **Preparing media...**"
                 )
+
+            # ==================================================
+            # DOWNLOADING
+            # ==================================================
 
             elif status == "downloading":
 
@@ -453,6 +520,10 @@ async def update_progress(
                 eta = progress_state.get(
                     "eta"
                 )
+
+                # ==============================================
+                # KNOWN SIZE
+                # ==============================================
 
                 if total:
 
@@ -493,10 +564,15 @@ async def update_progress(
                         f"`{format_bytes(total)}`"
                     )
 
+                # ==============================================
+                # UNKNOWN SIZE
+                # ==============================================
+
                 else:
 
                     progress_line = (
-                        "📊 **Progress:** `Unknown`"
+                        "📊 **Progress:** "
+                        "`Unknown`"
                     )
 
                     size_line = (
@@ -506,7 +582,8 @@ async def update_progress(
                 text = (
                     "⬇️ **Downloading...**\n\n"
                     f"{progress_line}\n\n"
-                    f"📦 **Size:** {size_line}\n"
+                    f"📦 **Size:** "
+                    f"{size_line}\n"
                     f"🚀 **Speed:** "
                     f"`{format_speed(speed)}`\n"
                     f"⏱ **Time:** "
@@ -515,6 +592,10 @@ async def update_progress(
                     f"`{format_time(eta)}`"
                 )
 
+            # ==================================================
+            # FINISHED
+            # ==================================================
+
             elif status == "finished":
 
                 text = (
@@ -522,6 +603,10 @@ async def update_progress(
                     f"⏱ **Time:** "
                     f"`{format_time(elapsed)}`"
                 )
+
+            # ==================================================
+            # ERROR
+            # ==================================================
 
             elif status == "error":
 
@@ -535,6 +620,10 @@ async def update_progress(
                     f"`{error[:500]}`"
                 )
 
+            # ==================================================
+            # OTHER
+            # ==================================================
+
             else:
 
                 text = (
@@ -542,6 +631,10 @@ async def update_progress(
                     f"⏱ **Time:** "
                     f"`{format_time(elapsed)}`"
                 )
+
+            # ==================================================
+            # EDIT MESSAGE
+            # ==================================================
 
             if text != last_text:
 
@@ -556,15 +649,21 @@ async def update_progress(
                 except Exception:
                     pass
 
+            # ==================================================
+            # STOP
+            # ==================================================
+
             if status in (
                 "finished",
                 "error"
             ):
+
                 break
 
             await asyncio.sleep(2)
 
         except asyncio.CancelledError:
+
             break
 
         except Exception as e:
@@ -592,6 +691,10 @@ def register_video_handlers(app):
         message: Message
     ):
 
+        # ====================================================
+        # CHECK URL
+        # ====================================================
+
         if len(message.command) < 2:
 
             await message.reply_text(
@@ -617,18 +720,39 @@ def register_video_handlers(app):
 
             return
 
+        # ====================================================
+        # STATUS MESSAGE
+        # ====================================================
+
         status_message = await message.reply_text(
             "⏳ **Preparing download...**"
         )
 
+        # ====================================================
+        # PROGRESS STATE
+        # ====================================================
+
         progress_state = {
+
             "status": "extracting",
+
+            "filename": "",
+
             "downloaded": 0,
+
             "total": 0,
+
             "speed": 0,
+
             "eta": None,
+
             "start_time": time.time(),
+
         }
+
+        # ====================================================
+        # START PROGRESS
+        # ====================================================
 
         progress_task = asyncio.create_task(
             update_progress(
@@ -636,6 +760,10 @@ def register_video_handlers(app):
                 progress_state
             )
         )
+
+        # ====================================================
+        # UNIQUE PREFIX
+        # ====================================================
 
         prefix = (
             f"video_"
@@ -645,6 +773,7 @@ def register_video_handlers(app):
         )
 
         file_path = None
+
         info = None
 
         try:
@@ -679,6 +808,10 @@ def register_video_handlers(app):
                         )
                     }
 
+            # ====================================================
+            # YT-DLP DOWNLOAD
+            # ====================================================
+
             else:
 
                 file_path, info = (
@@ -690,12 +823,16 @@ def register_video_handlers(app):
                     )
                 )
 
-            # Stop updater
+            # ====================================================
+            # STOP PROGRESS TASK
+            # ====================================================
 
             if progress_task:
 
                 try:
+
                     await progress_task
+
                 except Exception:
                     pass
 
@@ -713,6 +850,10 @@ def register_video_handlers(app):
                 )
 
                 return
+
+            # ====================================================
+            # FILE CHECK
+            # ====================================================
 
             if not os.path.exists(
                 file_path
@@ -758,11 +899,17 @@ def register_video_handlers(app):
             client._video_sessions[
                 status_message.id
             ] = {
+
                 "file_path": file_path,
+
                 "user_id": message.from_user.id,
+
                 "title": title,
+
                 "file_size": file_size,
+
                 "created_at": time.time(),
+
             }
 
             # ====================================================
@@ -779,6 +926,7 @@ def register_video_handlers(app):
                                 f"{status_message.id}"
                             )
                         ),
+
                         InlineKeyboardButton(
                             "📁 Document",
                             callback_data=(
@@ -790,13 +938,24 @@ def register_video_handlers(app):
                 ]
             )
 
+            # ====================================================
+            # FINAL MESSAGE
+            # ====================================================
+
             await status_message.edit_text(
+
                 "✅ **Download completed!**\n\n"
-                f"🎬 **Title:** `{title[:100]}`\n"
+
+                f"🎬 **Title:** "
+                f"`{title[:100]}`\n"
+
                 f"📦 **Size:** "
                 f"`{format_bytes(file_size)}`\n\n"
+
                 "Choose how you want to receive the file:",
+
                 reply_markup=keyboard
+
             )
 
         except Exception as e:
@@ -810,7 +969,9 @@ def register_video_handlers(app):
                 progress_task.cancel()
 
                 try:
+
                     await progress_task
+
                 except Exception:
                     pass
 
@@ -859,6 +1020,10 @@ def register_video_handlers(app):
 
                 return
 
+            # ==================================================
+            # USER CHECK
+            # ==================================================
+
             if (
                 callback.from_user.id
                 != session["user_id"]
@@ -874,6 +1039,10 @@ def register_video_handlers(app):
             file_path = session[
                 "file_path"
             ]
+
+            # ==================================================
+            # FILE CHECK
+            # ==================================================
 
             if not os.path.exists(
                 file_path
@@ -891,21 +1060,35 @@ def register_video_handlers(app):
 
                 return
 
+            # ==================================================
+            # SEND
+            # ==================================================
+
             await callback.answer(
                 "🎥 Sending video..."
             )
 
-            await callback.message.edit_text(
-                "📤 **Sending as Video...**"
-            )
+            try:
+
+                await callback.message.edit_text(
+                    "📤 **Sending as Video...**"
+                )
+
+            except Exception:
+                pass
 
             await client.send_video(
+
                 chat_id=callback.from_user.id,
+
                 video=file_path,
+
                 caption=(
                     f"🎬 **{session['title']}**"
                 ),
+
                 supports_streaming=True
+
             )
 
             # ==================================================
@@ -913,7 +1096,11 @@ def register_video_handlers(app):
             # ==================================================
 
             try:
-                os.remove(file_path)
+
+                os.remove(
+                    file_path
+                )
+
             except Exception:
                 pass
 
@@ -923,7 +1110,9 @@ def register_video_handlers(app):
             )
 
             try:
+
                 await callback.message.delete()
+
             except Exception:
                 pass
 
@@ -933,10 +1122,15 @@ def register_video_handlers(app):
                 "Send video error"
             )
 
-            await callback.answer(
-                "❌ Failed to send video.",
-                show_alert=True
-            )
+            try:
+
+                await callback.answer(
+                    "❌ Failed to send video.",
+                    show_alert=True
+                )
+
+            except Exception:
+                pass
 
 
     # ========================================================
@@ -978,6 +1172,10 @@ def register_video_handlers(app):
 
                 return
 
+            # ==================================================
+            # USER CHECK
+            # ==================================================
+
             if (
                 callback.from_user.id
                 != session["user_id"]
@@ -993,6 +1191,10 @@ def register_video_handlers(app):
             file_path = session[
                 "file_path"
             ]
+
+            # ==================================================
+            # FILE CHECK
+            # ==================================================
 
             if not os.path.exists(
                 file_path
@@ -1010,20 +1212,33 @@ def register_video_handlers(app):
 
                 return
 
+            # ==================================================
+            # SEND
+            # ==================================================
+
             await callback.answer(
                 "📁 Sending document..."
             )
 
-            await callback.message.edit_text(
-                "📤 **Sending as Document...**"
-            )
+            try:
+
+                await callback.message.edit_text(
+                    "📤 **Sending as Document...**"
+                )
+
+            except Exception:
+                pass
 
             await client.send_document(
+
                 chat_id=callback.from_user.id,
+
                 document=file_path,
+
                 caption=(
                     f"🎬 **{session['title']}**"
                 )
+
             )
 
             # ==================================================
@@ -1031,7 +1246,11 @@ def register_video_handlers(app):
             # ==================================================
 
             try:
-                os.remove(file_path)
+
+                os.remove(
+                    file_path
+                )
+
             except Exception:
                 pass
 
@@ -1041,7 +1260,9 @@ def register_video_handlers(app):
             )
 
             try:
+
                 await callback.message.delete()
+
             except Exception:
                 pass
 
@@ -1051,7 +1272,12 @@ def register_video_handlers(app):
                 "Send document error"
             )
 
-            await callback.answer(
-                "❌ Failed to send document.",
-                show_alert=True
-        )
+            try:
+
+                await callback.answer(
+                    "❌ Failed to send document.",
+                    show_alert=True
+                )
+
+            except Exception:
+                pass
