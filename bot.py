@@ -70,6 +70,22 @@ from handlers.permanent_links import (
     register_permanent_link_handlers
 )
 
+from handlers.video import (
+    register_video_handlers
+)
+
+from handlers.telegraph import (
+    register_telegraph_handlers
+)
+
+from handlers.share import (
+    register_share_handlers
+)
+
+from handlers.system import (
+    register_system_handlers
+)
+
 from indexer import (
     handle_database_post
 )
@@ -265,6 +281,22 @@ async def main():
     register_permanent_link_handlers(app)
 
     logger.info("PERMANENT LINKS HANDLERS REGISTERED")
+
+    register_video_handlers(app)
+
+    logger.info("VIDEO HANDLERS REGISTERED")
+
+    register_telegraph_handlers(app)
+
+    logger.info("TELEGRAPH HANDLERS REGISTERED")
+
+    register_share_handlers(app)
+
+    logger.info("SHARE HANDLERS REGISTERED")
+
+    register_system_handlers(app)
+
+    logger.info("SYSTEM HANDLERS REGISTERED")
     
     register_start_handlers(app)
 
