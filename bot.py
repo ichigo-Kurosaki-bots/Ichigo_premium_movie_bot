@@ -70,10 +70,6 @@ from handlers.permanent_links import (
     register_permanent_link_handlers
 )
 
-from handlers.video import (
-    register_video_handlers
-)
-
 from handlers.telegraph import (
     register_telegraph_handlers
 )
@@ -281,10 +277,6 @@ async def main():
     register_permanent_link_handlers(app)
 
     logger.info("PERMANENT LINKS HANDLERS REGISTERED")
-
-    register_video_handlers(app)
-
-    logger.info("VIDEO HANDLERS REGISTERED")
 
     register_telegraph_handlers(app)
 
