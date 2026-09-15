@@ -2220,9 +2220,8 @@ def register_search_handlers(app):
         if not results:
 
             await message.reply_text(
-                "<b>Your Requested File Not Found in My Database</b>\n\n"
-                "<b>🔎 Please Check Your Spelling On Google & "
-                "Try Again ✅</b>",
+                "<b>😴 ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ɴᴏᴛ ғᴏᴜɴᴅ ɪɴ ᴍʏ ᴅᴀᴛᴀʙᴀsᴇ.</b>\n\n"
+                "<b>» ᴍᴀʏʙᴇ ᴛᴜɴᴇ ɢᴀʟᴀᴛ ʟɪᴋʜᴀ ʜᴏ, ᴩᴀᴅʜᴀɪ - ʟɪᴋʜᴀɪ ᴛᴏʜ ᴋᴀʀᴛᴀ ɴᴀʜɪ ᴛu</b>",
                 reply_markup=InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
