@@ -123,7 +123,6 @@ def find_downloaded_file(prefix: str):
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
 # Updates: @Aero_Unity 
-# Support : @Coders_Grp 
 # ------------------------ #
 
 # ============================================================
@@ -137,12 +136,24 @@ async def download_media(url: str, prefix: str):
         f"{prefix}.%(ext)s"
     )
 
+    # Detect YouTube URLs including /live/ URLs
+    parsed = urlparse(url)
+    hostname = parsed.netloc.lower().split(":")[0]
+
+    is_youtube = (
+        hostname == "youtube.com"
+        or hostname.endswith(".youtube.com")
+        or hostname == "youtu.be"
+        or hostname.endswith(".youtu.be")
+    )
+
     ydl_opts = {
-        # Maximum publicly accessible quality up to 1080p.
-        # If 1080p is unavailable, it falls back automatically.
+        # Try normal combined formats first, then separate
+        # video/audio streams and finally best available.
         "format": (
             "bestvideo[height<=1080]+bestaudio/"
             "best[height<=1080]/"
+            "bestvideo+bestaudio/"
             "best"
         ),
 
@@ -157,24 +168,60 @@ async def download_media(url: str, prefix: str):
 
         "restrictfilenames": True,
 
-        "socket_timeout": 30,
-
-        "retries": 3,
-        "fragment_retries": 3,
+        # Better network reliability.
+        "socket_timeout": 60,
+        "retries": 10,
+        "fragment_retries": 10,
+        "file_access_retries": 5,
+        "extractor_retries": 5,
 
         "concurrent_fragment_downloads": 4,
 
-        # Do not use cookies or login credentials.
-        "cookiefile": None,
+        # Continue when an individual fragment is unavailable.
+        "skip_unavailable_fragments": True,
 
-        # Avoid playlist expansion.
+        # Never expand playlists.
         "extract_flat": False,
+
+        # No login/cookies.
+        "cookiefile": None,
     }
+
+    # --------------------------------------------------------
+    # YouTube-specific options
+    # --------------------------------------------------------
+
+    if is_youtube:
+
+        ydl_opts.update({
+            # Helps with currently-live YouTube streams.
+            "live_from_start": True,
+
+            # Wait briefly when a live video is not immediately
+            # available.
+            "wait_for_video": (5, 30),
+
+            # Prefer HLS/DASH-capable YouTube extraction.
+            "hls_prefer_native": True,
+
+            # Allow extractor to use the standard YouTube
+            # player clients.
+            "extractor_args": {
+                "youtube": {
+                    "player_client": [
+                        "android",
+                        "web"
+                    ]
+                }
+            },
+        })
 
     loop = asyncio.get_running_loop()
 
     def run_download():
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+
             info = ydl.extract_info(
                 url,
                 download=True
@@ -187,6 +234,7 @@ async def download_media(url: str, prefix: str):
             }
 
     try:
+
         info = await loop.run_in_executor(
             None,
             run_download
@@ -200,8 +248,9 @@ async def download_media(url: str, prefix: str):
         return file_path, info
 
     except Exception as e:
-        logger.warning(
-            f"yt-dlp download failed: {e}"
+
+        logger.exception(
+            f"yt-dlp download failed for {url}: {e}"
         )
 
         return None, None
@@ -414,15 +463,15 @@ def register_video_handlers(app):
             )
 
             # ------------------------------------------------
-            # DOWNLOAD FAILED / PRIVATE / UNSUPPORTED
+            # DOWNLOAD FAILED
             # ------------------------------------------------
 
             if not file_path:
 
                 await status.edit_text(
                     "❌ <b>This video cannot be downloaded.</b>\n\n"
-                    "It may be private, login-required, "
-                    "DRM-protected, unavailable, or unsupported."
+                    "The website may require login, use DRM, "
+                    "be unavailable, or not be supported by yt-dlp."
                 )
 
                 return
@@ -506,8 +555,9 @@ def register_video_handlers(app):
 
                 await status.edit_text(
                     "❌ <b>This video cannot be downloaded.</b>\n\n"
-                    "The media may be private, unavailable, "
-                    "login-required, DRM-protected, or unsupported."
+                    "The media may be unavailable, "
+                    "login-required, DRM-protected, "
+                    "or unsupported."
                 )
 
             except Exception:
