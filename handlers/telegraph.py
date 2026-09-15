@@ -74,6 +74,7 @@ def smallcaps(text):
 async def upload_to_telegraph(file_path):
 
     try:
+
         tg = Telegraph()
 
         await asyncio.to_thread(
@@ -87,13 +88,24 @@ async def upload_to_telegraph(file_path):
         )
 
         if isinstance(result, list) and result:
-            return "https://telegra.ph" + result[0]
+
+            uploaded = result[0]
+
+            if uploaded.startswith("/"):
+                return "https://telegra.ph" + uploaded
+
+            if uploaded.startswith("http://") or uploaded.startswith("https://"):
+                return uploaded
 
     except Exception as e:
-        logging.exception("Telegraph upload error: %s", e)
+
+        logging.exception(
+            "Telegraph upload error: %s",
+            e
+        )
 
     return None
-    
+
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
@@ -124,11 +136,13 @@ async def upload_to_catbox(file_path):
             )
 
         if response.status_code != 200:
+
             logging.error(
                 "Catbox HTTP %s: %s",
                 response.status_code,
                 response.text[:500]
             )
+
             return None
 
         result = response.text.strip()
@@ -137,7 +151,11 @@ async def upload_to_catbox(file_path):
             return result
 
     except Exception as e:
-        logging.exception("Catbox upload error: %s", e)
+
+        logging.exception(
+            "Catbox upload error: %s",
+            e
+        )
 
     return None
 
@@ -155,7 +173,11 @@ async def upload_to_catbox(file_path):
 async def upload_to_imgur(file_path):
 
     if not IMGUR_CLIENT_ID:
-        logging.warning("IMGUR_CLIENT_ID is not configured.")
+
+        logging.warning(
+            "IMGUR_CLIENT_ID is not configured."
+        )
+
         return None
 
     try:
@@ -166,7 +188,9 @@ async def upload_to_imgur(file_path):
                 requests.post,
                 "https://api.imgur.com/3/image",
                 headers={
-                    "Authorization": f"Client-ID {IMGUR_CLIENT_ID}"
+                    "Authorization": (
+                        f"Client-ID {IMGUR_CLIENT_ID}"
+                    )
                 },
                 files={
                     "image": f
@@ -175,11 +199,13 @@ async def upload_to_imgur(file_path):
             )
 
         if response.status_code != 200:
+
             logging.error(
                 "Imgur HTTP %s: %s",
                 response.status_code,
                 response.text[:500]
             )
+
             return None
 
         data = response.json()
@@ -192,7 +218,11 @@ async def upload_to_imgur(file_path):
             ).get("link")
 
     except Exception as e:
-        logging.exception("Imgur upload error: %s", e)
+
+        logging.exception(
+            "Imgur upload error: %s",
+            e
+        )
 
     return None
 
@@ -210,16 +240,22 @@ async def upload_to_imgur(file_path):
 async def run_upload(service, file_path):
 
     if service == "tg":
-        return await upload_to_telegraph(file_path)
+        return await upload_to_telegraph(
+            file_path
+        )
 
     if service == "catbox":
-        return await upload_to_catbox(file_path)
+        return await upload_to_catbox(
+            file_path
+        )
 
     if service == "imgur":
-        return await upload_to_imgur(file_path)
+        return await upload_to_imgur(
+            file_path
+        )
 
     return None
-    
+
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
@@ -233,27 +269,104 @@ async def run_upload(service, file_path):
 
 def register_telegraph_handlers(app):
 
-    # --------------------------------------------------------
-    # /telegraph
-    # --------------------------------------------------------
+    # ========================================================
+    # /TELEGRAPH COMMAND
+    # ========================================================
 
     @app.on_message(
         filters.command("telegraph") & filters.reply
     )
-    async def telegraph_handler(client, message):
+    async def telegraph_handler(
+        client,
+        message
+    ):
 
         replied = message.reply_to_message
 
         if not replied or not replied.photo:
+
             await message.reply_text(
                 "❌ <b>Reply to an image.</b>"
             )
+
             return
 
+        # ----------------------------------------------------
+        # DOWNLOAD STATUS
+        # ----------------------------------------------------
+
         status = await message.reply_text(
-            "📸 <b>Image ready.</b>\n\n"
-            "Choose a service from the buttons below.",
-            reply_markup=InlineKeyboardMarkup(
+            "📥 <b>Preparing image...</b>\n\n"
+            "Please wait..."
+        )
+
+        try:
+
+            os.makedirs(
+                "downloads",
+                exist_ok=True
+            )
+
+            # ------------------------------------------------
+            # DOWNLOAD IMAGE FIRST
+            # ------------------------------------------------
+
+            file_path = await client.download_media(
+                replied.photo,
+                file_name=(
+                    f"downloads/"
+                    f"telegraph_"
+                    f"{message.chat.id}_"
+                    f"{message.id}.jpg"
+                )
+            )
+
+            if not file_path:
+
+                await status.edit_text(
+                    "❌ <b>Failed to download image.</b>"
+                )
+
+                return
+
+            # ------------------------------------------------
+            # CREATE SESSION STORAGE
+            # ------------------------------------------------
+
+            if not hasattr(
+                client,
+                "_telegraph_files"
+            ):
+
+                client._telegraph_files = {}
+
+            user_id = (
+                message.from_user.id
+                if message.from_user
+                else message.chat.id
+            )
+
+            # ------------------------------------------------
+            # STORE ONLY AFTER DOWNLOAD COMPLETES
+            # ------------------------------------------------
+
+            client._telegraph_files[
+                status.id
+            ] = {
+
+                "file_path": file_path,
+
+                "user_id": user_id,
+
+                "created_at": asyncio.get_running_loop().time()
+
+            }
+
+            # ------------------------------------------------
+            # SHOW BUTTONS ONLY NOW
+            # ------------------------------------------------
+
+            keyboard = InlineKeyboardMarkup(
                 [
                     [
                         InlineKeyboardButton(
@@ -273,50 +386,17 @@ def register_telegraph_handlers(app):
                     ]
                 ]
             )
-        )
 
-        try:
-
-            os.makedirs(
-                "downloads",
-                exist_ok=True
+            await status.edit_text(
+                "📸 <b>Image ready.</b>\n\n"
+                "Choose a service from the buttons below.",
+                reply_markup=keyboard
             )
-
-            file_path = await client.download_media(
-                replied.photo,
-                file_name=(
-                    f"downloads/"
-                    f"telegraph_"
-                    f"{message.chat.id}_"
-                    f"{message.id}.jpg"
-                )
-            )
-
-            if not file_path:
-
-                await status.edit_text(
-                    "❌ <b>Failed to download image.</b>"
-                )
-                return
-
-            # ------------------------------------------------
-            # Store session
-            # ------------------------------------------------
-
-            if not hasattr(
-                client,
-                "_telegraph_files"
-            ):
-                client._telegraph_files = {}
-
-            client._telegraph_files[
-                status.id
-            ] = file_path
 
         except Exception as e:
 
             logging.exception(
-                "Telegraph image download error: %s",
+                "Telegraph image preparation error: %s",
                 e
             )
 
@@ -324,16 +404,9 @@ def register_telegraph_handlers(app):
                 "❌ <b>Failed to prepare image.</b>"
             )
 
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
-
-    # --------------------------------------------------------
+    # ========================================================
     # BUTTON CALLBACK
-    # --------------------------------------------------------
+    # ========================================================
 
     @app.on_callback_query(
         filters.regex(
@@ -347,38 +420,93 @@ def register_telegraph_handlers(app):
 
         status = callback_query.message
 
-        await callback_query.answer()
-
         files = getattr(
             client,
             "_telegraph_files",
             {}
         )
 
-        file_path = files.get(
+        session = files.get(
             status.id
         )
 
-        if not file_path:
+        # ----------------------------------------------------
+        # SESSION CHECK
+        # ----------------------------------------------------
 
-            await status.edit_text(
-                "❌ <b>Image session expired.</b>\n\n"
-                "Use <code>/telegraph</code> again."
+        if not session:
+
+            await callback_query.answer(
+                "❌ Image session expired.",
+                show_alert=True
             )
+
+            try:
+
+                await status.edit_text(
+                    "❌ <b>Image session expired.</b>\n\n"
+                    "Use <code>/telegraph</code> again."
+                )
+
+            except Exception:
+                pass
+
             return
 
-        if not os.path.exists(file_path):
+        # ----------------------------------------------------
+        # USER CHECK
+        # ----------------------------------------------------
+
+        if (
+            callback_query.from_user.id
+            != session.get("user_id")
+        ):
+
+            await callback_query.answer(
+                "❌ This image belongs to another user.",
+                show_alert=True
+            )
+
+            return
+
+        file_path = session.get(
+            "file_path"
+        )
+
+        # ----------------------------------------------------
+        # FILE CHECK
+        # ----------------------------------------------------
+
+        if (
+            not file_path
+            or not os.path.exists(file_path)
+        ):
 
             files.pop(
                 status.id,
                 None
             )
 
-            await status.edit_text(
-                "❌ <b>Image file no longer exists.</b>\n\n"
-                "Use <code>/telegraph</code> again."
+            await callback_query.answer(
+                "❌ Image file no longer exists.",
+                show_alert=True
             )
+
+            try:
+
+                await status.edit_text(
+                    "❌ <b>Image file no longer exists.</b>\n\n"
+                    "Use <code>/telegraph</code> again."
+                )
+
+            except Exception:
+                pass
+
             return
+
+        # ----------------------------------------------------
+        # SERVICE
+        # ----------------------------------------------------
 
         service = callback_query.data.split(
             "_",
@@ -386,9 +514,13 @@ def register_telegraph_handlers(app):
         )[0]
 
         service_names = {
+
             "tg": "Telegraph",
+
             "catbox": "Catbox",
+
             "imgur": "Imgur"
+
         }
 
         service_name = service_names.get(
@@ -396,11 +528,19 @@ def register_telegraph_handlers(app):
             "Service"
         )
 
-        await status.edit_text(
-            f"⏳ <b>Uploading to {service_name}...</b>"
+        await callback_query.answer(
+            f"Uploading to {service_name}..."
         )
 
         try:
+
+            await status.edit_text(
+                f"⏳ <b>Uploading to {service_name}...</b>"
+            )
+
+            # ------------------------------------------------
+            # UPLOAD
+            # ------------------------------------------------
 
             url = await run_upload(
                 service,
@@ -439,16 +579,36 @@ def register_telegraph_handlers(app):
                 e
             )
 
-            await status.edit_text(
-                f"❌ <b>{service_name} upload failed.</b>"
-            )
+            try:
+
+                await status.edit_text(
+                    f"❌ <b>{service_name} upload failed.</b>\n\n"
+                    "Please try another service."
+                )
+
+            except Exception:
+                pass
 
         finally:
 
+            # ------------------------------------------------
+            # CLEANUP AFTER UPLOAD ATTEMPT
+            # ------------------------------------------------
+
             try:
-                os.remove(file_path)
-            except Exception:
-                pass
+
+                if os.path.exists(file_path):
+
+                    os.remove(
+                        file_path
+                    )
+
+            except Exception as e:
+
+                logging.warning(
+                    "Failed to remove telegraph file: %s",
+                    e
+                )
 
             files.pop(
                 status.id,
@@ -461,4 +621,3 @@ def register_telegraph_handlers(app):
 # Updates: @Aero_Unity 
 # Support : @Coders_Grp 
 # ------------------------ #
-
