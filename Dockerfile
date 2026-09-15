@@ -15,6 +15,7 @@ RUN apt-get update \
         gcc \
         g++ \
         libffi-dev \
+        ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for Docker cache
