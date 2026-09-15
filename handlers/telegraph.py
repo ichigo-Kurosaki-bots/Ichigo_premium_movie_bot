@@ -22,7 +22,6 @@ from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup
 )
-from LucyBot.Bot import Codeflix
 from telegraph import Telegraph
 
 logger = logging.getLogger(__name__)
@@ -49,7 +48,6 @@ ENVS_UPLOAD_URL = "https://envs.sh"
 # Support : @Coders_Grp 
 # ------------------------ #
 
-
 # ============================================================
 # SMALL CAPS
 # ============================================================
@@ -62,16 +60,13 @@ def smallcaps(text: str) -> str:
     )
 
     small = (
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ"
         "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ"
     )
 
-    # Correct mapping
     mapping = str.maketrans(
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz",
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ"
+        normal,
+        small
     )
 
     return text.translate(mapping)
@@ -298,240 +293,242 @@ async def upload_image(
 # HANDLER
 # ============================================================
 
-@Codeflix.on_message(
-    filters.command("telegraph")
-)
-async def telegraph_handler(
-    client,
-    message
-):
+def register_telegraph_handlers(app):
 
-    if not message.reply_to_message:
-
-        return await message.reply_text(
-            smallcaps(
-                "❌ Reply to an image with /telegraph."
-            )
-        )
-
-    reply = message.reply_to_message
-
-    if not reply.photo:
-
-        return await message.reply_text(
-            smallcaps(
-                "❌ Please reply to an image/photo."
-            )
-        )
-
-    status = await message.reply_text(
-        smallcaps(
-            "⏳ Choose an upload service:"
-        ),
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        smallcaps("ᴛᴇʟᴇɢʀᴀᴘʜ"),
-                        callback_data="tg_upload"
-                    ),
-                    InlineKeyboardButton(
-                        smallcaps("ᴇɴᴠs.ѕʜ"),
-                        callback_data="envs_upload"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        smallcaps("ᴄᴀᴛʙᴏx.ᴍᴏᴇ"),
-                        callback_data="catbox_upload"
-                    ),
-                    InlineKeyboardButton(
-                        smallcaps("ɪᴍɢᴜʀ"),
-                        callback_data="imgur_upload"
-                    )
-                ]
-            ]
-        )
+    @app.on_message(
+        filters.command("telegraph")
     )
+    async def telegraph_handler(
+        client,
+        message
+    ):
 
-    file_path = None
+        if not message.reply_to_message:
 
-    try:
-
-        file_path = await reply.download()
-
-        if not file_path:
-
-            return await status.edit_text(
+            return await message.reply_text(
                 smallcaps(
-                    "❌ Failed to download the image."
+                    "❌ Reply to an image with /telegraph."
                 )
             )
 
-        # Store temporary path on message object
-        # for the callback.
-        await client.send_message(
-            message.chat.id,
+        reply = message.reply_to_message
+
+        if not reply.photo:
+
+            return await message.reply_text(
+                smallcaps(
+                    "❌ Please reply to an image/photo."
+                )
+            )
+
+        status = await message.reply_text(
             smallcaps(
-                "📸 Image ready. "
-                "Choose a service from the buttons above."
+                "⏳ Choose an upload service:"
             ),
-            reply_to_message_id=status.id
-        )
-
-        # Save path in memory for callback
-        if not hasattr(client, "_telegraph_files"):
-            client._telegraph_files = {}
-
-        client._telegraph_files[
-            status.id
-        ] = file_path
-
-    except Exception as e:
-
-        logger.exception(
-            f"Telegraph preparation failed: {e}"
-        )
-
-        if file_path and os.path.exists(file_path):
-
-            try:
-                os.remove(file_path)
-            except Exception:
-                pass
-
-        await status.edit_text(
-            smallcaps(
-                "❌ Failed to prepare the image."
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            smallcaps("ᴛᴇʟᴇɢʀᴀᴘʜ"),
+                            callback_data="tg_upload"
+                        ),
+                        InlineKeyboardButton(
+                            smallcaps("ᴇɴᴠs.ѕʜ"),
+                            callback_data="envs_upload"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            smallcaps("ᴄᴀᴛʙᴏx.ᴍᴏᴇ"),
+                            callback_data="catbox_upload"
+                        ),
+                        InlineKeyboardButton(
+                            smallcaps("ɪᴍɢᴜʀ"),
+                            callback_data="imgur_upload"
+                        )
+                    ]
+                ]
             )
         )
 
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
-
-# ============================================================
-# CALLBACK
-# ============================================================
-
-@Codeflix.on_callback_query(
-    filters.regex(
-        r"^(tg|envs|catbox|imgur)_upload$"
-    )
-)
-async def telegraph_upload_callback(
-    client,
-    callback_query
-):
-
-    await callback_query.answer()
-
-    status = callback_query.message
-
-    if not hasattr(client, "_telegraph_files"):
-
-        return await status.edit_text(
-            smallcaps(
-                "❌ Upload session expired."
-            )
-        )
-
-    file_path = client._telegraph_files.get(
-        status.id
-    )
-
-    if not file_path or not os.path.exists(file_path):
-
-        return await status.edit_text(
-            smallcaps(
-                "❌ Image file is no longer available."
-            )
-        )
-
-    service = callback_query.data.replace(
-        "_upload",
-        ""
-    )
-
-    service_names = {
-        "tg": "ᴛᴇʟᴇɢʀᴀᴘʜ",
-        "envs": "ᴇɴᴠs.ѕʜ",
-        "catbox": "ᴄᴀᴛʙᴏx.ᴍᴏᴇ",
-        "imgur": "ɪᴍɢᴜʀ"
-    }
-
-    service_name = service_names.get(
-        service,
-        "ᴜᴘʟᴏᴀᴅ"
-    )
-
-    # Imgur requires Client ID
-    if service == "imgur" and not IMGUR_CLIENT_ID:
-
-        return await status.edit_text(
-            smallcaps(
-                "❌ ɪᴍɢᴜʀ ᴄʟɪᴇɴᴛ ɪᴅ ɪs ɴᴏᴛ ᴄᴏɴꜰɪɢᴜʀᴇᴅ."
-            )
-        )
-
-    try:
-
-        await status.edit_text(
-            smallcaps(
-                f"⏳ Uploading to {service_name}..."
-            )
-        )
-
-        link = await upload_image(
-            service,
-            file_path
-        )
-
-        if not link:
-
-            return await status.edit_text(
-                smallcaps(
-                    f"❌ {service_name} upload failed."
-                )
-            )
-
-        await status.edit_text(
-            smallcaps(
-                "✅ ʟɪɴᴋ ɢᴇɴᴇʀᴀᴛᴇᴅ\n\n"
-                f"🔗 {link}"
-            )
-        )
-
-    except Exception as e:
-
-        logger.exception(
-            f"Upload callback error: {e}"
-        )
-
-        await status.edit_text(
-            smallcaps(
-                f"❌ ᴇʀʀᴏʀ: {str(e)[:300]}"
-            )
-        )
-
-    finally:
-
-        if file_path and os.path.exists(file_path):
-
-            try:
-                os.remove(file_path)
-            except Exception:
-                pass
+        file_path = None
 
         try:
-            del client._telegraph_files[
+
+            file_path = await reply.download()
+
+            if not file_path:
+
+                return await status.edit_text(
+                    smallcaps(
+                        "❌ Failed to download the image."
+                    )
+                )
+
+            # Store temporary path on message object
+            # for the callback.
+            await client.send_message(
+                message.chat.id,
+                smallcaps(
+                    "📸 Image ready. "
+                    "Choose a service from the buttons above."
+                ),
+                reply_to_message_id=status.id
+            )
+
+            # Save path in memory for callback
+            if not hasattr(client, "_telegraph_files"):
+                client._telegraph_files = {}
+
+            client._telegraph_files[
                 status.id
-            ]
-        except Exception:
-            pass
+            ] = file_path
+
+        except Exception as e:
+
+            logger.exception(
+                f"Telegraph preparation failed: {e}"
+            )
+
+            if file_path and os.path.exists(file_path):
+
+                try:
+                    os.remove(file_path)
+                except Exception:
+                    pass
+
+            await status.edit_text(
+                smallcaps(
+                    "❌ Failed to prepare the image."
+                )
+            )
+
+    # ------------------------ #
+    # Don't Remove My Credits
+    # Owner: @Mr_Mohammed_29
+    # Updates: @Aero_Unity 
+    # Support : @Coders_Grp 
+    # ------------------------ #
+
+    # ========================================================
+    # CALLBACK
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^(tg|envs|catbox|imgur)_upload$"
+        )
+    )
+    async def telegraph_upload_callback(
+        client,
+        callback_query
+    ):
+
+        await callback_query.answer()
+
+        status = callback_query.message
+
+        if not hasattr(client, "_telegraph_files"):
+
+            return await status.edit_text(
+                smallcaps(
+                    "❌ Upload session expired."
+                )
+            )
+
+        file_path = client._telegraph_files.get(
+            status.id
+        )
+
+        if not file_path or not os.path.exists(file_path):
+
+            return await status.edit_text(
+                smallcaps(
+                    "❌ Image file is no longer available."
+                )
+            )
+
+        service = callback_query.data.replace(
+            "_upload",
+            ""
+        )
+
+        service_names = {
+            "tg": "ᴛᴇʟᴇɢʀᴀᴘʜ",
+            "envs": "ᴇɴᴠs.ѕʜ",
+            "catbox": "ᴄᴀᴛʙᴏx.ᴍᴏᴇ",
+            "imgur": "ɪᴍɢᴜʀ"
+        }
+
+        service_name = service_names.get(
+            service,
+            "ᴜᴘʟᴏᴀᴅ"
+        )
+
+        # Imgur requires Client ID
+        if service == "imgur" and not IMGUR_CLIENT_ID:
+
+            return await status.edit_text(
+                smallcaps(
+                    "❌ ɪᴍɢᴜʀ ᴄʟɪᴇɴᴛ ɪᴅ ɪs ɴᴏᴛ ᴄᴏɴꜰɪɢᴜʀᴇᴅ."
+                )
+            )
+
+        try:
+
+            await status.edit_text(
+                smallcaps(
+                    f"⏳ Uploading to {service_name}..."
+                )
+            )
+
+            link = await upload_image(
+                service,
+                file_path
+            )
+
+            if not link:
+
+                return await status.edit_text(
+                    smallcaps(
+                        f"❌ {service_name} upload failed."
+                    )
+                )
+
+            await status.edit_text(
+                smallcaps(
+                    "✅ ʟɪɴᴋ ɢᴇɴᴇʀᴀᴛᴇᴅ\n\n"
+                    f"🔗 {link}"
+                )
+            )
+
+        except Exception as e:
+
+            logger.exception(
+                f"Upload callback error: {e}"
+            )
+
+            await status.edit_text(
+                smallcaps(
+                    f"❌ ᴇʀʀᴏʀ: {str(e)[:300]}"
+                )
+            )
+
+        finally:
+
+            if file_path and os.path.exists(file_path):
+
+                try:
+                    os.remove(file_path)
+                except Exception:
+                    pass
+
+            try:
+                del client._telegraph_files[
+                    status.id
+                ]
+            except Exception:
+                pass
 
 # ------------------------ #
 # Don't Remove My Credits
