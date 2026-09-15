@@ -1,3 +1,10 @@
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 from pyrogram import filters
 from pyrogram.types import (
     InlineKeyboardButton,
@@ -6,6 +13,12 @@ from pyrogram.types import (
 
 import html
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # FONT TABLES
@@ -13,16 +26,14 @@ import html
 
 LOWER = "abcdefghijklmnopqrstuvwxyz"
 UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-
-# ============================================================
-# ORIGINAL TEXT CACHE
-# ============================================================
-
-# Stores the original text for each generated font message.
-# This prevents fonts from stacking when another font is clicked.
 FONT_TEXT_CACHE = {}
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # UNICODE FONT CONVERTER
@@ -81,6 +92,12 @@ FONT_MAPS = {
     )
 }
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def unicode_font(text, font):
 
@@ -96,6 +113,12 @@ def unicode_font(text, font):
 
     return text.translate(table)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # SPECIAL FONT FUNCTIONS
@@ -111,6 +134,12 @@ def small_caps(text):
 
     return text.translate(table)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def bubble(text):
 
@@ -122,6 +151,12 @@ def bubble(text):
 
     return text.translate(table)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def square(text):
 
@@ -133,11 +168,23 @@ def square(text):
 
     return text.translate(table)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def spacing(text):
 
     return " ".join(text.upper())
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def strike(text):
 
@@ -148,6 +195,12 @@ def strike(text):
         for char in text
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def underline(text):
 
@@ -158,6 +211,12 @@ def underline(text):
         for char in text
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def slash(text):
 
@@ -167,7 +226,13 @@ def slash(text):
         else char
         for char in text
     )
-
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def ray(text):
 
@@ -178,6 +243,12 @@ def ray(text):
         for char in text
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def arrows(text):
 
@@ -188,26 +259,56 @@ def arrows(text):
         for char in text
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def reverse(text):
 
     return text[::-1]
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def clouds(text):
 
     return "☁ " + text + " ☁"
-
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def happy(text):
 
     return "☺ " + text + " ☺"
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def sad(text):
 
     return "☹ " + text + " ☹"
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # ALL FONTS
@@ -277,6 +378,12 @@ FONTS = [
     ("F̷r̷o̷z̷e̷n̷", "slash")
 ]
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # SETTINGS
@@ -284,6 +391,12 @@ FONTS = [
 
 PER_PAGE = 21
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # GET FONT RESULT
@@ -352,6 +465,12 @@ def apply_font(text, style):
 
     return text
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # FONT KEYBOARD
@@ -445,7 +564,13 @@ def font_keyboard(
     return InlineKeyboardMarkup(
         buttons
     )
-
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # COPY BUTTON
@@ -479,6 +604,12 @@ def copy_keyboard(
         buttons
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # RESULT TEXT
@@ -495,6 +626,12 @@ def build_result_text(result):
         "☝️ <b>Click To Copy</b>"
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # REGISTER FONT HANDLERS
@@ -563,6 +700,12 @@ def register_font_handlers(app):
             (sent.chat.id, sent.id)
         ] = text
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # FONT STYLE CALLBACK
@@ -723,7 +866,13 @@ def register_font_handlers(app):
         await callback.answer(
             f"{name} applied!"
         )
-
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # PAGE NAVIGATION
@@ -848,6 +997,12 @@ def register_font_handlers(app):
                 show_alert=True
             )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # COPY BUTTON
@@ -949,13 +1104,6 @@ def register_font_handlers(app):
                 ""
             )
 
-            # ------------------------------------------------
-            # SEND COPYABLE TEXT
-            #
-            # This keeps compatibility with Pyrogram versions
-            # where CopyTextButton is unavailable.
-            # ------------------------------------------------
-
             await callback.message.reply_text(
                 f"<code>{html.escape(result)}</code>"
             )
@@ -970,3 +1118,10 @@ def register_font_handlers(app):
                 "Unable to copy text.",
                 show_alert=True
     )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
