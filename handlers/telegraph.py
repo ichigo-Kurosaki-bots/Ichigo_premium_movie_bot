@@ -1,8 +1,8 @@
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
 # ------------------------ #
 
 import os
@@ -10,11 +10,13 @@ import asyncio
 import logging
 import requests
 
+from PIL import Image
+
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
 # ------------------------ #
 
 from pyrogram import filters
@@ -23,8 +25,8 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
 # ------------------------ #
 
 # ============================================================
@@ -33,11 +35,14 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 IMGUR_CLIENT_ID = os.getenv("IMGUR_CLIENT_ID", "")
 
+# Telegraph upload target
+TELEGRAPH_MAX_SIZE = 4.5 * 1024 * 1024
+
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
 # ------------------------ #
 
 # ============================================================
@@ -52,8 +57,8 @@ SMALL_CAPS = str.maketrans(
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
 # ------------------------ #
 
 def smallcaps(text):
@@ -62,8 +67,148 @@ def smallcaps(text):
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
+# ------------------------ #
+
+# ============================================================
+# COMPRESS IMAGE FOR TELEGRAPH
+# ============================================================
+
+async def prepare_telegraph_image(file_path):
+
+    try:
+
+        if not file_path or not os.path.exists(file_path):
+            return None
+
+        # ----------------------------------------------------
+        # If already small, use original image
+        # ----------------------------------------------------
+
+        original_size = os.path.getsize(file_path)
+
+        if original_size <= TELEGRAPH_MAX_SIZE:
+            return file_path
+
+        logging.info(
+            "Image is %.2f MB, compressing for Telegraph...",
+            original_size / (1024 * 1024)
+        )
+
+        output_path = (
+            os.path.splitext(file_path)[0]
+            + "_tg.jpg"
+        )
+
+        def compress_image():
+
+            image = Image.open(file_path)
+
+            # ------------------------------------------------
+            # Convert image to RGB
+            # ------------------------------------------------
+
+            if image.mode != "RGB":
+                image = image.convert("RGB")
+
+            # ------------------------------------------------
+            # Start with original dimensions
+            # ------------------------------------------------
+
+            width, height = image.size
+
+            quality = 85
+
+            # ------------------------------------------------
+            # Try progressively smaller versions
+            # ------------------------------------------------
+
+            for attempt in range(10):
+
+                current_width = width
+                current_height = height
+
+                # Resize on later attempts
+                if attempt > 0:
+
+                    scale = 0.90 ** attempt
+
+                    current_width = max(
+                        640,
+                        int(width * scale)
+                    )
+
+                    current_height = max(
+                        360,
+                        int(height * scale)
+                    )
+
+                resized = image.resize(
+                    (
+                        current_width,
+                        current_height
+                    ),
+                    Image.Resampling.LANCZOS
+                )
+
+                current_quality = max(
+                    45,
+                    quality - (attempt * 5)
+                )
+
+                resized.save(
+                    output_path,
+                    format="JPEG",
+                    quality=current_quality,
+                    optimize=True,
+                    progressive=True
+                )
+
+                resized.close()
+
+                if (
+                    os.path.exists(output_path)
+                    and
+                    os.path.getsize(output_path)
+                    <= TELEGRAPH_MAX_SIZE
+                ):
+
+                    return output_path
+
+            return output_path
+
+        result = await asyncio.to_thread(
+            compress_image
+        )
+
+        if not result or not os.path.exists(result):
+
+            return None
+
+        final_size = os.path.getsize(result)
+
+        logging.info(
+            "Telegraph image prepared: %.2f MB",
+            final_size / (1024 * 1024)
+        )
+
+        return result
+
+    except Exception as e:
+
+        logging.exception(
+            "Telegraph image compression error: %s",
+            e
+        )
+
+        return None
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
 # ------------------------ #
 
 # ============================================================
@@ -74,34 +219,78 @@ async def upload_to_telegraph(file_path):
 
     try:
 
+        if not file_path or not os.path.exists(file_path):
+
+            logging.error(
+                "Telegraph file does not exist: %s",
+                file_path
+            )
+
+            return None
+
         # ----------------------------------------------------
-        # Direct Telegraph upload API
-        # This avoids the telegraph Python package issue
+        # Prepare image
         # ----------------------------------------------------
 
-        with open(file_path, "rb") as f:
+        upload_file = await prepare_telegraph_image(
+            file_path
+        )
+
+        if not upload_file:
+
+            logging.error(
+                "Failed to prepare image for Telegraph."
+            )
+
+            return None
+
+        # ----------------------------------------------------
+        # Direct Telegraph upload
+        # ----------------------------------------------------
+
+        with open(upload_file, "rb") as f:
 
             response = await asyncio.to_thread(
                 requests.post,
                 "https://telegra.ph/upload",
                 files={
-                    "file": f
+                    "file": (
+                        "image.jpg",
+                        f,
+                        "image/jpeg"
+                    )
                 },
                 timeout=120
             )
+
+        # ----------------------------------------------------
+        # HTTP ERROR
+        # ----------------------------------------------------
 
         if response.status_code != 200:
 
             logging.error(
                 "Telegraph HTTP %s: %s",
                 response.status_code,
-                response.text[:1000]
+                response.text[:2000]
             )
+
+            # Delete temporary compressed file
+            if (
+                upload_file != file_path
+                and
+                os.path.exists(upload_file)
+            ):
+
+                try:
+                    os.remove(upload_file)
+                except Exception:
+                    pass
 
             return None
 
         # ----------------------------------------------------
-        # Parse JSON response
+        # PARSE RESPONSE
         # ----------------------------------------------------
 
         try:
@@ -112,18 +301,29 @@ async def upload_to_telegraph(file_path):
 
             logging.error(
                 "Telegraph returned invalid JSON: %s",
-                response.text[:1000]
+                response.text[:2000]
             )
+
+            if (
+                upload_file != file_path
+                and
+                os.path.exists(upload_file)
+            ):
+
+                try:
+                    os.remove(upload_file)
+                except Exception:
+                    pass
 
             return None
 
         # ----------------------------------------------------
-        # Telegraph normally returns:
+        # NORMAL TELEGRAPH RESPONSE
         #
         # [
-        #     {
-        #         "src": "/file/example.jpg"
-        #     }
+        #   {
+        #       "src": "/file/example.jpg"
+        #   }
         # ]
         # ----------------------------------------------------
 
@@ -139,27 +339,62 @@ async def upload_to_telegraph(file_path):
 
                     if src.startswith("/"):
 
-                        return (
+                        result_url = (
                             "https://telegra.ph"
                             + src
                         )
 
-                    if (
+                    elif (
                         src.startswith("https://")
                         or
                         src.startswith("http://")
                     ):
 
-                        return src
+                        result_url = src
+
+                    else:
+
+                        result_url = None
+
+                    if result_url:
+
+                        # Remove temporary compressed file
+                        if (
+                            upload_file != file_path
+                            and
+                            os.path.exists(upload_file)
+                        ):
+
+                            try:
+                                os.remove(
+                                    upload_file
+                                )
+                            except Exception:
+                                pass
+
+                        return result_url
 
             elif isinstance(item, str):
 
                 if item.startswith("/"):
 
-                    return (
+                    result_url = (
                         "https://telegra.ph"
                         + item
                     )
+
+                    if (
+                        upload_file != file_path
+                        and
+                        os.path.exists(upload_file)
+                    ):
+
+                        try:
+                            os.remove(upload_file)
+                        except Exception:
+                            pass
+
+                    return result_url
 
                 if (
                     item.startswith("https://")
@@ -167,16 +402,39 @@ async def upload_to_telegraph(file_path):
                     item.startswith("http://")
                 ):
 
+                    if (
+                        upload_file != file_path
+                        and
+                        os.path.exists(upload_file)
+                    ):
+
+                        try:
+                            os.remove(upload_file)
+                        except Exception:
+                            pass
+
                     return item
 
         # ----------------------------------------------------
-        # Unexpected response
+        # UNEXPECTED RESPONSE
         # ----------------------------------------------------
 
         logging.error(
             "Unexpected Telegraph response: %s",
             data
         )
+
+        # Cleanup compressed file
+        if (
+            upload_file != file_path
+            and
+            os.path.exists(upload_file)
+        ):
+
+            try:
+                os.remove(upload_file)
+            except Exception:
+                pass
 
     except Exception as e:
 
@@ -190,8 +448,8 @@ async def upload_to_telegraph(file_path):
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
 # ------------------------ #
 
 # ============================================================
@@ -201,6 +459,10 @@ async def upload_to_telegraph(file_path):
 async def upload_to_catbox(file_path):
 
     try:
+
+        if not file_path or not os.path.exists(file_path):
+
+            return None
 
         with open(file_path, "rb") as f:
 
@@ -221,7 +483,7 @@ async def upload_to_catbox(file_path):
             logging.error(
                 "Catbox HTTP %s: %s",
                 response.status_code,
-                response.text[:500]
+                response.text[:1000]
             )
 
             return None
@@ -236,6 +498,11 @@ async def upload_to_catbox(file_path):
 
             return result
 
+        logging.error(
+            "Unexpected Catbox response: %s",
+            result
+        )
+
     except Exception as e:
 
         logging.exception(
@@ -248,8 +515,8 @@ async def upload_to_catbox(file_path):
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
 # ------------------------ #
 
 # ============================================================
@@ -268,6 +535,10 @@ async def upload_to_imgur(file_path):
 
     try:
 
+        if not file_path or not os.path.exists(file_path):
+
+            return None
+
         with open(file_path, "rb") as f:
 
             response = await asyncio.to_thread(
@@ -285,10 +556,6 @@ async def upload_to_imgur(file_path):
                 timeout=120
             )
 
-        # ----------------------------------------------------
-        # HTTP ERROR
-        # ----------------------------------------------------
-
         if response.status_code != 200:
 
             logging.error(
@@ -298,10 +565,6 @@ async def upload_to_imgur(file_path):
             )
 
             return None
-
-        # ----------------------------------------------------
-        # JSON RESPONSE
-        # ----------------------------------------------------
 
         try:
 
@@ -315,10 +578,6 @@ async def upload_to_imgur(file_path):
             )
 
             return None
-
-        # ----------------------------------------------------
-        # SUCCESS
-        # ----------------------------------------------------
 
         if data.get("success"):
 
@@ -334,17 +593,6 @@ async def upload_to_imgur(file_path):
             if link:
 
                 return link
-
-            logging.error(
-                "Imgur success response has no link: %s",
-                data
-            )
-
-            return None
-
-        # ----------------------------------------------------
-        # IMGUR API ERROR
-        # ----------------------------------------------------
 
         logging.error(
             "Imgur API error: %s",
@@ -363,8 +611,8 @@ async def upload_to_imgur(file_path):
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
 # ------------------------ #
 
 # ============================================================
@@ -396,8 +644,8 @@ async def run_upload(service, file_path):
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
 # ------------------------ #
 
 # ============================================================
@@ -429,13 +677,15 @@ def register_telegraph_handlers(app):
             return
 
         # ----------------------------------------------------
-        # DOWNLOAD STATUS
+        # STATUS
         # ----------------------------------------------------
 
         status = await message.reply_text(
             "📥 <b>Preparing image...</b>\n\n"
             "Please wait..."
         )
+
+        file_path = None
 
         try:
 
@@ -445,7 +695,7 @@ def register_telegraph_handlers(app):
             )
 
             # ------------------------------------------------
-            # DOWNLOAD IMAGE FIRST
+            # DOWNLOAD IMAGE
             # ------------------------------------------------
 
             file_path = await client.download_media(
@@ -467,7 +717,20 @@ def register_telegraph_handlers(app):
                 return
 
             # ------------------------------------------------
-            # CREATE SESSION STORAGE
+            # FILE SIZE
+            # ------------------------------------------------
+
+            file_size = os.path.getsize(
+                file_path
+            )
+
+            size_mb = (
+                file_size
+                / (1024 * 1024)
+            )
+
+            # ------------------------------------------------
+            # SESSION STORAGE
             # ------------------------------------------------
 
             if not hasattr(
@@ -482,10 +745,6 @@ def register_telegraph_handlers(app):
                 if message.from_user
                 else message.chat.id
             )
-
-            # ------------------------------------------------
-            # STORE ONLY AFTER DOWNLOAD COMPLETES
-            # ------------------------------------------------
 
             client._telegraph_files[
                 status.id
@@ -502,7 +761,7 @@ def register_telegraph_handlers(app):
             }
 
             # ------------------------------------------------
-            # SHOW BUTTONS ONLY NOW
+            # BUTTONS
             # ------------------------------------------------
 
             keyboard = InlineKeyboardMarkup(
@@ -526,11 +785,24 @@ def register_telegraph_handlers(app):
                 ]
             )
 
-            await status.edit_text(
-                "📸 <b>Image ready.</b>\n\n"
-                "Choose a service from the buttons below.",
-                reply_markup=keyboard
-            )
+            if file_size > TELEGRAPH_MAX_SIZE:
+
+                await status.edit_text(
+                    "📸 <b>Image ready.</b>\n\n"
+                    f"📦 Size: <b>{size_mb:.2f} MB</b>\n"
+                    "🗜 Telegraph will compress it automatically.\n\n"
+                    "Choose a service:",
+                    reply_markup=keyboard
+                )
+
+            else:
+
+                await status.edit_text(
+                    "📸 <b>Image ready.</b>\n\n"
+                    f"📦 Size: <b>{size_mb:.2f} MB</b>\n\n"
+                    "Choose a service:",
+                    reply_markup=keyboard
+                )
 
         except Exception as e:
 
@@ -538,6 +810,13 @@ def register_telegraph_handlers(app):
                 "Telegraph image preparation error: %s",
                 e
             )
+
+            if file_path and os.path.exists(file_path):
+
+                try:
+                    os.remove(file_path)
+                except Exception:
+                    pass
 
             await status.edit_text(
                 "❌ <b>Failed to prepare image.</b>"
@@ -609,13 +888,13 @@ def register_telegraph_handlers(app):
 
             return
 
+        # ----------------------------------------------------
+        # FILE
+        # ----------------------------------------------------
+
         file_path = session.get(
             "file_path"
         )
-
-        # ----------------------------------------------------
-        # FILE CHECK
-        # ----------------------------------------------------
 
         if (
             not file_path
@@ -735,7 +1014,7 @@ def register_telegraph_handlers(app):
         finally:
 
             # ------------------------------------------------
-            # CLEANUP AFTER UPLOAD ATTEMPT
+            # CLEANUP
             # ------------------------------------------------
 
             try:
@@ -761,6 +1040,6 @@ def register_telegraph_handlers(app):
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
 # ------------------------ #
