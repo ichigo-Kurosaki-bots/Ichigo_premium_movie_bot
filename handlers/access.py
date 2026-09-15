@@ -1,3 +1,10 @@
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 import logging
 
 from pyrogram import filters, StopPropagation
@@ -9,12 +16,26 @@ from database import (
 
 logger = logging.getLogger(__name__)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 # ============================================================
 # ADMIN CHECK
 # ============================================================
 
 def is_admin(user_id):
     return user_id == OWNER_ID or user_id in ADMIN_IDS
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # REGISTER ACCESS HANDLERS
@@ -96,6 +117,12 @@ def register_access_handlers(app):
                 f"Maintenance check failed for {user_id}: {e}"
             )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # CALLBACK QUERY ACCESS CONTROL
@@ -167,3 +194,10 @@ def register_access_handlers(app):
             logger.error(
                 f"Callback maintenance check failed for {user_id}: {e}"
             )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
