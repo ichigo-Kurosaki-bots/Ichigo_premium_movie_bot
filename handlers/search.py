@@ -2137,7 +2137,11 @@ def register_search_handlers(app):
             "clearjunkgroup",
             "plink",
             "pbatch",
-            "batch"
+            "batch",
+            "video",
+            "telegraph",
+            "share",
+            "system"
         ])
     )
     async def movie_search_handler(
