@@ -19,7 +19,6 @@ import requests
 
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from telegraph import Telegraph
 
 # ------------------------ #
 # Don't Remove My Credits
@@ -75,27 +74,109 @@ async def upload_to_telegraph(file_path):
 
     try:
 
-        tg = Telegraph()
+        # ----------------------------------------------------
+        # Direct Telegraph upload API
+        # This avoids the telegraph Python package issue
+        # ----------------------------------------------------
 
-        await asyncio.to_thread(
-            tg.create_account,
-            short_name="PremiumMovieBot"
+        with open(file_path, "rb") as f:
+
+            response = await asyncio.to_thread(
+                requests.post,
+                "https://telegra.ph/upload",
+                files={
+                    "file": f
+                },
+                timeout=120
+            )
+
+        if response.status_code != 200:
+
+            logging.error(
+                "Telegraph HTTP %s: %s",
+                response.status_code,
+                response.text[:1000]
+            )
+
+            return None
+
+        # ----------------------------------------------------
+        # Parse JSON response
+        # ----------------------------------------------------
+
+        try:
+
+            data = response.json()
+
+        except Exception:
+
+            logging.error(
+                "Telegraph returned invalid JSON: %s",
+                response.text[:1000]
+            )
+
+            return None
+
+        # ----------------------------------------------------
+        # Telegraph normally returns:
+        #
+        # [
+        #     {
+        #         "src": "/file/example.jpg"
+        #     }
+        # ]
+        # ----------------------------------------------------
+
+        if isinstance(data, list) and data:
+
+            item = data[0]
+
+            if isinstance(item, dict):
+
+                src = item.get("src")
+
+                if src:
+
+                    if src.startswith("/"):
+
+                        return (
+                            "https://telegra.ph"
+                            + src
+                        )
+
+                    if (
+                        src.startswith("https://")
+                        or
+                        src.startswith("http://")
+                    ):
+
+                        return src
+
+            elif isinstance(item, str):
+
+                if item.startswith("/"):
+
+                    return (
+                        "https://telegra.ph"
+                        + item
+                    )
+
+                if (
+                    item.startswith("https://")
+                    or
+                    item.startswith("http://")
+                ):
+
+                    return item
+
+        # ----------------------------------------------------
+        # Unexpected response
+        # ----------------------------------------------------
+
+        logging.error(
+            "Unexpected Telegraph response: %s",
+            data
         )
-
-        result = await asyncio.to_thread(
-            tg.upload_file,
-            file_path
-        )
-
-        if isinstance(result, list) and result:
-
-            uploaded = result[0]
-
-            if uploaded.startswith("/"):
-                return "https://telegra.ph" + uploaded
-
-            if uploaded.startswith("http://") or uploaded.startswith("https://"):
-                return uploaded
 
     except Exception as e:
 
@@ -147,7 +228,12 @@ async def upload_to_catbox(file_path):
 
         result = response.text.strip()
 
-        if result.startswith("https://") or result.startswith("http://"):
+        if (
+            result.startswith("https://")
+            or
+            result.startswith("http://")
+        ):
+
             return result
 
     except Exception as e:
@@ -174,7 +260,7 @@ async def upload_to_imgur(file_path):
 
     if not IMGUR_CLIENT_ID:
 
-        logging.warning(
+        logging.error(
             "IMGUR_CLIENT_ID is not configured."
         )
 
@@ -189,7 +275,8 @@ async def upload_to_imgur(file_path):
                 "https://api.imgur.com/3/image",
                 headers={
                     "Authorization": (
-                        f"Client-ID {IMGUR_CLIENT_ID}"
+                        "Client-ID "
+                        f"{IMGUR_CLIENT_ID.strip()}"
                     )
                 },
                 files={
@@ -198,24 +285,71 @@ async def upload_to_imgur(file_path):
                 timeout=120
             )
 
+        # ----------------------------------------------------
+        # HTTP ERROR
+        # ----------------------------------------------------
+
         if response.status_code != 200:
 
             logging.error(
                 "Imgur HTTP %s: %s",
                 response.status_code,
-                response.text[:500]
+                response.text[:2000]
             )
 
             return None
 
-        data = response.json()
+        # ----------------------------------------------------
+        # JSON RESPONSE
+        # ----------------------------------------------------
+
+        try:
+
+            data = response.json()
+
+        except Exception:
+
+            logging.error(
+                "Imgur returned invalid JSON: %s",
+                response.text[:2000]
+            )
+
+            return None
+
+        # ----------------------------------------------------
+        # SUCCESS
+        # ----------------------------------------------------
 
         if data.get("success"):
 
-            return data.get(
+            image_data = data.get(
                 "data",
                 {}
-            ).get("link")
+            )
+
+            link = image_data.get(
+                "link"
+            )
+
+            if link:
+
+                return link
+
+            logging.error(
+                "Imgur success response has no link: %s",
+                data
+            )
+
+            return None
+
+        # ----------------------------------------------------
+        # IMGUR API ERROR
+        # ----------------------------------------------------
+
+        logging.error(
+            "Imgur API error: %s",
+            data
+        )
 
     except Exception as e:
 
@@ -240,16 +374,19 @@ async def upload_to_imgur(file_path):
 async def run_upload(service, file_path):
 
     if service == "tg":
+
         return await upload_to_telegraph(
             file_path
         )
 
     if service == "catbox":
+
         return await upload_to_catbox(
             file_path
         )
 
     if service == "imgur":
+
         return await upload_to_imgur(
             file_path
         )
@@ -358,7 +495,9 @@ def register_telegraph_handlers(app):
 
                 "user_id": user_id,
 
-                "created_at": asyncio.get_running_loop().time()
+                "created_at": (
+                    asyncio.get_running_loop().time()
+                )
 
             }
 
@@ -449,6 +588,7 @@ def register_telegraph_handlers(app):
                 )
 
             except Exception:
+
                 pass
 
             return
@@ -479,7 +619,8 @@ def register_telegraph_handlers(app):
 
         if (
             not file_path
-            or not os.path.exists(file_path)
+            or
+            not os.path.exists(file_path)
         ):
 
             files.pop(
@@ -500,6 +641,7 @@ def register_telegraph_handlers(app):
                 )
 
             except Exception:
+
                 pass
 
             return
@@ -587,6 +729,7 @@ def register_telegraph_handlers(app):
                 )
 
             except Exception:
+
                 pass
 
         finally:
