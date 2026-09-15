@@ -1,9 +1,22 @@
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 import logging
 import secrets
 import string
 
-from pyrogram import filters
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
+from pyrogram import filters
 from config import OWNER_ID
 
 from database import (
@@ -18,6 +31,12 @@ from database import (
 
 logger = logging.getLogger(__name__)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # OWNER CHECK
@@ -34,6 +53,12 @@ owner_only = filters.create(
     )
 )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # GENERATE CODE
@@ -55,6 +80,12 @@ def generate_code():
 
     return f"PMB-{part1}-{part2}"
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # REGISTER OWNER HANDLERS
@@ -126,12 +157,18 @@ def register_owner_handlers(app):
 
         await message.reply_text(
             "🎟️ <b>Premium Code Generated</b>\n\n"
-            f"🔑 Code: <code>{code}</code>\n"
-            f"💰 Amount: <b>₹{amount}</b>\n"
-            "🟢 Status: <b>Unused</b>\n\n"
-            "Give this code to the customer."
+            f"<b>›› Code:</b> <code>{code}</code>\n"
+            f"<b>›› Amount: ₹{amount}</b>\n"
+            "<b>››🟢 Status: Unused</b>\n\n"
+            "<b>Give this code to the customer.</b>"
         )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # --------------------------------------------------------
     # /codes
@@ -197,7 +234,7 @@ def register_owner_handlers(app):
             if used and item.get("used_by"):
 
                 lines.append(
-                    "   👤 Used by: "
+                    "   <b>››Used by:</b> "
                     f"<code>{item['used_by']}</code>"
                 )
 
@@ -222,6 +259,12 @@ def register_owner_handlers(app):
 
             await message.reply_text(text)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # --------------------------------------------------------
     # /ban
@@ -235,8 +278,6 @@ def register_owner_handlers(app):
         if len(message.command) < 2:
 
             await message.reply_text(
-                "❌ <b>Usage</b>\n\n"
-                "<code>/ban USER_ID</code>\n\n"
                 "With reason:\n"
                 "<code>/ban USER_ID reason</code>"
             )
@@ -260,7 +301,7 @@ def register_owner_handlers(app):
         if user_id == OWNER_ID:
 
             await message.reply_text(
-                "❌ You cannot ban the Owner."
+                "<b>Go To Hell, Iam The Owner</b>"
             )
 
             return
@@ -289,22 +330,28 @@ def register_owner_handlers(app):
 
         text = (
             "🚫 <b>User Banned</b>\n\n"
-            f"🆔 User ID: <code>{user_id}</code>\n"
+            f"<b> ›› User ID:</b> <code>{user_id}</code>\n"
         )
 
         if reason:
 
             text += (
-                f"📝 Reason: {reason}\n"
+                f"<b>›› 📝 Reason: {reason}</b>\n"
             )
 
         text += (
-            f"👑 Banned by: "
+            f"<b>›› Banned by: </b> "
             f"<code>{message.from_user.id}</code>"
         )
 
         await message.reply_text(text)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # --------------------------------------------------------
     # /unban
@@ -318,7 +365,6 @@ def register_owner_handlers(app):
         if len(message.command) < 2:
 
             await message.reply_text(
-                "❌ <b>Usage</b>\n\n"
                 "<code>/unban USER_ID</code>"
             )
 
@@ -345,16 +391,22 @@ def register_owner_handlers(app):
         if not success:
 
             await message.reply_text(
-                "ℹ️ This user is not currently banned."
+                "<b> This user is not currently banned</b>."
             )
 
             return
 
         await message.reply_text(
             "✅ <b>User Unbanned</b>\n\n"
-            f"🆔 User ID: <code>{user_id}</code>"
+            f"<b>››  User ID:</b> <code>{user_id}</code>"
         )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # --------------------------------------------------------
     # /banlist
@@ -371,7 +423,7 @@ def register_owner_handlers(app):
 
             await message.reply_text(
                 "🚫 <b>Ban List</b>\n\n"
-                "No users are currently banned."
+                "<b>No users are currently banned</b>."
             )
 
             return
@@ -403,7 +455,7 @@ def register_owner_handlers(app):
             if reason:
 
                 lines.append(
-                    f"   📝 {reason}"
+                    f"   ›› {reason}"
                 )
 
             lines.append("")
@@ -426,6 +478,12 @@ def register_owner_handlers(app):
 
             await message.reply_text(text)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # --------------------------------------------------------
     # /maintenance
@@ -445,8 +503,8 @@ def register_owner_handlers(app):
 
                 await message.reply_text(
                     "🔧 <b>Maintenance Mode</b>\n\n"
-                    "🟢 Status: <b>ON</b>\n\n"
-                    "Use:\n"
+                    "<b>›› 🟢 Status: ON</b>\n\n"
+                    "<b>›› Use:</b>\n"
                     "<code>/maintenance off</code>"
                 )
 
@@ -454,8 +512,8 @@ def register_owner_handlers(app):
 
                 await message.reply_text(
                     "🔧 <b>Maintenance Mode</b>\n\n"
-                    "🔴 Status: <b>OFF</b>\n\n"
-                    "Use:\n"
+                    "<b>›› 🔴 Status: OFF</b>\n\n"
+                    "<b>›› Use:\n"
                     "<code>/maintenance on</code>"
                 )
 
@@ -470,7 +528,7 @@ def register_owner_handlers(app):
 
             await message.reply_text(
                 "🔧 <b>Maintenance Mode Enabled</b>\n\n"
-                "Normal users can no longer use the bot."
+                "<b>Normal users can no longer use the bot.</b>"
             )
 
         # /maintenance off
@@ -480,14 +538,20 @@ def register_owner_handlers(app):
 
             await message.reply_text(
                 "✅ <b>Maintenance Mode Disabled</b>\n\n"
-                "Users can use the bot again."
+                "<b>Users can use the bot again.</b>"
             )
 
         else:
 
             await message.reply_text(
-                "❌ Invalid option.\n\n"
-                "Use:\n"
+                "<b>›› Use:</b>\n"
                 "<code>/maintenance on</code>\n"
                 "<code>/maintenance off</code>"
             )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
