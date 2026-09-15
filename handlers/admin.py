@@ -1,17 +1,47 @@
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 import logging
 import asyncio
 import os
 import time
 import psutil
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 from html import escape
 from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup
 )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 from pyrogram import filters
 from pyrogram.enums import ChatType
 from config import OWNER_ID, ADMIN_IDS
+from premium import get_plan_by_amount
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 from database import (
     get_user,
@@ -29,11 +59,14 @@ from database import (
     get_trending_searches
 )
 
-from premium import get_plan_by_amount
-
-
 logger = logging.getLogger(__name__)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # ADMIN CHECK
@@ -50,6 +83,12 @@ admin_only = filters.create(
     )
 )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # REGISTER ADMIN HANDLERS
@@ -116,6 +155,13 @@ def register_admin_handlers(app):
                 e
             )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
     # ========================================================
     # /trendlist
     # ========================================================
@@ -158,7 +204,7 @@ def register_admin_handlers(app):
 
             text = (
                 "Tᴏᴘ 29 Tʀᴀɴᴅɪɴɢ ᴏғ ᴛʜᴇ Dᴀʏ 👇:\n\n"
-                + "\n".join(lines)
+                +›› "\n".join(lines)
                 + "\n\n"
                 "⚡️ 𝑨𝒍𝒍 𝒕𝒉𝒆 𝒓𝒆𝒔𝒖𝒍𝒕𝒔 𝒂𝒃𝒐𝒗𝒆 𝒄𝒐𝒎𝒆 "
                 "𝒇𝒓𝒐𝒎 𝒘𝒉𝒂𝒕 𝒖𝒔𝒆𝒓𝒔 𝒉𝒂𝒗𝒆 𝒔𝒆𝒂𝒓𝒄𝒉𝒆𝒅 𝒇𝒐𝒓. "
@@ -193,6 +239,12 @@ def register_admin_handlers(app):
                 "❌ <b>Could not load trending searches.</b>"
             )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # CLOSE TRENDLIST
@@ -223,6 +275,13 @@ def register_admin_handlers(app):
                 pass
 
         await callback.answer()
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # /stats
@@ -353,39 +412,39 @@ def register_admin_handlers(app):
 
                 "⌬ <b>𝗕𝗢𝗧 𝗦𝗧𝗔𝗧𝗜𝗦𝗧𝗜𝗖𝗦 :</b>\n\n"
 
-                f"┎ <b>Tᴏᴛᴀʟ Uꜱᴇʀꜱ :</b> "
+                f"┎ <b>›› Tᴏᴛᴀʟ Uꜱᴇʀꜱ :</b> "
                 f"<b>{users:,}</b>\n"
-                f"┖ <b>Tᴏᴛᴀʟ Cʜᴀᴛꜱ :</b> "
+                f"┖ <b>›› Tᴏᴛᴀʟ Cʜᴀᴛꜱ :</b> "
                 f"<b>{chats:,}</b>\n\n"
 
-                "┎ <b>RAM ( MEMORY ):</b>\n"
+                "┎ <b>›› RAM ( MEMORY ):</b>\n"
                 f"┖ [{progress_bar(ram_percent)}] "
-                f"<b>{ram_percent:.1f}%</b>\n\n"
+                f"<b>›› {ram_percent:.1f}%</b>\n\n"
 
-                "┎ <b>CPU ( USAGE ) :</b>\n"
+                "┎ <b>›› CPU ( USAGE ) :</b>\n"
                 f"┖ [{progress_bar(cpu_percent)}] "
-                f"<b>{cpu_percent:.1f}%</b>\n\n"
+                f"<b>›› {cpu_percent:.1f}%</b>\n\n"
 
-                "┎ <b>DISK :</b>\n"
+                "┎ <b>›› DISK :</b>\n"
                 f"┃ [{progress_bar(disk_percent)}] "
-                f"<b>{disk_percent:.1f}%</b>\n"
-                f"┃ <b>Usᴇᴅ :</b> "
-                f"<b>{disk_used_gb:.2f} GB</b>\n"
-                f"┃ <b>Fʀᴇᴇ :</b> "
-                f"<b>{disk_free_gb:.2f} GB</b>\n"
-                f"┖ <b>Tᴏᴛᴀʟ :</b> "
-                f"<b>{disk_total_gb:.2f} GB</b>\n\n"
+                f"<b>›› {disk_percent:.1f}%</b>\n"
+                f"┃ <b>›› Usᴇᴅ :</b> "
+                f"<b>›› {disk_used_gb:.2f} GB</b>\n"
+                f"┃ <b>›› Fʀᴇᴇ :</b> "
+                f"<b>›› {disk_free_gb:.2f} GB</b>\n"
+                f"┖ <b>›› Tᴏᴛᴀʟ :</b> "
+                f"<b>›› {disk_total_gb:.2f} GB</b>\n\n"
 
                 "┎ <b>𝗗𝗔𝗧𝗔𝗕𝗔𝗦𝗘 𝗦𝗧𝗔𝗧𝗜𝗦𝗧𝗜𝗖𝗦 :</b>\n"
-                f"┃ <b>Tᴏᴛᴀʟ Fɪʟᴇs :</b> "
-                f"<b>{media:,}</b>\n"
-                f"┖ <b>Tᴏᴛᴀʟ Sᴛᴏʀᴀɢᴇ Usᴇᴅ :</b> "
-                f"<b>{used_storage}</b>\n\n"
+                f"┃ <b>›› Tᴏᴛᴀʟ Fɪʟᴇs :</b> "
+                f"<b>›› {media:,}</b>\n"
+                f"┖ <b>›› Tᴏᴛᴀʟ Sᴛᴏʀᴀɢᴇ Usᴇᴅ :</b> "
+                f"<b>›› {used_storage}</b>\n\n"
 
-                f"💎 <b>Pʀᴇᴍɪᴜᴍ Usᴇʀs :</b> "
-                f"<b>{premium_users:,}</b>\n\n"
+                f"💎 <b>›› Pʀᴇᴍɪᴜᴍ Usᴇʀs :</b> "
+                f"<b>›› {premium_users:,}</b>\n\n"
 
-                "<b>Powered By: @Aero_Unity</b>"
+                "<b>›› Powered By: @Aero_Unity</b>"
             )
 
             await extracting_message.edit_text(
@@ -410,6 +469,12 @@ def register_admin_handlers(app):
                 f"<code>{e}</code>"
             )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # /premiumuser 
@@ -461,7 +526,7 @@ def register_admin_handlers(app):
 
             text = (
                 " <b>Pʀᴇᴍɪᴜᴍ Usᴇʀs</b>\n\n"
-                f"👥 <b>Tᴏᴛᴀʟ Pʀᴇᴍɪᴜᴍ Usᴇʀs:</b> "
+                f"<b>›› Tᴏᴛᴀʟ Pʀᴇᴍɪᴜᴍ Usᴇʀs:</b> "
                 f"<code>{len(premium_users)}</code>\n\n"
             )
 
@@ -510,8 +575,8 @@ def register_admin_handlers(app):
 
                 text += (
                     f"<b>{index}.</b> "
-                    f"👤 <b>{escape(str(first_name))}</b>\n"
-                    f"   🆔 <code>{user_id}</code>\n"
+                    f"<b>›› {escape(str(first_name))}</b>\n"
+                    f"<b>›› 🆔 <code>{user_id}</code></b>\n"
                 )
 
                 if username:
@@ -561,6 +626,13 @@ def register_admin_handlers(app):
                 "❌ <b>Could not load Premium users.</b>\n\n"
                 f"<code>{escape(str(e))}</code>"
             )
+            
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ------ Activate User ------- #
 
@@ -692,6 +764,12 @@ def register_admin_handlers(app):
                 e
             )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # /deactivate USER_ID
@@ -774,6 +852,13 @@ def register_admin_handlers(app):
                 user_id,
                 e
             )
+            
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # /indexstatus
@@ -969,7 +1054,13 @@ def register_admin_handlers(app):
             await message.delete()
         except Exception:
             pass
-
+            
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # /resetindex
@@ -1008,6 +1099,12 @@ def register_admin_handlers(app):
                 "❌ Failed to reset indexer."
             )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # /id
@@ -1027,6 +1124,13 @@ def register_admin_handlers(app):
             "<b>Your Telegram ID</b>\n\n"
             f"ID - <code>{user_id}</code>"
         )
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # /broadcast
@@ -1409,12 +1513,17 @@ def register_admin_handlers(app):
             )
 
         except Exception:
-
             pass
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
         # ============================================================
         # /clearjunk
-        # Delete recent messages using message IDs
         # ============================================================
 
         @app.on_message(
@@ -1435,9 +1544,7 @@ def register_admin_handlers(app):
             deleted = 0
 
             try:
-                # Telegram bots cannot use get_chat_history().
-                # Use the known message-ID range instead.
-
+                
                 start_id = max(1, message.id - 200)
                 end_id = message.id
 
@@ -1445,7 +1552,6 @@ def register_admin_handlers(app):
                     range(start_id, end_id + 1)
                 )
 
-                # Telegram delete methods work better in small batches.
                 for i in range(0, len(message_ids), 100):
 
                     batch = message_ids[i:i + 100]
@@ -1496,9 +1602,15 @@ def register_admin_handlers(app):
                 except Exception:
                     pass
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
         # ============================================================
         # /clearjunkgroup
-        # Delete recent 500 messages in the group
         # ============================================================
 
         @app.on_message(
@@ -1581,3 +1693,10 @@ def register_admin_handlers(app):
                     )
                 except Exception:
                     pass
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
