@@ -1,7 +1,20 @@
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 from pyrogram import filters
 from config import ADMIN_IDS
 import database
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def register_channel_handlers(app):
 
@@ -14,8 +27,8 @@ def register_channel_handlers(app):
             # Make sure database is initialized
             if database.chats_collection is None:
                 await message.reply_text(
-                    "❌ <b>Database is not initialized.</b>\n\n"
-                    "Please restart the bot and try again."
+                    " <b>Database is not initialized.</b>\n\n"
+                    "<b>Please restart the bot and try again.</b>"
                 )
                 return
 
@@ -44,7 +57,7 @@ def register_channel_handlers(app):
                 await message.reply_text(
                     "📋 <b>TOTAL CONNECTED GROUPS</b>\n\n"
                     "📊 <b>›› Total:</b> 0\n\n"
-                    "❌ No connected groups found."
+                    "<b>❌ No connected groups found.</b>"
                 )
                 return
 
@@ -75,13 +88,13 @@ def register_channel_handlers(app):
                 if username:
                     text += (
                         f"<b>{number}. {title}</b>\n"
-                        f"👤 @{username}\n"
-                        f"🆔 <code>{chat_id}</code>\n\n"
+                        f"<b>›› 👤 @{username}</b>\n"
+                        f"<b>››🆔 <code>{chat_id}</code></b>\n\n"
                     )
                 else:
                     text += (
-                        f"<b>{number}. {title}</b>\n"
-                        f"🆔 <code>{chat_id}</code>\n\n"
+                        f"<b>›› {number}. {title}</b>\n"
+                        f"<b>›› 🆔 <code>{chat_id}</code></b>\n\n"
                     )
 
             # Telegram message limit protection
@@ -110,3 +123,10 @@ def register_channel_handlers(app):
                 "❌ <b>Failed to get connected groups.</b>\n\n"
                 f"<code>{str(e)}</code>"
             )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
