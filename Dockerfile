@@ -16,7 +16,12 @@ RUN apt-get update \
         g++ \
         libffi-dev \
         ffmpeg \
+        curl \
+        unzip \
+    && curl -fsSL https://deno.land/install.sh | sh \
     && rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/root/.deno/bin:${PATH}"
 
 # Copy requirements first for Docker cache
 COPY requirements.txt .
