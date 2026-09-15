@@ -9,4 +9,3 @@ requests>=2.31.0
 psutil==6.0.0
 yt-dlp
 telegraph
-psutil
