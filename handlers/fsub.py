@@ -1,12 +1,34 @@
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 import logging
 import os
 from html import escape
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 from pyrogram import filters, enums, StopPropagation
 from pyrogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup
 )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 
 from config import OWNER_ID, ADMIN_IDS
 
@@ -19,6 +41,12 @@ from database import (
 
 logger = logging.getLogger(__name__)
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # ADMIN CHECK
@@ -38,6 +66,12 @@ admin_only = filters.create(
     )
 )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # CHECK USER JOIN STATUS
@@ -83,6 +117,12 @@ async def check_user_joined(
 
         return False
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # CHECK ALL FSUB CHANNELS
@@ -172,7 +212,13 @@ def build_fsub_keyboard(
     return InlineKeyboardMarkup(
         buttons
     )
-
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # FSUB MESSAGE
@@ -255,6 +301,12 @@ async def send_fsub_message(
         reply_markup=keyboard
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # /START FORCE SUBSCRIBE CHECK
@@ -340,6 +392,13 @@ def register_fsub_start_handler(app):
         # ----------------------------------------------------
 
         raise StopPropagation
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # TRY AGAIN CALLBACK
@@ -669,6 +728,12 @@ def register_fsub_callback_handler(app):
                 e
             )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # ADMIN FORCE SUBSCRIBE
@@ -713,9 +778,9 @@ def register_fsub_admin_handlers(app):
         except Exception as e:
 
             await message.reply_text(
-                "❌ <b>Could not find this channel.</b>\n\n"
+                "❌ <b>Could not find this channel\n\n"
                 "Make sure the bot is inside the channel "
-                "and has the required permissions.\n\n"
+                "and has the required permissions.</b>\n\n"
                 f"<code>{e}</code>"
             )
 
@@ -826,6 +891,12 @@ def register_fsub_admin_handlers(app):
             f"{invite_link}"
         )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # /DELFSUB
@@ -845,7 +916,6 @@ def register_fsub_delete_handler(app):
         if len(message.command) < 2:
 
             await message.reply_text(
-                "❌ <b>Usage:</b>\n\n"
                 "<code>/delfsub @channel</code>\n\n"
                 "or\n\n"
                 "<code>/delfsub -1001234567890</code>"
@@ -895,6 +965,12 @@ def register_fsub_delete_handler(app):
             f"<code>{chat_id}</code>"
         )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # /FSUBLIST
@@ -956,7 +1032,7 @@ def register_fsub_list_handler(app):
                 )
 
             text += (
-                f"┖ <b>›› ID: <code>{chat_id}</code>\n\n"
+                f"┖ <b>›› ID:</b> <code>{chat_id}</code>\n\n"
             )
 
         keyboard = InlineKeyboardMarkup([
@@ -988,6 +1064,12 @@ def register_fsub_list_handler(app):
                 reply_markup=keyboard
             )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # CLOSE BUTTON
@@ -1011,6 +1093,13 @@ def register_fsub_close_handler(app):
 
         except Exception:
             pass
+            
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 
 # ============================================================
@@ -1030,3 +1119,10 @@ def register_fsub_handlers(app):
     register_fsub_list_handler(app)
 
     register_fsub_close_handler(app)
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
