@@ -323,27 +323,27 @@ def register_telegraph_handlers(app):
 
         status = await message.reply_text(
             smallcaps(
-                "⏳ Choose an upload service:"
+                "📸 Image ready. Choose a service from the buttons above."
             ),
             reply_markup=InlineKeyboardMarkup(
                 [
                     [
                         InlineKeyboardButton(
-                            smallcaps("ᴛᴇʟᴇɢʀᴀᴘʜ"),
+                            smallcaps("Telegraph"),
                             callback_data="tg_upload"
                         ),
                         InlineKeyboardButton(
-                            smallcaps("ᴇɴᴠs.ѕʜ"),
+                            smallcaps("envs.sh"),
                             callback_data="envs_upload"
                         )
                     ],
                     [
                         InlineKeyboardButton(
-                            smallcaps("ᴄᴀᴛʙᴏx.ᴍᴏᴇ"),
+                            smallcaps("Catbox.moe"),
                             callback_data="catbox_upload"
                         ),
                         InlineKeyboardButton(
-                            smallcaps("ɪᴍɢᴜʀ"),
+                            smallcaps("Imgur"),
                             callback_data="imgur_upload"
                         )
                     ]
@@ -365,18 +365,6 @@ def register_telegraph_handlers(app):
                     )
                 )
 
-            # Store temporary path on message object
-            # for the callback.
-            await client.send_message(
-                message.chat.id,
-                smallcaps(
-                    "📸 Image ready. "
-                    "Choose a service from the buttons above."
-                ),
-                reply_to_message_id=status.id
-            )
-
-            # Save path in memory for callback
             if not hasattr(client, "_telegraph_files"):
                 client._telegraph_files = {}
 
@@ -454,15 +442,15 @@ def register_telegraph_handlers(app):
         )
 
         service_names = {
-            "tg": "ᴛᴇʟᴇɢʀᴀᴘʜ",
-            "envs": "ᴇɴᴠs.ѕʜ",
-            "catbox": "ᴄᴀᴛʙᴏx.ᴍᴏᴇ",
-            "imgur": "ɪᴍɢᴜʀ"
+            "tg": "Telegraph",
+            "envs": "envs.sh",
+            "catbox": "Catbox.moe",
+            "imgur": "Imgur"
         }
 
         service_name = service_names.get(
             service,
-            "ᴜᴘʟᴏᴀᴅ"
+            "Upload"
         )
 
         # Imgur requires Client ID
@@ -470,7 +458,7 @@ def register_telegraph_handlers(app):
 
             return await status.edit_text(
                 smallcaps(
-                    "❌ ɪᴍɢᴜʀ ᴄʟɪᴇɴᴛ ɪᴅ ɪs ɴᴏᴛ ᴄᴏɴꜰɪɢᴜʀᴇᴅ."
+                    "❌ Imgur Client ID is not configured."
                 )
             )
 
@@ -497,7 +485,7 @@ def register_telegraph_handlers(app):
 
             await status.edit_text(
                 smallcaps(
-                    "✅ ʟɪɴᴋ ɢᴇɴᴇʀᴀᴛᴇᴅ\n\n"
+                    "✅ Link generated\n\n"
                     f"🔗 {link}"
                 )
             )
@@ -510,7 +498,7 @@ def register_telegraph_handlers(app):
 
             await status.edit_text(
                 smallcaps(
-                    f"❌ ᴇʀʀᴏʀ: {str(e)[:300]}"
+                    f"❌ Error: {str(e)[:300]}"
                 )
             )
 
