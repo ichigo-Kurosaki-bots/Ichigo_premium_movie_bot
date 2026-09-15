@@ -204,7 +204,7 @@ def register_admin_handlers(app):
 
             text = (
                 "Tᴏᴘ 29 Tʀᴀɴᴅɪɴɢ ᴏғ ᴛʜᴇ Dᴀʏ 👇:\n\n"
-                +›› "\n".join(lines)
+                + "\n".join(lines)
                 + "\n\n"
                 "⚡️ 𝑨𝒍𝒍 𝒕𝒉𝒆 𝒓𝒆𝒔𝒖𝒍𝒕𝒔 𝒂𝒃𝒐𝒗𝒆 𝒄𝒐𝒎𝒆 "
                 "𝒇𝒓𝒐𝒎 𝒘𝒉𝒂𝒕 𝒖𝒔𝒆𝒓𝒔 𝒉𝒂𝒗𝒆 𝒔𝒆𝒂𝒓𝒄𝒉𝒆𝒅 𝒇𝒐𝒓. "
