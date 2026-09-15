@@ -1,3 +1,5 @@
+
+
 import os
 import re
 import glob
@@ -15,15 +17,18 @@ from pyrogram.types import (
     InlineKeyboardMarkup,
 )
 
+from bot import app
+
+
 # ============================================================
 # CONFIG
 # ============================================================
 
 DOWNLOAD_DIR = "downloads"
+
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 logging.basicConfig(level=logging.INFO)
-LOGGER = logging.getLogger(__name__)
 
 
 # ============================================================
@@ -31,21 +36,25 @@ LOGGER = logging.getLogger(__name__)
 # ============================================================
 
 def format_bytes(size):
-    if not size:
+    if size is None or size < 0:
         return "Unknown"
 
     size = float(size)
 
-    for unit in ["B", "KB", "MB", "GB", "TB"]:
-        if size < 1024:
-            return f"{size:.2f} {unit}"
-        size /= 1024
+    if size < 1024:
+        return f"{int(size)} B"
 
-    return f"{size:.2f} PB"
+    if size < 1024 ** 2:
+        return f"{size / 1024:.2f} KB"
+
+    if size < 1024 ** 3:
+        return f"{size / (1024 ** 2):.2f} MB"
+
+    return f"{size / (1024 ** 3):.2f} GB"
 
 
 def format_speed(speed):
-    if not speed:
+    if not speed or speed <= 0:
         return "0 B/s"
 
     return f"{format_bytes(speed)}/s"
@@ -60,13 +69,17 @@ def format_time(seconds):
     except Exception:
         return "Unknown"
 
-    hours, remainder = divmod(seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
+    if seconds < 0:
+        return "Unknown"
 
-    if hours:
-        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    secs = seconds % 60
 
-    return f"{minutes:02d}:{seconds:02d}"
+    if hours > 0:
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+    return f"{minutes:02d}:{secs:02d}"
 
 
 def is_valid_url(url):
@@ -82,192 +95,227 @@ def is_valid_url(url):
         return False
 
 
-# ============================================================
-# TELEGRAM PUBLIC POST
-# ============================================================
-
-TELEGRAM_POST_REGEX = re.compile(
-    r"(?:https?://)?t\.me/(?:c/)?"
-    r"([A-Za-z0-9_]+)/(\d+)"
-)
-
-
-async def send_telegram_public_post(client, message, url):
-    match = TELEGRAM_POST_REGEX.search(url)
-
-    if not match:
-        return None
-
-    chat_username = match.group(1)
-    message_id = int(match.group(2))
-
-    try:
-        post = await client.get_messages(
-            chat_username,
-            message_id
-        )
-
-        if not post:
-            return None
-
-        if post.video:
-            return await client.download_media(post)
-
-        if post.document:
-            return await client.download_media(post)
-
-        if post.audio:
-            return await client.download_media(post)
-
-        if post.animation:
-            return await client.download_media(post)
-
-    except Exception as e:
-        LOGGER.error(
-            "Telegram post download error: %s",
-            e
-        )
-
-    return None
-
-
-# ============================================================
-# FIND DOWNLOADED FILE
-# ============================================================
-
 def find_downloaded_file(prefix):
+    patterns = [
+        f"{prefix}.*",
+        f"{prefix}.*.*",
+    ]
 
-    files = glob.glob(
-        os.path.join(
-            DOWNLOAD_DIR,
-            f"{prefix}.*"
+    files = []
+
+    for pattern in patterns:
+        files.extend(
+            glob.glob(
+                os.path.join(
+                    DOWNLOAD_DIR,
+                    pattern,
+                )
+            )
         )
-    )
+
+    files = [
+        x for x in files
+        if os.path.isfile(x)
+    ]
 
     if not files:
         return None
 
     files.sort(
         key=lambda x: os.path.getmtime(x),
-        reverse=True
+        reverse=True,
     )
 
     return files[0]
 
 
+def cleanup_file(file_path):
+    if not file_path:
+        return
+
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+    except Exception as e:
+        logging.warning(
+            "Cleanup error: %s",
+            e,
+        )
+
+
 # ============================================================
-# DOWNLOAD MEDIA
+# TELEGRAM PUBLIC POST
+# ============================================================
+
+TELEGRAM_PUBLIC_POST_REGEX = re.compile(
+    r"^(?:https?://)?t\.me/"
+    r"([A-Za-z0-9_]+)/"
+    r"(\d+)"
+    r"(?:\?.*)?$"
+)
+
+
+async def send_telegram_public_post(
+    client,
+    message,
+    url,
+):
+    match = TELEGRAM_PUBLIC_POST_REGEX.match(
+        url.strip()
+    )
+
+    if not match:
+        return False
+
+    username = match.group(1)
+    message_id = int(match.group(2))
+
+    try:
+        source_message = await client.get_messages(
+            username,
+            message_id,
+        )
+
+        if not source_message:
+            await message.edit(
+                "❌ Telegram post not found."
+            )
+            return True
+
+        if source_message.video:
+            await source_message.copy(
+                message.chat.id
+            )
+
+        elif source_message.document:
+            await source_message.copy(
+                message.chat.id
+            )
+
+        elif source_message.audio:
+            await source_message.copy(
+                message.chat.id
+            )
+
+        elif source_message.photo:
+            await source_message.copy(
+                message.chat.id
+            )
+
+        elif source_message.animation:
+            await source_message.copy(
+                message.chat.id
+            )
+
+        else:
+            await message.edit(
+                "❌ This Telegram post does not contain downloadable media."
+            )
+
+        return True
+
+    except Exception as e:
+        logging.exception(
+            "Telegram public post error: %s",
+            e,
+        )
+
+        await message.edit(
+            "❌ Failed to access the Telegram post."
+        )
+
+        return True
+
+
+# ============================================================
+# DOWNLOAD
 # ============================================================
 
 async def download_media(
     url,
     prefix,
     progress_state,
-    status_message
 ):
-
     output_template = os.path.join(
         DOWNLOAD_DIR,
-        f"{prefix}.%(ext)s"
+        f"{prefix}.%(ext)s",
     )
 
-    progress_state.update({
-        "status": "extracting",
-        "filename": "",
-        "total": 0,
-        "downloaded": 0,
-        "speed": 0,
-        "eta": None,
-        "start_time": time.time(),
-    })
-
-    # ========================================================
-    # PROGRESS HOOK
-    # ========================================================
+    loop = asyncio.get_running_loop()
 
     def progress_hook(data):
 
-        try:
+        status = data.get("status")
 
-            status = data.get("status")
+        if status == "downloading":
 
-            if status == "downloading":
+            progress_state["phase"] = "downloading"
 
-                total = (
-                    data.get("total_bytes")
-                    or data.get("total_bytes_estimate")
-                    or 0
-                )
-
-                downloaded = (
-                    data.get("downloaded_bytes")
-                    or 0
-                )
-
-                progress_state.update({
-                    "status": "downloading",
-                    "filename": data.get(
-                        "filename",
-                        ""
-                    ),
-                    "total": total,
-                    "downloaded": downloaded,
-                    "speed": data.get(
-                        "speed",
-                        0
-                    ),
-                    "eta": data.get(
-                        "eta"
-                    ),
-                })
-
-            elif status == "finished":
-
-                progress_state.update({
-                    "status": "extracting",
-                    "downloaded": data.get(
-                        "downloaded_bytes",
-                        progress_state.get(
-                            "downloaded",
-                            0
-                        )
-                    ),
-                    "total": (
-                        data.get(
-                            "total_bytes"
-                        )
-                        or progress_state.get(
-                            "total",
-                            0
-                        )
-                    ),
-                    "speed": 0,
-                    "eta": None,
-                })
-
-        except Exception as e:
-
-            LOGGER.error(
-                "Progress hook error: %s",
-                e
+            downloaded = (
+                data.get("downloaded_bytes")
+                or 0
             )
 
-    # ========================================================
-    # POSTPROCESSOR HOOK
-    # ========================================================
+            total = (
+                data.get("total_bytes")
+                or data.get("total_bytes_estimate")
+            )
+
+            speed = data.get(
+                "speed"
+            )
+
+            eta = data.get(
+                "eta"
+            )
+
+            filename = data.get(
+                "filename"
+            )
+
+            progress_state["downloaded"] = downloaded
+            progress_state["total"] = total
+            progress_state["speed"] = speed
+            progress_state["eta"] = eta
+            progress_state["filename"] = filename
+
+        elif status == "finished":
+
+            progress_state["phase"] = "extracting"
+
+            downloaded = (
+                data.get("downloaded_bytes")
+                or 0
+            )
+
+            total = (
+                data.get("total_bytes")
+                or downloaded
+            )
+
+            progress_state["downloaded"] = downloaded
+            progress_state["total"] = total
+            progress_state["speed"] = 0
+            progress_state["eta"] = 0
 
     def postprocessor_hook(data):
 
-        try:
-            progress_state["status"] = "extracting"
-        except Exception:
-            pass
+        status = data.get("status")
 
-    # ========================================================
-    # YT-DLP OPTIONS
-    # ========================================================
+        if status in (
+            "started",
+            "processing",
+        ):
+            progress_state["phase"] = "extracting"
 
-    ydl_opts = {
+        elif status == "finished":
+            progress_state["phase"] = "finalizing"
+
+    ydl_options = {
+        # ----------------------------------------------------
+        # VIDEO / AUDIO FORMAT
+        # ----------------------------------------------------
 
         "format": (
             "bestvideo[height<=1080]+bestaudio/"
@@ -276,29 +324,57 @@ async def download_media(
             "best"
         ),
 
+        # ----------------------------------------------------
+        # OUTPUT
+        # ----------------------------------------------------
+
         "outtmpl": output_template,
 
         "merge_output_format": "mp4",
 
         "noplaylist": True,
 
-        "quiet": True,
-        "no_warnings": True,
+        # ----------------------------------------------------
+        # FILENAMES
+        # ----------------------------------------------------
 
         "restrictfilenames": True,
+
+        # ----------------------------------------------------
+        # NETWORK
+        # ----------------------------------------------------
 
         "socket_timeout": 60,
 
         "retries": 10,
+
         "fragment_retries": 10,
+
         "file_access_retries": 5,
+
         "extractor_retries": 5,
+
+        # ----------------------------------------------------
+        # DOWNLOAD
+        # ----------------------------------------------------
 
         "concurrent_fragment_downloads": 4,
 
         "skip_unavailable_fragments": True,
 
         "extract_flat": False,
+
+        # ----------------------------------------------------
+        # YT-DLP
+        # ----------------------------------------------------
+
+        "quiet": False,
+
+        "no_warnings": False,
+
+        # ----------------------------------------------------
+        # PROGRESS
+        # ----------------------------------------------------
 
         "progress_hooks": [
             progress_hook
@@ -308,976 +384,717 @@ async def download_media(
             postprocessor_hook
         ],
 
+        # ----------------------------------------------------
+        # FFMPEG
+        # ----------------------------------------------------
+
         "postprocessors": [
             {
                 "key": "FFmpegVideoConvertor",
                 "preferedformat": "mp4",
             }
         ],
+
+        # ----------------------------------------------------
+        # YOUTUBE
+        # ----------------------------------------------------
+
+        "hls_prefer_native": True,
+
+        "live_from_start": True,
+
+        "wait_for_video": (
+            5,
+            30,
+        ),
+
+        # ----------------------------------------------------
+        # SAFE
+        # ----------------------------------------------------
+
+        "overwrites": True,
     }
 
-    # ========================================================
-    # YOUTUBE OPTIONS
-    # ========================================================
-    # Do NOT force android/web clients.
-    # Current yt-dlp chooses the supported client automatically.
-    # ========================================================
+    def run_download():
 
-    if (
-        "youtube.com" in url
-        or "youtu.be" in url
-    ):
+        with yt_dlp.YoutubeDL(
+            ydl_options
+        ) as ydl:
 
-        ydl_opts.update({
+            info = ydl.extract_info(
+                url,
+                download=False,
+            )
 
-            "hls_prefer_native": True,
-
-            "live_from_start": True,
-
-            "wait_for_video": (
-                5,
-                30
-            ),
-
-        })
-
-    # ========================================================
-    # DOWNLOAD
-    # ========================================================
-
-    try:
-
-        def blocking_download():
-
-            with yt_dlp.YoutubeDL(
-                ydl_opts
-            ) as ydl:
-
-                info = ydl.extract_info(
-                    url,
-                    download=True
+            if not info:
+                raise Exception(
+                    "Unable to extract media information."
                 )
 
-                return info
+            title = (
+                info.get("title")
+                or "Downloaded Media"
+            )
 
-        loop = asyncio.get_running_loop()
+            duration = (
+                info.get("duration")
+                or 0
+            )
 
-        info = await loop.run_in_executor(
-            None,
-            blocking_download
-        )
+            filesize = (
+                info.get("filesize")
+                or info.get("filesize_approx")
+                or 0
+            )
 
-        progress_state["status"] = "finished"
+            progress_state["title"] = title
+            progress_state["duration"] = duration
+            progress_state["total"] = filesize
 
-        # ====================================================
-        # FIND FILE
-        # ====================================================
+            ydl.download(
+                [url]
+            )
 
-        file_path = find_downloaded_file(
-            prefix
-        )
+            file_path = find_downloaded_file(
+                prefix
+            )
 
-        # ====================================================
-        # FALLBACK: GET FILEPATH FROM INFO
-        # ====================================================
-
-        if not file_path:
-
-            try:
-
-                requested = (
-                    info.get(
-                        "requested_downloads"
-                    )
-                    or []
+            if not file_path:
+                raise Exception(
+                    "Downloaded file was not found."
                 )
 
-                for item in requested:
+            return {
+                "file_path": file_path,
+                "title": title,
+                "filesize": os.path.getsize(
+                    file_path
+                ),
+            }
 
-                    filename = item.get(
-                        "filepath"
-                    )
-
-                    if (
-                        filename
-                        and os.path.exists(filename)
-                    ):
-
-                        file_path = filename
-
-                        break
-
-            except Exception:
-                pass
-
-        # ====================================================
-        # FINAL FALLBACK
-        # ====================================================
-
-        if not file_path:
-
-            try:
-
-                filename = info.get(
-                    "_filename"
-                )
-
-                if (
-                    filename
-                    and os.path.exists(filename)
-                ):
-
-                    file_path = filename
-
-            except Exception:
-                pass
-
-        return file_path, info
-
-    except Exception as e:
-
-        LOGGER.exception(
-            "yt-dlp download failed"
-        )
-
-        progress_state["status"] = "error"
-
-        progress_state["error"] = str(e)
-
-        return None, None
+    return await loop.run_in_executor(
+        None,
+        run_download,
+    )
 
 
 # ============================================================
-# PROGRESS UPDATER
+# DOWNLOAD STATUS
 # ============================================================
 
-async def update_progress(
-    status_message,
-    progress_state
+async def update_download_status(
+    message,
+    progress_state,
+    start_time,
 ):
-
     last_text = ""
 
     while True:
 
         try:
-
-            status = progress_state.get(
-                "status",
-                "extracting"
+            phase = progress_state.get(
+                "phase",
+                "starting",
             )
 
-            start_time = progress_state.get(
-                "start_time",
-                time.time()
+            downloaded = progress_state.get(
+                "downloaded",
+                0,
             )
 
-            elapsed = int(
-                time.time() - start_time
+            total = progress_state.get(
+                "total",
             )
 
-            # ==================================================
-            # EXTRACTING
-            # ==================================================
+            speed = progress_state.get(
+                "speed",
+                0,
+            )
 
-            if status == "extracting":
+            eta = progress_state.get(
+                "eta",
+            )
 
-                downloaded = progress_state.get(
-                    "downloaded",
-                    0
-                )
+            elapsed = time.time() - start_time
+
+            elapsed_text = format_time(
+                elapsed
+            )
+
+            downloaded_text = format_bytes(
+                downloaded
+            )
+
+            total_text = format_bytes(
+                total
+            )
+
+            speed_text = format_speed(
+                speed
+            )
+
+            eta_text = format_time(
+                eta
+            )
+
+            if phase == "starting":
 
                 text = (
-                    "🔍 **Extracting...**\n\n"
-                    f"⏱ **Time:** "
-                    f"`{format_time(elapsed)}`\n"
-                    f"📦 **Downloaded:** "
-                    f"`{format_bytes(downloaded)}`\n\n"
-                    "🔄 **Preparing media...**"
+                    "⏳ **Starting Download...**\n\n"
+                    f"📦 Downloaded: `{downloaded_text}`\n"
+                    f"📦 Size: `{total_text}`\n"
+                    f"🚀 Speed: `{speed_text}`\n"
+                    f"⏱ Time: `{elapsed_text}`\n"
+                    f"⌛ ETA: `{eta_text}`"
                 )
 
-            # ==================================================
-            # DOWNLOADING
-            # ==================================================
+            elif phase == "extracting":
 
-            elif status == "downloading":
-
-                downloaded = progress_state.get(
-                    "downloaded",
-                    0
+                text = (
+                    "⚙️ **Extracting...**\n\n"
+                    f"📦 Downloaded: `{downloaded_text}`\n"
+                    f"📦 Size: `{total_text}`\n"
+                    f"🚀 Speed: `{speed_text}`\n"
+                    f"⏱ Time: `{elapsed_text}`\n"
+                    f"⌛ ETA: `Processing...`"
                 )
 
-                total = progress_state.get(
-                    "total",
-                    0
+            elif phase == "finalizing":
+
+                text = (
+                    "🔄 **Finalizing...**\n\n"
+                    f"📦 Downloaded: `{downloaded_text}`\n"
+                    f"📦 Size: `{total_text}`\n"
+                    f"🚀 Speed: `{speed_text}`\n"
+                    f"⏱ Time: `{elapsed_text}`\n"
+                    f"⌛ ETA: `Processing...`"
                 )
 
-                speed = progress_state.get(
-                    "speed",
-                    0
-                )
+            else:
 
-                eta = progress_state.get(
-                    "eta"
-                )
+                if total and total > 0:
 
-                # ==============================================
-                # KNOWN SIZE
-                # ==============================================
+                    percentage = (
+                        downloaded / total
+                    ) * 100
 
-                if total:
+                    if percentage > 100:
+                        percentage = 100
 
-                    percentage = min(
-                        100,
-                        int(
-                            downloaded
-                            * 100
-                            / total
-                        )
-                    )
-
-                    bar_length = 12
+                    progress_bar_length = 10
 
                     filled = int(
-                        bar_length
-                        * percentage
+                        percentage
                         / 100
+                        * progress_bar_length
                     )
 
                     bar = (
                         "█" * filled
                         + "░"
                         * (
-                            bar_length
+                            progress_bar_length
                             - filled
                         )
                     )
 
                     progress_line = (
+                        f"📊 Progress: "
                         f"`{bar}` "
-                        f"**{percentage}%**"
+                        f"`{percentage:.1f}%`"
                     )
-
-                    size_line = (
-                        f"`{format_bytes(downloaded)}`"
-                        " / "
-                        f"`{format_bytes(total)}`"
-                    )
-
-                # ==============================================
-                # UNKNOWN SIZE
-                # ==============================================
 
                 else:
 
                     progress_line = (
-                        "📊 **Progress:** "
-                        "`Unknown`"
-                    )
-
-                    size_line = (
-                        f"`{format_bytes(downloaded)}`"
+                        "📊 Progress: `Unknown`"
                     )
 
                 text = (
                     "⬇️ **Downloading...**\n\n"
-                    f"{progress_line}\n\n"
-                    f"📦 **Size:** "
-                    f"{size_line}\n"
-                    f"🚀 **Speed:** "
-                    f"`{format_speed(speed)}`\n"
-                    f"⏱ **Time:** "
-                    f"`{format_time(elapsed)}`\n"
-                    f"⌛ **ETA:** "
-                    f"`{format_time(eta)}`"
+                    f"{progress_line}\n"
+                    f"📦 Downloaded: `{downloaded_text}`\n"
+                    f"📦 Size: `{total_text}`\n"
+                    f"🚀 Speed: `{speed_text}`\n"
+                    f"⏱ Time: `{elapsed_text}`\n"
+                    f"⌛ ETA: `{eta_text}`"
                 )
-
-            # ==================================================
-            # FINISHED
-            # ==================================================
-
-            elif status == "finished":
-
-                text = (
-                    "✅ **Download completed!**\n\n"
-                    f"⏱ **Time:** "
-                    f"`{format_time(elapsed)}`"
-                )
-
-            # ==================================================
-            # ERROR
-            # ==================================================
-
-            elif status == "error":
-
-                error = progress_state.get(
-                    "error",
-                    "Unknown error"
-                )
-
-                text = (
-                    "❌ **Download failed!**\n\n"
-                    f"`{error[:500]}`"
-                )
-
-            # ==================================================
-            # OTHER
-            # ==================================================
-
-            else:
-
-                text = (
-                    "⏳ **Processing...**\n\n"
-                    f"⏱ **Time:** "
-                    f"`{format_time(elapsed)}`"
-                )
-
-            # ==================================================
-            # EDIT MESSAGE
-            # ==================================================
 
             if text != last_text:
 
                 try:
-
-                    await status_message.edit_text(
+                    await message.edit_text(
                         text
                     )
-
                     last_text = text
 
                 except Exception:
                     pass
 
-            # ==================================================
-            # STOP
-            # ==================================================
-
-            if status in (
-                "finished",
-                "error"
-            ):
-
-                break
-
             await asyncio.sleep(2)
 
         except asyncio.CancelledError:
-
             break
 
         except Exception as e:
 
-            LOGGER.error(
-                "Progress updater error: %s",
-                e
+            logging.warning(
+                "Status updater error: %s",
+                e,
             )
 
             await asyncio.sleep(2)
 
 
 # ============================================================
-# /VIDEO COMMAND
+# /DL COMMAND
 # ============================================================
 
-def register_video_handlers(app):
+@app.on_message(
+    filters.command("dl")
+    & filters.private
+)
+async def download_command(
+    client,
+    message: Message,
+):
 
-    @app.on_message(
-        filters.command("video")
-        & filters.private
-    )
-    async def video_handler(
-        client,
-        message: Message
-    ):
+    if len(message.command) < 2:
 
-        # ====================================================
-        # CHECK URL
-        # ====================================================
-
-        if len(message.command) < 2:
-
-            await message.reply_text(
-                "🎬 **Video Downloader**\n\n"
-                "Use:\n"
-                "`/video <URL>`\n\n"
-                "Example:\n"
-                "`/video https://youtu.be/xxxxx`"
-            )
-
-            return
-
-        url = message.text.split(
-            None,
-            1
-        )[1].strip()
-
-        if not is_valid_url(url):
-
-            await message.reply_text(
-                "❌ **Invalid URL.**"
-            )
-
-            return
-
-        # ====================================================
-        # STATUS MESSAGE
-        # ====================================================
-
-        status_message = await message.reply_text(
-            "⏳ **Preparing download...**"
+        await message.reply_text(
+            "❌ **Please provide a URL.**\n\n"
+            "Example:\n"
+            "`/dl https://example.com/video`"
         )
 
-        # ====================================================
-        # PROGRESS STATE
-        # ====================================================
+        return
 
-        progress_state = {
+    url = message.text.split(
+        None,
+        1
+    )[1].strip()
 
-            "status": "extracting",
+    if not is_valid_url(url):
 
-            "filename": "",
-
-            "downloaded": 0,
-
-            "total": 0,
-
-            "speed": 0,
-
-            "eta": None,
-
-            "start_time": time.time(),
-
-        }
-
-        # ====================================================
-        # START PROGRESS
-        # ====================================================
-
-        progress_task = asyncio.create_task(
-            update_progress(
-                status_message,
-                progress_state
-            )
+        await message.reply_text(
+            "❌ **Invalid URL.**\n\n"
+            "Please send a valid `http://` or `https://` link."
         )
 
-        # ====================================================
-        # UNIQUE PREFIX
-        # ====================================================
-
-        prefix = (
-            f"video_"
-            f"{message.chat.id}_"
-            f"{message.id}_"
-            f"{int(time.time())}"
-        )
-
-        file_path = None
-
-        info = None
-
-        try:
-
-            # ====================================================
-            # TELEGRAM PUBLIC POST
-            # ====================================================
-
-            if TELEGRAM_POST_REGEX.search(url):
-
-                progress_state[
-                    "status"
-                ] = "downloading"
-
-                file_path = (
-                    await send_telegram_public_post(
-                        client,
-                        message,
-                        url
-                    )
-                )
-
-                if file_path:
-
-                    progress_state[
-                        "status"
-                    ] = "finished"
-
-                    info = {
-                        "title": os.path.basename(
-                            file_path
-                        )
-                    }
-
-            # ====================================================
-            # YT-DLP DOWNLOAD
-            # ====================================================
-
-            else:
-
-                file_path, info = (
-                    await download_media(
-                        url,
-                        prefix,
-                        progress_state,
-                        status_message
-                    )
-                )
-
-            # ====================================================
-            # STOP PROGRESS TASK
-            # ====================================================
-
-            if progress_task:
-
-                try:
-
-                    await progress_task
-
-                except Exception:
-                    pass
-
-                progress_task = None
-
-            # ====================================================
-            # FAILED
-            # ====================================================
-
-            if not file_path:
-
-                await status_message.edit_text(
-                    "❌ **Download failed.**\n\n"
-                    "Unable to download this video."
-                )
-
-                return
-
-            # ====================================================
-            # FILE CHECK
-            # ====================================================
-
-            if not os.path.exists(
-                file_path
-            ):
-
-                await status_message.edit_text(
-                    "❌ **Downloaded file not found.**"
-                )
-
-                return
-
-            # ====================================================
-            # FILE INFORMATION
-            # ====================================================
-
-            file_size = os.path.getsize(
-                file_path
-            )
-
-            title = (
-                info.get("title")
-                if info
-                else None
-            )
-
-            if not title:
-
-                title = os.path.basename(
-                    file_path
-                )
-
-            # ====================================================
-            # SESSION STORAGE
-            # ====================================================
-
-            if not hasattr(
-                client,
-                "_video_sessions"
-            ):
-
-                client._video_sessions = {}
-
-            client._video_sessions[
-                status_message.id
-            ] = {
-
-                "file_path": file_path,
-
-                "user_id": message.from_user.id,
-
-                "title": title,
-
-                "file_size": file_size,
-
-                "created_at": time.time(),
-
-            }
-
-            # ====================================================
-            # OUTPUT BUTTONS
-            # ====================================================
-
-            keyboard = InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton(
-                            "🎥 Video",
-                            callback_data=(
-                                "video_output:"
-                                f"{status_message.id}"
-                            )
-                        ),
-
-                        InlineKeyboardButton(
-                            "📁 Document",
-                            callback_data=(
-                                "document_output:"
-                                f"{status_message.id}"
-                            )
-                        ),
-                    ]
-                ]
-            )
-
-            # ====================================================
-            # FINAL MESSAGE
-            # ====================================================
-
-            await status_message.edit_text(
-
-                "✅ **Download completed!**\n\n"
-
-                f"🎬 **Title:** "
-                f"`{title[:100]}`\n"
-
-                f"📦 **Size:** "
-                f"`{format_bytes(file_size)}`\n\n"
-
-                "Choose how you want to receive the file:",
-
-                reply_markup=keyboard
-
-            )
-
-        except Exception as e:
-
-            LOGGER.exception(
-                "Video handler error"
-            )
-
-            if progress_task:
-
-                progress_task.cancel()
-
-                try:
-
-                    await progress_task
-
-                except Exception:
-                    pass
-
-            await status_message.edit_text(
-                "❌ **Download failed!**\n\n"
-                f"`{str(e)[:500]}`"
-            )
-
-
-    # ========================================================
-    # SEND AS VIDEO
-    # ========================================================
-
-    @app.on_callback_query(
-        filters.regex(
-            r"^video_output:(\d+)$"
+        return
+
+    # --------------------------------------------------------
+    # TELEGRAM PUBLIC POSTS
+    # --------------------------------------------------------
+
+    telegram_handled = (
+        await send_telegram_public_post(
+            client,
+            message,
+            url,
         )
     )
-    async def send_video_callback(
-        client,
-        callback
-    ):
+
+    if telegram_handled:
+        return
+
+    # --------------------------------------------------------
+    # STATUS MESSAGE
+    # --------------------------------------------------------
+
+    status_message = await message.reply_text(
+        "⏳ **Starting Download...**"
+    )
+
+    prefix = (
+        f"dl_{message.from_user.id}_"
+        f"{status_message.id}_"
+        f"{int(time.time())}"
+    )
+
+    progress_state = {
+        "phase": "starting",
+        "downloaded": 0,
+        "total": None,
+        "speed": 0,
+        "eta": None,
+        "filename": None,
+        "title": "Downloaded Media",
+    }
+
+    start_time = time.time()
+
+    status_task = asyncio.create_task(
+        update_download_status(
+            status_message,
+            progress_state,
+            start_time,
+        )
+    )
+
+    try:
+
+        result = await download_media(
+            url,
+            prefix,
+            progress_state,
+        )
+
+    except Exception as e:
+
+        logging.exception(
+            "Download error: %s",
+            e,
+        )
+
+        status_task.cancel()
 
         try:
+            await status_task
+        except asyncio.CancelledError:
+            pass
 
-            session_id = int(
-                callback.matches[0].group(1)
-            )
+        await status_message.edit_text(
+            "❌ **Download Failed**\n\n"
+            f"**Error:** `{str(e)[:1500]}`"
+        )
 
-            sessions = getattr(
-                client,
-                "_video_sessions",
-                {}
-            )
+        return
 
-            session = sessions.get(
-                session_id
-            )
+    finally:
 
-            if not session:
+        if not status_task.done():
 
-                await callback.answer(
-                    "❌ Session expired.",
-                    show_alert=True
-                )
-
-                return
-
-            # ==================================================
-            # USER CHECK
-            # ==================================================
-
-            if (
-                callback.from_user.id
-                != session["user_id"]
-            ):
-
-                await callback.answer(
-                    "❌ This file belongs to another user.",
-                    show_alert=True
-                )
-
-                return
-
-            file_path = session[
-                "file_path"
-            ]
-
-            # ==================================================
-            # FILE CHECK
-            # ==================================================
-
-            if not os.path.exists(
-                file_path
-            ):
-
-                sessions.pop(
-                    session_id,
-                    None
-                )
-
-                await callback.answer(
-                    "❌ File no longer exists.",
-                    show_alert=True
-                )
-
-                return
-
-            # ==================================================
-            # SEND
-            # ==================================================
-
-            await callback.answer(
-                "🎥 Sending video..."
-            )
+            status_task.cancel()
 
             try:
-
-                await callback.message.edit_text(
-                    "📤 **Sending as Video...**"
-                )
-
-            except Exception:
+                await status_task
+            except asyncio.CancelledError:
                 pass
 
-            await client.send_video(
+    file_path = result.get(
+        "file_path"
+    )
 
-                chat_id=callback.from_user.id,
+    title = result.get(
+        "title"
+    ) or "Downloaded Media"
 
-                video=file_path,
+    filesize = result.get(
+        "filesize"
+    ) or 0
 
-                caption=(
-                    f"🎬 **{session['title']}**"
+    if not file_path or not os.path.exists(
+        file_path
+    ):
+
+        await status_message.edit_text(
+            "❌ **Downloaded file not found.**"
+        )
+
+        return
+
+    # --------------------------------------------------------
+    # SAVE SESSION
+    # --------------------------------------------------------
+
+    if not hasattr(
+        client,
+        "_video_sessions"
+    ):
+        client._video_sessions = {}
+
+    client._video_sessions[
+        status_message.id
+    ] = {
+        "file_path": file_path,
+        "user_id": message.from_user.id,
+        "title": title,
+        "file_size": filesize,
+        "created_at": time.time(),
+    }
+
+    # --------------------------------------------------------
+    # OUTPUT BUTTONS
+    # --------------------------------------------------------
+
+    keyboard = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "🎥 Video",
+                    callback_data=(
+                        f"video_output:"
+                        f"{status_message.id}"
+                    ),
                 ),
-
-                supports_streaming=True
-
-            )
-
-            # ==================================================
-            # CLEANUP
-            # ==================================================
-
-            try:
-
-                os.remove(
-                    file_path
-                )
-
-            except Exception:
-                pass
-
-            sessions.pop(
-                session_id,
-                None
-            )
-
-            try:
-
-                await callback.message.delete()
-
-            except Exception:
-                pass
-
-        except Exception as e:
-
-            LOGGER.exception(
-                "Send video error"
-            )
-
-            try:
-
-                await callback.answer(
-                    "❌ Failed to send video.",
-                    show_alert=True
-                )
-
-            except Exception:
-                pass
-
-
-    # ========================================================
-    # SEND AS DOCUMENT
-    # ========================================================
-
-    @app.on_callback_query(
-        filters.regex(
-            r"^document_output:(\d+)$"
-        )
+                InlineKeyboardButton(
+                    "📁 Document",
+                    callback_data=(
+                        f"document_output:"
+                        f"{status_message.id}"
+                    ),
+                ),
+            ]
+        ]
     )
-    async def send_document_callback(
+
+    elapsed = format_time(
+        time.time() - start_time
+    )
+
+    await status_message.edit_text(
+        "✅ **Download Completed!**\n\n"
+        f"🎬 **Title:** `{title[:200]}`\n"
+        f"📦 **Size:** `{format_bytes(filesize)}`\n"
+        f"⏱ **Time:** `{elapsed}`\n\n"
+        "Choose how you want to receive the file:",
+        reply_markup=keyboard,
+    )
+
+
+# ============================================================
+# VIDEO BUTTON
+# ============================================================
+
+@app.on_callback_query(
+    filters.regex(
+        r"^video_output:(\d+)$"
+    )
+)
+async def video_output_callback(
+    client,
+    callback_query,
+):
+
+    try:
+
+        message_id = int(
+            callback_query.data.split(
+                ":"
+            )[1]
+        )
+
+    except Exception:
+
+        await callback_query.answer(
+            "❌ Invalid request.",
+            show_alert=True,
+        )
+
+        return
+
+    sessions = getattr(
         client,
-        callback
+        "_video_sessions",
+        {},
+    )
+
+    session = sessions.get(
+        message_id
+    )
+
+    if not session:
+
+        await callback_query.answer(
+            "❌ Download session expired.",
+            show_alert=True,
+        )
+
+        return
+
+    if (
+        callback_query.from_user.id
+        != session["user_id"]
     ):
 
+        await callback_query.answer(
+            "❌ This file is not for you.",
+            show_alert=True,
+        )
+
+        return
+
+    file_path = session.get(
+        "file_path"
+    )
+
+    if not file_path or not os.path.exists(
+        file_path
+    ):
+
+        sessions.pop(
+            message_id,
+            None,
+        )
+
+        await callback_query.answer(
+            "❌ File no longer exists.",
+            show_alert=True,
+        )
+
+        return
+
+    await callback_query.answer(
+        "📤 Sending video..."
+    )
+
+    try:
+
+        await client.send_video(
+            chat_id=callback_query.from_user.id,
+            video=file_path,
+            caption=(
+                f"🎬 **{session['title'][:200]}**"
+            ),
+            supports_streaming=True,
+        )
+
+        cleanup_file(
+            file_path
+        )
+
+        sessions.pop(
+            message_id,
+            None,
+        )
+
         try:
+            await callback_query.message.delete()
+        except Exception:
+            pass
 
-            session_id = int(
-                callback.matches[0].group(1)
-            )
+    except Exception as e:
 
-            sessions = getattr(
-                client,
-                "_video_sessions",
-                {}
-            )
+        logging.exception(
+            "Video send error: %s",
+            e,
+        )
 
-            session = sessions.get(
-                session_id
-            )
+        await callback_query.message.edit_text(
+            "❌ **Failed to send video.**\n\n"
+            f"Error: `{str(e)[:1000]}`"
+        )
 
-            if not session:
 
-                await callback.answer(
-                    "❌ Session expired.",
-                    show_alert=True
-                )
+# ============================================================
+# DOCUMENT BUTTON
+# ============================================================
 
-                return
+@app.on_callback_query(
+    filters.regex(
+        r"^document_output:(\d+)$"
+    )
+)
+async def document_output_callback(
+    client,
+    callback_query,
+):
 
-            # ==================================================
-            # USER CHECK
-            # ==================================================
+    try:
 
-            if (
-                callback.from_user.id
-                != session["user_id"]
-            ):
+        message_id = int(
+            callback_query.data.split(
+                ":"
+            )[1]
+        )
 
-                await callback.answer(
-                    "❌ This file belongs to another user.",
-                    show_alert=True
-                )
+    except Exception:
 
-                return
+        await callback_query.answer(
+            "❌ Invalid request.",
+            show_alert=True,
+        )
 
-            file_path = session[
-                "file_path"
-            ]
+        return
 
-            # ==================================================
-            # FILE CHECK
-            # ==================================================
+    sessions = getattr(
+        client,
+        "_video_sessions",
+        {},
+    )
 
-            if not os.path.exists(
-                file_path
-            ):
+    session = sessions.get(
+        message_id
+    )
 
-                sessions.pop(
-                    session_id,
-                    None
-                )
+    if not session:
 
-                await callback.answer(
-                    "❌ File no longer exists.",
-                    show_alert=True
-                )
+        await callback_query.answer(
+            "❌ Download session expired.",
+            show_alert=True,
+        )
 
-                return
+        return
 
-            # ==================================================
-            # SEND
-            # ==================================================
+    if (
+        callback_query.from_user.id
+        != session["user_id"]
+    ):
 
-            await callback.answer(
-                "📁 Sending document..."
-            )
+        await callback_query.answer(
+            "❌ This file is not for you.",
+            show_alert=True,
+        )
 
-            try:
+        return
 
-                await callback.message.edit_text(
-                    "📤 **Sending as Document...**"
-                )
+    file_path = session.get(
+        "file_path"
+    )
 
-            except Exception:
-                pass
+    if not file_path or not os.path.exists(
+        file_path
+    ):
 
-            await client.send_document(
+        sessions.pop(
+            message_id,
+            None,
+        )
 
-                chat_id=callback.from_user.id,
+        await callback_query.answer(
+            "❌ File no longer exists.",
+            show_alert=True,
+        )
 
-                document=file_path,
+        return
 
-                caption=(
-                    f"🎬 **{session['title']}**"
-                )
+    await callback_query.answer(
+        "📤 Sending document..."
+    )
 
-            )
+    try:
 
-            # ==================================================
-            # CLEANUP
-            # ==================================================
+        await client.send_document(
+            chat_id=callback_query.from_user.id,
+            document=file_path,
+            caption=(
+                f"📁 **{session['title'][:200]}**"
+            ),
+        )
 
-            try:
+        cleanup_file(
+            file_path
+        )
 
-                os.remove(
-                    file_path
-                )
+        sessions.pop(
+            message_id,
+            None,
+        )
 
-            except Exception:
-                pass
+        try:
+            await callback_query.message.delete()
+        except Exception:
+            pass
 
-            sessions.pop(
-                session_id,
-                None
-            )
+    except Exception as e:
 
-            try:
+        logging.exception(
+            "Document send error: %s",
+            e,
+        )
 
-                await callback.message.delete()
-
-            except Exception:
-                pass
-
-        except Exception as e:
-
-            LOGGER.exception(
-                "Send document error"
-            )
-
-            try:
-
-                await callback.answer(
-                    "❌ Failed to send document.",
-                    show_alert=True
-                )
-
-            except Exception:
-                pass
+        await callback_query.message.edit_text(
+            "❌ **Failed to send document.**\n\n"
+            f"Error: `{str(e)[:1000]}`"
+        )
