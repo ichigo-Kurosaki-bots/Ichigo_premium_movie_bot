@@ -542,6 +542,7 @@ def register_start_handlers(
                     caption=text,
                     reply_markup=keyboard
                 )
+                return
 
             except Exception as e:
 
