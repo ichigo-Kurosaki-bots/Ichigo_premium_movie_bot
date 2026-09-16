@@ -1,7 +1,21 @@
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 import asyncio
 import logging
 import threading
-    
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 from flask import Flask
 from pyrogram import Client, filters
 from config import (
@@ -12,6 +26,13 @@ from config import (
     LOG_LEVEL,
     DATABASE_CHANNEL_ID
 )
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 from database import (
     init_database,
@@ -86,6 +107,12 @@ from indexer import (
     handle_database_post
 )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # LOGGING
@@ -109,6 +136,12 @@ logger = logging.getLogger(
     "premium_movie_bot"
 )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # FLASK WEB SERVER
@@ -118,12 +151,24 @@ web_app = Flask(
     __name__
 )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 @web_app.route("/")
 def home():
 
     return "Premium Movie Bot is running."
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 @web_app.route("/health")
 def health():
@@ -133,6 +178,12 @@ def health():
         "bot": "running"
     }
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def run_web_server():
 
@@ -141,6 +192,12 @@ def run_web_server():
         port=PORT
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # VALIDATE CONFIG
@@ -166,6 +223,12 @@ def validate_config():
             + ", ".join(missing)
         )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # MAIN
@@ -215,6 +278,13 @@ async def main():
             f"✅ GIF FILE ID:\n\n"
             f"<code>{message.animation.file_id}</code>"
         )
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # ========================================================
     # DATABASE CHANNEL AUTO INDEXER
@@ -253,6 +323,13 @@ async def main():
                 message.id,
                 e
             )
+            
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # --------------------------------------------------------
     # REGISTER HANDLERS
@@ -322,6 +399,13 @@ async def main():
 
     logger.info("TEST 14")
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
     # --------------------------------------------------------
     # DEBUG UPDATE HANDLER
     # --------------------------------------------------------
@@ -351,6 +435,13 @@ async def main():
 
             message.text
         )
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # --------------------------------------------------------
     # START TELEGRAM CLIENT
@@ -363,6 +454,13 @@ async def main():
     logger.info(
         "Telegram client started successfully."
     )
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # --------------------------------------------------------
     # BOT INFORMATION
@@ -393,6 +491,13 @@ async def main():
         DATABASE_CHANNEL_ID
     )
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
     # --------------------------------------------------------
     # DATABASE CHANNEL TEST
     # --------------------------------------------------------
@@ -418,6 +523,13 @@ async def main():
             DATABASE_CHANNEL_ID,
             e
         )
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
     # --------------------------------------------------------
     # KEEP BOT RUNNING
@@ -437,6 +549,12 @@ async def main():
 
         await close_database()
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 # ============================================================
 # START
@@ -478,3 +596,9 @@ if __name__ == "__main__":
             "Critical startup error: %s",
             e
         )
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
