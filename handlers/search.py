@@ -847,61 +847,264 @@ def build_filter_buttons(
     episodes = options.get(
         "episodes",
         []
+        
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
+# ============================================================
+# FILTER TEXT
+# ============================================================
+
+def build_filter_text(
+    options,
+    current_filters=None,
+    filter_type=None
+):
+
+    current_filters = (
+        current_filters or {}
     )
 
     # --------------------------------------------------------
-    # LANGUAGES
+    # LANGUAGE PAGE
     # --------------------------------------------------------
 
-    for language in languages[:12]:
+    if filter_type == "language":
+
+        return (
+            "🌐 <b>Lᴀɴɢᴜᴀɢᴇ Fɪʟᴛᴇʀ</b>\n\n"
+            "›› Sᴇʟᴇᴄᴛ ᴀ Lᴀɴɢᴜᴀɢᴇ:"
+        )
+
+    # --------------------------------------------------------
+    # SEASON PAGE
+    # --------------------------------------------------------
+
+    if filter_type == "season":
+
+        return (
+            "📺 <b>Sᴇᴀsᴏɴ Fɪʟᴛᴇʀ</b>\n\n"
+            "›› Sᴇʟᴇᴄᴛ ᴀ Sᴇᴀsᴏɴ:"
+        )
+
+    # --------------------------------------------------------
+    # EPISODE PAGE
+    # --------------------------------------------------------
+
+    if filter_type == "episode":
+
+        return (
+            "🎬 <b>Eᴘɪsᴏᴅᴇ Fɪʟᴛᴇʀ</b>\n\n"
+            "›› Sᴇʟᴇᴄᴛ ᴀɴ Eᴘɪsᴏᴅᴇ:"
+        )
+
+    # --------------------------------------------------------
+    # MAIN FILTER PAGE
+    # --------------------------------------------------------
+
+    text = (
+        "⚙️ <b>Sᴇᴀʀᴄh Fɪʟᴛᴇʀs</b>\n\n"
+    )
+
+    if current_filters:
+
+        text += "<b>Cᴜʀʀᴇɴᴛ Fɪʟᴛᴇʀs:</b>\n"
+
+        for key, value in current_filters.items():
+
+            text += (
+                f"• {html_escape(str(key))}: "
+                f"{html_escape(str(value))}\n"
+            )
+
+        text += "\n"
+
+    text += (
+        "›› Sᴇʟᴇᴄᴛ ᴡʜᴀᴛ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ғɪʟᴛᴇʀ:"
+    )
+
+    return text
+
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
+# ============================================================
+# FILTER BUTTONS
+# ============================================================
+
+def build_filter_buttons(
+    session_id,
+    options,
+    current_filters=None,
+    filter_type=None
+):
+
+    current_filters = (
+        current_filters or {}
+    )
+
+    buttons = []
+
+    # ========================================================
+    # LANGUAGE OPTIONS
+    # ========================================================
+
+    if filter_type == "language":
+
+        languages = options.get(
+            "languages",
+            []
+        )
+
+        for language in languages[:30]:
+
+            buttons.append(
+                [
+                    InlineKeyboardButton(
+                        f"›› {language}",
+                        callback_data=(
+                            f"setfilter_{session_id}_"
+                            f"language_{language}"
+                        )
+                    )
+                ]
+            )
 
         buttons.append(
             [
                 InlineKeyboardButton(
-                    f"›› {language}",
+                    "• ʙᴀᴄᴋ •",
                     callback_data=(
-                        f"setfilter_{session_id}_"
-                        f"language_{language}"
+                        f"filtermenu_{session_id}"
                     )
                 )
             ]
         )
 
-    # --------------------------------------------------------
-    # SEASON
-    # --------------------------------------------------------
+        return InlineKeyboardMarkup(
+            buttons
+        )
 
-    for season in seasons[:12]:
+    # ========================================================
+    # SEASON OPTIONS
+    # ========================================================
+
+    if filter_type == "season":
+
+        seasons = options.get(
+            "seasons",
+            []
+        )
+
+        for season in seasons[:30]:
+
+            buttons.append(
+                [
+                    InlineKeyboardButton(
+                        f"›› Sᴇᴀsᴏɴ {season}",
+                        callback_data=(
+                            f"setfilter_{session_id}_"
+                            f"season_{season}"
+                        )
+                    )
+                ]
+            )
 
         buttons.append(
             [
                 InlineKeyboardButton(
-                    f"›› Season {season}",
+                    "• ʙᴀᴄᴋ •",
                     callback_data=(
-                        f"setfilter_{session_id}_"
-                        f"season_{season}"
+                        f"filtermenu_{session_id}"
                     )
                 )
             ]
         )
 
-    # --------------------------------------------------------
-    # EPISODE
-    # --------------------------------------------------------
+        return InlineKeyboardMarkup(
+            buttons
+        )
 
-    for episode in episodes[:12]:
+    # ========================================================
+    # EPISODE OPTIONS
+    # ========================================================
+
+    if filter_type == "episode":
+
+        episodes = options.get(
+            "episodes",
+            []
+        )
+
+        for episode in episodes[:50]:
+
+            buttons.append(
+                [
+                    InlineKeyboardButton(
+                        f"›› Eᴘɪsᴏᴅᴇ {episode}",
+                        callback_data=(
+                            f"setfilter_{session_id}_"
+                            f"episode_{episode}"
+                        )
+                    )
+                ]
+            )
 
         buttons.append(
             [
                 InlineKeyboardButton(
-                    f"›› Episode {episode}",
+                    "• ʙᴀᴄᴋ •",
                     callback_data=(
-                        f"setfilter_{session_id}_"
-                        f"episode_{episode}"
+                        f"filtermenu_{session_id}"
                     )
                 )
             ]
         )
+
+        return InlineKeyboardMarkup(
+            buttons
+        )
+
+    # ========================================================
+    # MAIN FILTER MENU
+    # ========================================================
+
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                "🌐 Lᴀɴɢᴜᴀɢᴜᴇ",
+                callback_data=(
+                    f"filtertype_{session_id}_language"
+                )
+            ),
+            InlineKeyboardButton(
+                "📺 Sᴇᴀsᴏɴ",
+                callback_data=(
+                    f"filtertype_{session_id}_season"
+                )
+            )
+        ]
+    )
+
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                "🎬 Eᴘɪsᴏᴅᴇ",
+                callback_data=(
+                    f"filtertype_{session_id}_episode"
+                )
+            )
+        ]
+    )
 
     # --------------------------------------------------------
     # CLEAR
@@ -912,13 +1115,17 @@ def build_filter_buttons(
         buttons.append(
             [
                 InlineKeyboardButton(
-                    "• ᴄʟᴇᴀʀ ғɪʟᴛᴇʀs •",
+                    "• Cʟᴇᴀʀ Fɪʟᴛᴇʀs •",
                     callback_data=(
                         f"clearfilters_{session_id}"
                     )
                 )
             ]
         )
+
+    # --------------------------------------------------------
+    # BACK TO RESULTS
+    # --------------------------------------------------------
 
     buttons.append(
         [
@@ -2623,6 +2830,184 @@ def register_search_handlers(app):
 # Updates: @Aero_Unity 
 # Support : @Coders_Grp 
 # ------------------------ #
+
+    # ========================================================
+    # FILTER TYPE
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^filtertype_[a-fA-F0-9]+_(language|season|episode)$"
+        )
+    )
+    async def filter_type_callback(
+        client,
+        callback
+    ):
+
+        parts = callback.data.split("_")
+
+        if len(parts) != 3:
+
+            await callback.answer(
+                "Invalid filter.",
+                show_alert=True
+            )
+
+            return
+
+        session_id = parts[1]
+        filter_type = parts[2]
+
+        user_id = callback.from_user.id
+
+        session = await get_search_session(
+            session_id,
+            user_id
+        )
+
+        if not session:
+
+            await callback.answer(
+                "Search expired.",
+                show_alert=True
+            )
+
+            return
+
+        query = session.get(
+            "query",
+            ""
+        )
+
+        current_filters = session.get(
+            "filters",
+            {}
+        ) or {}
+
+        options = await get_filter_options(
+            query=query,
+            filters=current_filters
+        )
+
+        text = build_filter_text(
+            options,
+            current_filters,
+            filter_type=filter_type
+        )
+
+        keyboard = build_filter_buttons(
+            session_id,
+            options,
+            current_filters,
+            filter_type=filter_type
+        )
+
+        try:
+
+            await callback.message.edit_text(
+                text,
+                reply_markup=keyboard,
+                parse_mode=enums.ParseMode.HTML
+            )
+
+        except MessageNotModified:
+
+            pass
+
+        except Exception as e:
+
+            logger.error(
+                "FILTER TYPE EDIT ERROR: %s",
+                e,
+                exc_info=True
+            )
+
+        await callback.answer()
+
+
+    # ========================================================
+    # FILTER MENU BACK
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^filtermenu_[a-fA-F0-9]+$"
+        )
+    )
+    async def filter_menu_callback(
+        client,
+        callback
+    ):
+
+        session_id = callback.data.split(
+            "_",
+            1
+        )[1]
+
+        user_id = callback.from_user.id
+
+        session = await get_search_session(
+            session_id,
+            user_id
+        )
+
+        if not session:
+
+            await callback.answer(
+                "Search expired.",
+                show_alert=True
+            )
+
+            return
+
+        query = session.get(
+            "query",
+            ""
+        )
+
+        current_filters = session.get(
+            "filters",
+            {}
+        ) or {}
+
+        options = await get_filter_options(
+            query=query,
+            filters=current_filters
+        )
+
+        text = build_filter_text(
+            options,
+            current_filters
+        )
+
+        keyboard = build_filter_buttons(
+            session_id,
+            options,
+            current_filters
+        )
+
+        try:
+
+            await callback.message.edit_text(
+                text,
+                reply_markup=keyboard,
+                parse_mode=enums.ParseMode.HTML
+            )
+
+        except MessageNotModified:
+
+            pass
+
+        except Exception as e:
+
+            logger.error(
+                "FILTER MENU BACK ERROR: %s",
+                e,
+                exc_info=True
+            )
+
+        await callback.answer()
 
     # ========================================================
     # SET FILTER
