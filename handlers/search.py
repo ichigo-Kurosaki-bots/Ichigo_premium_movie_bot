@@ -752,11 +752,6 @@ def build_filter_text(
         []
     )
 
-    qualities = options.get(
-        "qualities",
-        []
-    )
-
     seasons = options.get(
         "seasons",
         []
@@ -776,32 +771,6 @@ def build_filter_text(
         text += ", ".join(
             str(x)
             for x in languages[:20]
-        )
-
-        text += "\n\n"
-
-    if years:
-
-        text += (
-            "›› <b>Yᴇᴀʀ</b>\n"
-        )
-
-        text += ", ".join(
-            str(x)
-            for x in years[:20]
-        )
-
-        text += "\n\n"
-
-    if qualities:
-
-        text += (
-            "›› <b>Qᴜᴀʟɪᴛʏ</b>\n"
-        )
-
-        text += ", ".join(
-            str(x)
-            for x in qualities[:20]
         )
 
         text += "\n\n"
@@ -835,8 +804,6 @@ def build_filter_text(
     if not any(
         [
             languages,
-            years,
-            qualities,
             seasons,
             episodes
         ]
