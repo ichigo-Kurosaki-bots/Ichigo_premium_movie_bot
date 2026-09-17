@@ -235,49 +235,37 @@ def search_result_buttons(
     # FILTER BUTTONS
     # --------------------------------------------------------
 
+    # SEND ALL
     if send_all_button:
 
         buttons.append([
-            send_all_button,
-
-            InlineKeyboardButton(
-                "Lᴀɴɢᴜᴀɢᴇs",
-                callback_data=(
-                    f"filter_lang_{session_id}_{page}"
-                ),
-            ),
-
-            InlineKeyboardButton(
-                "Yᴇᴀʀs",
-                callback_data=(
-                    f"filter_year_{session_id}_{page}"
-                ),
-            ),
+            send_all_button
         ])
 
-        buttons.append([
-            InlineKeyboardButton(
-                "Qᴜᴀʟɪᴛʏ",
-                callback_data=(
-                    f"filter_quality_{session_id}_{page}"
-                ),
+    # FILTERS
+    buttons.append([
+        InlineKeyboardButton(
+            "Lᴀɴɢᴜᴀɢᴇs",
+            callback_data=(
+                f"filter_lang_{session_id}_{page}"
             ),
+        ),
 
-            InlineKeyboardButton(
-                "Eᴘɪsᴏᴅᴇs",
-                callback_data=(
-                    f"filter_episode_{session_id}_{page}"
-                ),
+        InlineKeyboardButton(
+            "Eᴘɪsᴏᴅᴇs",
+            callback_data=(
+                f"filter_episode_{session_id}_{page}"
             ),
+        ),
 
-            InlineKeyboardButton(
-                "Sᴇᴀsᴏɴs",
-                callback_data=(
-                    f"filter_season_{session_id}_{page}"
-                ),
+        InlineKeyboardButton(
+            "Sᴇᴀsᴏɴs",
+            callback_data=(
+                f"filter_season_{session_id}_{page}"
             ),
-        ])
-
+        ),
+    ])
+    
     # --------------------------------------------------------
     # PAGINATION
     # --------------------------------------------------------
@@ -360,51 +348,6 @@ def filter_menu_buttons(
                 "🌐 Lᴀɴɢᴜᴀɢᴇ",
                 callback_data=(
                     f"filter_lang_{session_id}_{page}"
-                ),
-            )
-        ])
-
-    # --------------------------------------------------------
-    # YEAR
-    # --------------------------------------------------------
-
-    if years:
-
-        buttons.append([
-            InlineKeyboardButton(
-                "📅 Yᴇᴀʀ",
-                callback_data=(
-                    f"filter_year_{session_id}_{page}"
-                ),
-            )
-        ])
-
-    # --------------------------------------------------------
-    # QUALITY
-    # --------------------------------------------------------
-
-    if qualities:
-
-        buttons.append([
-            InlineKeyboardButton(
-                "🎞 Qᴜᴀʟɪᴛʏ",
-                callback_data=(
-                    f"filter_quality_{session_id}_{page}"
-                ),
-            )
-        ])
-
-    # --------------------------------------------------------
-    # EPISODE
-    # --------------------------------------------------------
-
-    if episodes:
-
-        buttons.append([
-            InlineKeyboardButton(
-                "🎬 Eᴘɪsᴏᴅᴇ",
-                callback_data=(
-                    f"filter_episode_{session_id}_{page}"
                 ),
             )
         ])
@@ -514,7 +457,7 @@ def language_filter_buttons(
 
     buttons.append([
         InlineKeyboardButton(
-            "✖️ Clear Language",
+            "• Close •",
             callback_data=(
                 f"setlang_"
                 f"{session_id}_"
