@@ -847,6 +847,7 @@ def build_filter_buttons(
     episodes = options.get(
         "episodes",
         []
+    )
         
 # ------------------------ #
 # Don't Remove My Credits
