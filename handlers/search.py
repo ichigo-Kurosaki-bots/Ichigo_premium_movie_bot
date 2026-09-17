@@ -752,11 +752,6 @@ def build_filter_text(
         []
     )
 
-    years = options.get(
-        "years",
-        []
-    )
-
     qualities = options.get(
         "qualities",
         []
@@ -877,16 +872,6 @@ def build_filter_buttons(
         []
     )
 
-    years = options.get(
-        "years",
-        []
-    )
-
-    qualities = options.get(
-        "qualities",
-        []
-    )
-
     seasons = options.get(
         "seasons",
         []
@@ -910,42 +895,6 @@ def build_filter_buttons(
                     callback_data=(
                         f"setfilter_{session_id}_"
                         f"language_{language}"
-                    )
-                )
-            ]
-        )
-
-    # --------------------------------------------------------
-    # YEARS
-    # --------------------------------------------------------
-
-    for year in years[:12]:
-
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    f"›› {year}",
-                    callback_data=(
-                        f"setfilter_{session_id}_"
-                        f"year_{year}"
-                    )
-                )
-            ]
-        )
-
-    # --------------------------------------------------------
-    # QUALITY
-    # --------------------------------------------------------
-
-    for quality in qualities[:12]:
-
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    f"›› {quality}",
-                    callback_data=(
-                        f"setfilter_{session_id}_"
-                        f"quality_{quality}"
                     )
                 )
             ]
@@ -2714,7 +2663,7 @@ def register_search_handlers(app):
 
     @app.on_callback_query(
         filters.regex(
-            r"^setfilter_[a-fA-F0-9]+_(language|year|quality|season|episode)_.+$"
+            r"^setfilter_[a-fA-F0-9]+_(language|season|episode)_.+$"
         )
     )
     async def set_filter_callback(
