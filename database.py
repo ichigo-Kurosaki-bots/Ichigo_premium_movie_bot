@@ -1,7 +1,3 @@
-# ============================================================
-# database.py
-# ============================================================
-
 import logging
 import re
 from datetime import datetime
@@ -16,9 +12,7 @@ from config import (
     STORAGE_LIMIT_MB
 )
 
-
 logger = logging.getLogger(__name__)
-
 
 # ============================================================
 # MONGODB CONNECTION
@@ -35,7 +29,6 @@ chats_collection = None
 redeem_codes_collection = None
 banned_users_collection = None
 admins_collection = None
-
 
 # ============================================================
 # CONNECT
@@ -223,7 +216,6 @@ async def init_database():
         unique=True
     )
 
-
 # ============================================================
 # CLOSE
 # ============================================================
@@ -241,7 +233,6 @@ async def close_database():
         logger.info(
             "MongoDB connection closed."
         )
-
 
 # ============================================================
 # USER
@@ -3508,7 +3499,6 @@ async def is_user_muted(
     )
 
     return user is not None
-
 
 # ============================================================
 # ADMIN CONFIGURATION
