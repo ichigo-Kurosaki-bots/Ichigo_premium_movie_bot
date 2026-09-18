@@ -45,6 +45,7 @@ UPDATES_URL = "https://t.me/Aero_Unity"
 from database import (
     get_user,
     create_user,
+    is_user_muted,
     search_media,
     create_search_session,
     get_search_session,
@@ -2280,6 +2281,37 @@ def register_search_handlers(app):
         client,
         message
     ):
+        # ====================================================
+        # CHECK IF USER IS MUTED
+        # ====================================================
+
+        if not message.from_user:
+            return
+
+        try:
+
+            muted = await is_user_muted(
+                message.from_user.id
+            )
+
+            if muted:
+
+                await message.reply_text(
+                    "🔇 <b>Yᴏᴜ Aʀᴇ Mᴜᴛᴇᴅ</b>\n\n"
+                    "Yᴏᴜ Cᴀɴɴᴏᴛ Sᴇᴀʀᴄʜ Fᴏʀ Mᴏᴠɪᴇs, "
+                    "Sᴇʀɪᴇs, Aɴɪᴍᴇ, Dʀᴀᴍᴀs Oʀ Oᴛʜᴇʀ Mᴇᴅɪᴀ "
+                    "Wʜɪʟᴇ Yᴏᴜ Aʀᴇ Mᴜᴛᴇᴅ."
+                )
+
+                return
+
+        except Exception as e:
+
+            logger.warning(
+                "Mute check failed for user %s: %s",
+                message.from_user.id,
+                e
+            )
 
         query = clean_query(
             message.text
