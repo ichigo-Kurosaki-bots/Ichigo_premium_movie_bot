@@ -34,6 +34,7 @@ settings_collection = None
 chats_collection = None
 redeem_codes_collection = None
 banned_users_collection = None
+admins_collection = None
 
 
 # ============================================================
@@ -51,6 +52,7 @@ async def init_database():
     global chats_collection
     global redeem_codes_collection
     global banned_users_collection
+    global admins_collection
 
     if not MONGO_URI:
 
@@ -97,6 +99,10 @@ async def init_database():
 
     banned_users_collection = db[
         "banned_users"
+    ]
+    
+    admins_collection = db[
+        "admins"
     ]
 
     # --------------------------------------------------------
@@ -206,6 +212,15 @@ async def init_database():
 
     logger.info(
         "MongoDB indexes ready."
+    )
+    
+    # --------------------------------------------------------
+    # ADMINS
+    # --------------------------------------------------------
+
+    await admins_collection.create_index(
+        "user_id",
+        unique=True
     )
 
 
@@ -2989,3 +3004,553 @@ async def get_maintenance_status():
                 "updated_at"
             )
     }
+
+
+# ============================================================
+# ADMIN MANAGEMENT
+# ============================================================
+
+async def add_admin(
+    user_id,
+    added_by=None,
+    first_name="",
+    username=""
+):
+
+    try:
+
+        user_id = int(
+            user_id
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return False
+
+    now = datetime.utcnow()
+
+    document = {
+
+        "user_id":
+            user_id,
+
+        "first_name":
+            first_name or "",
+
+        "username":
+            username or "",
+
+        "added_by":
+            added_by,
+
+        "added_at":
+            now,
+
+        "updated_at":
+            now
+    }
+
+    try:
+
+        await admins_collection.insert_one(
+            document
+        )
+
+        return True
+
+    except Exception as e:
+
+        logger.warning(
+            "Could not add admin %s: %s",
+            user_id,
+            e
+        )
+
+        return False
+
+
+async def remove_admin(
+    user_id
+):
+
+    try:
+
+        user_id = int(
+            user_id
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return False
+
+    result = await admins_collection.delete_one(
+
+        {
+            "user_id":
+                user_id
+        }
+    )
+
+    return (
+        result.deleted_count > 0
+    )
+
+
+async def is_admin(
+    user_id
+):
+
+    try:
+
+        user_id = int(
+            user_id
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return False
+
+    admin = await admins_collection.find_one(
+
+        {
+            "user_id":
+                user_id
+        }
+    )
+
+    return admin is not None
+
+
+async def get_admin(
+    user_id
+):
+
+    try:
+
+        user_id = int(
+            user_id
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return None
+
+    return await admins_collection.find_one(
+
+        {
+            "user_id":
+                user_id
+        }
+    )
+
+
+async def get_admins():
+
+    cursor = admins_collection.find(
+        {}
+    ).sort(
+        "added_at",
+        1
+    )
+
+    return await cursor.to_list(
+        length=None
+    )
+
+
+async def count_admins():
+
+    return await admins_collection.count_documents(
+        {}
+    )
+
+
+async def update_admin_info(
+    user_id,
+    first_name=None,
+    username=None
+):
+
+    try:
+
+        user_id = int(
+            user_id
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return False
+
+    update = {
+
+        "updated_at":
+            datetime.utcnow()
+    }
+
+    if first_name is not None:
+
+        update[
+            "first_name"
+        ] = first_name or ""
+
+    if username is not None:
+
+        update[
+            "username"
+        ] = username or ""
+
+    result = await admins_collection.update_one(
+
+        {
+            "user_id":
+                user_id
+        },
+
+        {
+            "$set":
+                update
+        }
+    )
+
+    return (
+        result.matched_count > 0
+    )
+
+
+# ============================================================
+# ADMIN WARN SYSTEM
+# ============================================================
+
+async def add_warning(
+    user_id,
+    warned_by=None,
+    reason=""
+):
+
+    try:
+
+        user_id = int(
+            user_id
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return None
+
+    now = datetime.utcnow()
+
+    result = await users_collection.find_one_and_update(
+
+        {
+            "user_id":
+                user_id
+        },
+
+        {
+            "$inc": {
+                "warnings": 1
+            },
+
+            "$set": {
+                "last_warning_reason":
+                    reason or "",
+
+                "last_warned_by":
+                    warned_by,
+
+                "last_warned_at":
+                    now,
+
+                "updated_at":
+                    now
+            }
+        },
+
+        return_document=ReturnDocument.AFTER
+    )
+
+    if not result:
+
+        return None
+
+    return int(
+        result.get(
+            "warnings",
+            0
+        ) or 0
+    )
+
+
+async def get_warnings(
+    user_id
+):
+
+    try:
+
+        user_id = int(
+            user_id
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return 0
+
+    user = await users_collection.find_one(
+
+        {
+            "user_id":
+                user_id
+        },
+
+        {
+            "_id": 0,
+            "warnings": 1
+        }
+    )
+
+    if not user:
+
+        return 0
+
+    return int(
+        user.get(
+            "warnings",
+            0
+        ) or 0
+    )
+
+
+async def reset_warnings(
+    user_id
+):
+
+    try:
+
+        user_id = int(
+            user_id
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return False
+
+    result = await users_collection.update_one(
+
+        {
+            "user_id":
+                user_id
+        },
+
+        {
+            "$set": {
+
+                "warnings":
+                    0,
+
+                "updated_at":
+                    datetime.utcnow()
+            }
+        }
+    )
+
+    return (
+        result.matched_count > 0
+    )
+
+
+# ============================================================
+# ADMIN MUTE SYSTEM
+# ============================================================
+
+async def mute_user(
+    user_id,
+    muted_by=None,
+    reason=""
+):
+
+    try:
+
+        user_id = int(
+            user_id
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return False
+
+    result = await users_collection.update_one(
+
+        {
+            "user_id":
+                user_id
+        },
+
+        {
+            "$set": {
+
+                "muted":
+                    True,
+
+                "mute_reason":
+                    reason or "",
+
+                "muted_by":
+                    muted_by,
+
+                "muted_at":
+                    datetime.utcnow(),
+
+                "updated_at":
+                    datetime.utcnow()
+            }
+        }
+    )
+
+    return (
+        result.matched_count > 0
+    )
+
+
+async def unmute_user(
+    user_id
+):
+
+    try:
+
+        user_id = int(
+            user_id
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return False
+
+    result = await users_collection.update_one(
+
+        {
+            "user_id":
+                user_id
+        },
+
+        {
+            "$set": {
+
+                "muted":
+                    False,
+
+                "updated_at":
+                    datetime.utcnow()
+            }
+        }
+    )
+
+    return (
+        result.matched_count > 0
+    )
+
+
+async def is_user_muted(
+    user_id
+):
+
+    try:
+
+        user_id = int(
+            user_id
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return False
+
+    user = await users_collection.find_one(
+
+        {
+            "user_id":
+                user_id,
+
+            "muted":
+                True
+        }
+    )
+
+    return user is not None
+
+
+# ============================================================
+# ADMIN CONFIGURATION
+# ============================================================
+
+async def get_admin_settings():
+
+    document = await settings_collection.find_one(
+
+        {
+            "_id":
+                "admin_settings"
+        }
+    )
+
+    if not document:
+
+        return {}
+
+    return document
+
+
+async def save_admin_settings(
+    data
+):
+
+    if not data:
+
+        return False
+
+    await settings_collection.update_one(
+
+        {
+            "_id":
+                "admin_settings"
+        },
+
+        {
+            "$set": data
+        },
+
+        upsert=True
+    )
+
+    return True
