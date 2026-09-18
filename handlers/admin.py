@@ -2144,18 +2144,48 @@ def register_admin_handlers(app):
                 user_id
             )
 
+        # ------------------------------------------------
+        # NOTIFY OWNER
+        # ------------------------------------------------
+
         await message.reply_text(
-            "✅ <b>Aᴅᴍɪɴ Aᴅᴅᴇᴅ</b>\n\n"
+            "✅ <b>Aᴅᴍɪɴ Aᴅᴇᴅ</b>\n\n"
             f"›› 🆔 <code>{user_id}</code>\n"
             f"›› Nᴀᴍᴇ: <b>{escape(first_name or 'Unknown')}</b>\n"
-            f"›› Uꜱᴇʀɴᴀᴍᴇ: "
-            f"<b>@{escape(username)}</b>"
-            if username
-            else
-            "✅ <b>Aᴅᴍɪɴ Aᴅᴅᴇᴅ</b>\n\n"
-            f"›› 🆔 <code>{user_id}</code>\n"
-            f"›› Nᴀᴍᴇ: <b>{escape(first_name or 'Unknown')}</b>"
+            + (
+                f"›› Uꜱᴇʀɴᴀᴍᴇ: "
+                f"<b>@{escape(username)}</b>"
+                if username
+                else ""
+            )
         )
+
+        # ------------------------------------------------
+        # NOTIFY NEW ADMIN
+        # ------------------------------------------------
+
+        try:
+
+            await client.send_message(
+                user_id,
+
+                "👑 <b>Yᴏᴜ Hᴀᴠᴇ Bᴇᴇɴ Aᴅᴅᴇᴅ Aꜱ Aɴ Aᴅᴍɪɴ</b>\n\n"
+
+                "🎉 <b>Cᴏɴɢʀᴀᴛᴜʟᴀᴛɪᴏɴs!</b>\n\n"
+
+                "<b>Yᴏᴜ Hᴀᴠᴇ Bᴇᴇɴ Sᴜᴄᴄᴇssғᴜʟʟʏ Aᴅᴅᴇᴅ "
+                "Aꜱ Aɴ Aᴅᴍɪɴ Oғ Tʜɪs Bᴏᴛ.</b>\n\n"
+
+                "<b>Yᴏᴜ Cᴀɴ Nᴏᴡ Uѕᴇ Tʜᴇ Aᴠᴀɪʟᴀʙʟᴇ Aᴅᴍɪɴ Cᴏᴍᴍᴀɴᴅs.</b>"
+            )
+
+        except Exception as e:
+
+            logger.warning(
+                "Could not notify new admin %s: %s",
+                user_id,
+                e
+            )
 
 
     # ========================================================
