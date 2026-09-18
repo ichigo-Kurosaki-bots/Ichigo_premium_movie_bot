@@ -10,6 +10,8 @@ import asyncio
 import os
 import time
 import psutil
+import importlib
+import config
 
 # ------------------------ #
 # Don't Remove My Credits
@@ -1964,3 +1966,666 @@ def register_admin_handlers(app):
 # Updates: @Aero_Unity 
 # Support : @Coders_Grp 
 # ------------------------ #
+
+    # ========================================================
+    # OWNER ONLY CHECK
+    # ========================================================
+
+    def owner_only(_, __, message):
+
+        return (
+            message.from_user is not None
+            and message.from_user.id == OWNER_ID
+        )
+
+    owner_only_filter = filters.create(
+        owner_only
+    )
+
+
+    # ========================================================
+    # /addadmin
+    # ========================================================
+
+    @app.on_message(
+        filters.command("addadmin")
+        & owner_only_filter
+    )
+    async def add_admin_handler(
+        client,
+        message
+    ):
+
+        if len(message.command) < 2:
+
+            await message.reply_text(
+                "❌ <b>Usage:</b>\n"
+                "<code>/addadmin USER_ID</code>"
+            )
+            return
+
+        try:
+
+            user_id = int(
+                message.command[1]
+            )
+
+        except ValueError:
+
+            await message.reply_text(
+                "❌ <b>Invalid User ID.</b>"
+            )
+            return
+
+        if user_id == OWNER_ID:
+
+            await message.reply_text(
+                "❌ <b>Owner is already the owner.</b>"
+            )
+            return
+
+        existing = await get_admin(
+            user_id
+        )
+
+        if existing:
+
+            await message.reply_text(
+                "⚠️ <b>This user is already an admin.</b>"
+            )
+            return
+
+        try:
+
+            user = await client.get_users(
+                user_id
+            )
+
+            first_name = (
+                user.first_name or ""
+            )
+
+            username = (
+                user.username or ""
+            )
+
+        except Exception:
+
+            first_name = ""
+            username = ""
+
+        success = await add_admin(
+            user_id=user_id,
+            added_by=message.from_user.id,
+            first_name=first_name,
+            username=username
+        )
+
+        if not success:
+
+            await message.reply_text(
+                "❌ <b>Failed to add admin.</b>"
+            )
+            return
+
+        if user_id not in ADMIN_IDS:
+
+            ADMIN_IDS.append(
+                user_id
+            )
+
+        await message.reply_text(
+            "✅ <b>Aᴅᴍɪɴ Aᴅᴅᴇᴅ</b>\n\n"
+            f"›› 🆔 <code>{user_id}</code>\n"
+            f"›› Nᴀᴍᴇ: <b>{escape(first_name or 'Unknown')}</b>\n"
+            f"›› Uꜱᴇʀɴᴀᴍᴇ: "
+            f"<b>@{escape(username)}</b>"
+            if username
+            else
+            "✅ <b>Aᴅᴍɪɴ Aᴅᴅᴇᴅ</b>\n\n"
+            f"›› 🆔 <code>{user_id}</code>\n"
+            f"›› Nᴀᴍᴇ: <b>{escape(first_name or 'Unknown')}</b>"
+        )
+
+
+    # ========================================================
+    # /removeadmin
+    # ========================================================
+
+    @app.on_message(
+        filters.command("removeadmin")
+        & owner_only_filter
+    )
+    async def remove_admin_handler(
+        client,
+        message
+    ):
+
+        if len(message.command) < 2:
+
+            await message.reply_text(
+                "❌ <b>Usage:</b>\n"
+                "<code>/removeadmin USER_ID</code>"
+            )
+            return
+
+        try:
+
+            user_id = int(
+                message.command[1]
+            )
+
+        except ValueError:
+
+            await message.reply_text(
+                "❌ <b>Invalid User ID.</b>"
+            )
+            return
+
+        if user_id == OWNER_ID:
+
+            await message.reply_text(
+                "❌ <b>You cannot remove the owner.</b>"
+            )
+            return
+
+        success = await remove_admin(
+            user_id
+        )
+
+        if not success:
+
+            await message.reply_text(
+                "❌ <b>This user is not a saved admin.</b>"
+            )
+            return
+
+        while user_id in ADMIN_IDS:
+
+            ADMIN_IDS.remove(
+                user_id
+            )
+
+        await message.reply_text(
+            "✅ <b>Aᴅᴍɪɴ Rᴇᴍᴏᴠᴇᴅ</b>\n\n"
+            f"›› 🆔 <code>{user_id}</code>"
+        )
+
+
+    # ========================================================
+    # /adminlist
+    # ========================================================
+
+    @app.on_message(
+        filters.command("adminlist")
+        & owner_only_filter
+    )
+    async def admin_list_handler(
+        client,
+        message
+    ):
+
+        try:
+
+            admins = await get_admins()
+
+            if not admins:
+
+                sent = await message.reply_text(
+                    "👑 <b>Aᴅᴍɪɴ Lɪsᴛ</b>\n\n"
+                    "Nᴏ Aᴅᴍɪɴs Fᴏᴜɴᴅ.",
+                    reply_markup=InlineKeyboardMarkup(
+                        [
+                            [
+                                InlineKeyboardButton(
+                                    "• Cʟᴏsᴇ •",
+                                    callback_data="close_adminlist"
+                                )
+                            ]
+                        ]
+                    )
+                )
+
+                await asyncio.sleep(30)
+
+                try:
+                    await sent.delete()
+                except Exception:
+                    pass
+
+                return
+
+            lines = [
+                "👑 <b>Aᴅᴍɪɴ Lɪsᴛ</b>\n"
+            ]
+
+            for index, admin in enumerate(
+                admins,
+                start=1
+            ):
+
+                user_id = admin.get(
+                    "user_id"
+                )
+
+                first_name = (
+                    admin.get("first_name")
+                    or "Unknown"
+                )
+
+                username = (
+                    admin.get("username")
+                    or ""
+                )
+
+                name_link = (
+                    f'<a href="tg://user?id={user_id}">'
+                    f'{escape(str(first_name))}</a>'
+                )
+
+                lines.append(
+                    f"<b>{index}. {name_link}</b>\n"
+                    f"   🆔 <code>{user_id}</code>"
+                )
+
+                if username:
+
+                    lines.append(
+                        f"   • <a href=\"https://t.me/"
+                        f"{escape(str(username))}\">"
+                        f"@{escape(str(username))}</a>"
+                    )
+
+                lines.append("")
+
+            text = "\n".join(
+                lines
+            )
+
+            buttons = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "• Cʟᴏsᴇ •",
+                            callback_data="close_adminlist"
+                        )
+                    ]
+                ]
+            )
+
+            sent = None
+
+            # ------------------------------------------------
+            # TRY FIRST ADMIN PROFILE PHOTO
+            # ------------------------------------------------
+
+            try:
+
+                first_admin = admins[0].get(
+                    "user_id"
+                )
+
+                photos = []
+
+                async for photo in client.get_chat_photos(
+                    first_admin,
+                    limit=1
+                ):
+
+                    photos.append(
+                        photo
+                    )
+
+                if photos:
+
+                    sent = await message.reply_photo(
+                        photo=photos[0].file_id,
+                        caption=text,
+                        reply_markup=buttons
+                    )
+
+            except Exception as e:
+
+                logger.warning(
+                    "Admin list photo failed: %s",
+                    e
+                )
+
+            if sent is None:
+
+                sent = await message.reply_text(
+                    text,
+                    reply_markup=buttons
+                )
+
+            await asyncio.sleep(30)
+
+            try:
+                await sent.delete()
+            except Exception:
+                pass
+
+        except Exception as e:
+
+            logger.exception(
+                "Admin list error: %s",
+                e
+            )
+
+            await message.reply_text(
+                "❌ <b>Could not load admin list.</b>\n\n"
+                f"<code>{escape(str(e))}</code>"
+            )
+
+
+    # ========================================================
+    # CLOSE ADMIN LIST
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(r"^close_adminlist$")
+    )
+    async def close_admin_list_callback(
+        client,
+        callback
+    ):
+
+        if (
+            callback.from_user is None
+            or callback.from_user.id != OWNER_ID
+        ):
+
+            await callback.answer(
+                "❌ Owner only.",
+                show_alert=True
+            )
+            return
+
+        try:
+
+            await callback.message.delete()
+
+        except Exception:
+            pass
+
+        try:
+
+            await callback.answer()
+
+        except Exception:
+            pass
+
+
+    # ========================================================
+    # /mute
+    # ========================================================
+
+    @app.on_message(
+        filters.command("mute")
+        & owner_only_filter
+    )
+    async def mute_handler(
+        client,
+        message
+    ):
+
+        if len(message.command) < 2:
+
+            await message.reply_text(
+                "❌ <b>Usage:</b>\n"
+                "<code>/mute USER_ID [REASON]</code>"
+            )
+            return
+
+        try:
+
+            user_id = int(
+                message.command[1]
+            )
+
+        except ValueError:
+
+            await message.reply_text(
+                "❌ <b>Invalid User ID.</b>"
+            )
+            return
+
+        reason = " ".join(
+            message.command[2:]
+        ).strip()
+
+        success = await mute_user(
+            user_id=user_id,
+            muted_by=message.from_user.id,
+            reason=reason
+        )
+
+        if not success:
+
+            await message.reply_text(
+                "❌ <b>User not found.</b>"
+            )
+            return
+
+        await message.reply_text(
+            "🔇 <b>Uꜱᴇʀ Mᴜᴛᴇᴅ</b>\n\n"
+            f"›› 🆔 <code>{user_id}</code>\n"
+            f"›› Rᴇᴀsᴏɴ: "
+            f"<b>{escape(reason or 'No reason')}</b>"
+        )
+
+
+    # ========================================================
+    # /unmute
+    # ========================================================
+
+    @app.on_message(
+        filters.command("unmute")
+        & owner_only_filter
+    )
+    async def unmute_handler(
+        client,
+        message
+    ):
+
+        if len(message.command) < 2:
+
+            await message.reply_text(
+                "❌ <b>Usage:</b>\n"
+                "<code>/unmute USER_ID</code>"
+            )
+            return
+
+        try:
+
+            user_id = int(
+                message.command[1]
+            )
+
+        except ValueError:
+
+            await message.reply_text(
+                "❌ <b>Invalid User ID.</b>"
+            )
+            return
+
+        success = await unmute_user(
+            user_id
+        )
+
+        if not success:
+
+            await message.reply_text(
+                "❌ <b>User not found.</b>"
+            )
+            return
+
+        await message.reply_text(
+            "🔊 <b>Uꜱᴇʀ Uɴᴍᴜᴛᴇᴅ</b>\n\n"
+            f"›› 🆔 <code>{user_id}</code>"
+        )
+
+
+    # ========================================================
+    # /warn
+    # ========================================================
+
+    @app.on_message(
+        filters.command("warn")
+        & owner_only_filter
+    )
+    async def warn_handler(
+        client,
+        message
+    ):
+
+        if len(message.command) < 2:
+
+            await message.reply_text(
+                "❌ <b>Usage:</b>\n"
+                "<code>/warn USER_ID [REASON]</code>"
+            )
+            return
+
+        try:
+
+            user_id = int(
+                message.command[1]
+            )
+
+        except ValueError:
+
+            await message.reply_text(
+                "❌ <b>Invalid User ID.</b>"
+            )
+            return
+
+        user = await get_user(
+            user_id
+        )
+
+        if not user:
+
+            await message.reply_text(
+                "❌ <b>User not found.</b>"
+            )
+            return
+
+        reason = " ".join(
+            message.command[2:]
+        ).strip()
+
+        warnings = await add_warning(
+            user_id=user_id,
+            warned_by=message.from_user.id,
+            reason=reason
+        )
+
+        if warnings is None:
+
+            await message.reply_text(
+                "❌ <b>Failed to add warning.</b>"
+            )
+            return
+
+        await message.reply_text(
+            "⚠️ <b>Wᴀʀɴɪɴɢ Aᴅᴅᴇᴅ</b>\n\n"
+            f"›› 🆔 <code>{user_id}</code>\n"
+            f"›› Wᴀʀɴɪɴɢs: "
+            f"<b>{warnings}</b>\n"
+            f"›› Rᴇᴀsᴏɴ: "
+            f"<b>{escape(reason or 'No reason')}</b>"
+        )
+
+        try:
+
+            await client.send_message(
+                user_id,
+
+                "⚠️ <b>Yᴏᴜ Hᴀᴠᴇ Rᴇᴄᴇɪᴠᴇᴅ A Wᴀʀɴɪɴɢ</b>\n\n"
+                f"›› Wᴀʀɴɪɴɢs: <b>{warnings}</b>\n"
+                f"›› Rᴇᴀsᴏɴ: "
+                f"<b>{escape(reason or 'No reason')}</b>"
+            )
+
+        except Exception as e:
+
+            logger.warning(
+                "Could not notify warned user %s: %s",
+                user_id,
+                e
+            )
+
+
+    # ========================================================
+    # /reload
+    # ========================================================
+
+    @app.on_message(
+        filters.command("reload")
+        & owner_only_filter
+    )
+    async def reload_handler(
+        client,
+        message
+    ):
+
+        reload_message = None
+
+        try:
+
+            reload_message = await message.reply_text(
+                "☄️"
+            )
+
+            await asyncio.sleep(1)
+
+            await reload_message.edit_text(
+                "<b>Rᴇʟᴏᴀᴅɪɴɢ Cᴏɴғɪɢᴜʀᴀᴛɪᴏɴ...</b>\n\n"
+                "⏳ <b>Pʟᴇᴀsᴇ Wᴀɪᴛ...</b>"
+            )
+
+            await asyncio.sleep(1)
+
+            importlib.reload(
+                config
+            )
+
+            await reload_message.edit_text(
+                "♻️ <b>Cᴏɴғɪɢᴜʀᴀᴛɪᴏɴ Rᴇʟᴏᴀᴅᴇᴅ</b>\n\n"
+                "<b>Configuration modules has been reloaded.</b>\n\n"
+                "<b>Powered By: @Aero_Unity</b>"
+            )
+
+            await asyncio.sleep(30)
+
+            try:
+                await reload_message.delete()
+            except Exception:
+                pass
+
+        except Exception as e:
+
+            logger.exception(
+                "Reload error: %s",
+                e
+            )
+
+            if reload_message:
+
+                try:
+
+                    await reload_message.edit_text(
+                        "❌ <b>Cᴏɴғɪɢᴜʀᴀᴛɪᴏɴ Rᴇʟᴏᴀᴅ Fᴀɪʟᴇᴅ</b>\n\n"
+                        f"<code>{escape(str(e))}</code>"
+                    )
+
+                    await asyncio.sleep(30)
+
+                    try:
+                        await reload_message.delete()
+                    except Exception:
+                        pass
+
+                except Exception:
+                    pass
