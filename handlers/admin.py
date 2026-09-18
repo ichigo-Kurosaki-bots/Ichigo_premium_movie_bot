@@ -2137,16 +2137,14 @@ def register_admin_handlers(app):
 
         if user_id not in ADMIN_IDS:
 
-            ADMIN_IDS.append(
-                user_id
-            )
+            ADMIN_IDS.add(user_id)
 
         # ------------------------------------------------
         # NOTIFY OWNER
         # ------------------------------------------------
 
         await message.reply_text(
-            "✅ <b>Aᴅᴍɪɴ Aᴅᴇᴅ</b>\n\n"
+            "✅ <b>Aᴅᴍɪɴ Aᴅdᴇᴅ</b>\n\n"
             f"›› 🆔 <code>{user_id}</code>\n"
             f"›› Nᴀᴍᴇ: <b>{escape(first_name or 'Unknown')}</b>\n"
             + (
