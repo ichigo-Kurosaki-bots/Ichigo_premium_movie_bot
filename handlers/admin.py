@@ -1522,85 +1522,85 @@ def register_admin_handlers(app):
 # Support : @Coders_Grp 
 # ------------------------ #
 
-        # ============================================================
-        # /clearjunk
-        # ============================================================
+    # ============================================================
+    # /clearjunk
+    # ============================================================
 
-        @app.on_message(
-            filters.command("clearjunk")
-            & admin_only
+    @app.on_message(
+        filters.command("clearjunk")
+        & admin_only
+    )
+    async def clear_junk_handler(client, message):
+
+        if message.chat.type != ChatType.PRIVATE:
+            return await message.reply_text(
+                "❌ <b>This command can only be used in Bot PM.</b>"
         )
-        async def clear_junk_handler(client, message):
 
-            if message.chat.type != ChatType.PRIVATE:
-                return await message.reply_text(
-                    "❌ <b>This command can only be used in Bot PM.</b>"
-            )
+        status = await message.reply_text(
+            "🧹 <b>Cʟᴇᴀɴɪɴɢ Lᴀsᴛ 200 Mᴇssᴀɢᴇs...</b>"
+        )
 
-            status = await message.reply_text(
-                "🧹 <b>Cʟᴇᴀɴɪɴɢ Lᴀsᴛ 200 Mᴇssᴀɢᴇs...</b>"
-            )
+        deleted = 0
 
-            deleted = 0
-
-            try:
+        try:
                 
-                start_id = max(1, message.id - 200)
-                end_id = message.id
+            start_id = max(1, message.id - 200)
+            end_id = message.id
 
-                message_ids = list(
-                    range(start_id, end_id + 1)
-                )
+            message_ids = list(
+                range(start_id, end_id + 1)
+            )
 
-                for i in range(0, len(message_ids), 100):
+            for i in range(0, len(message_ids), 100):
 
-                    batch = message_ids[i:i + 100]
-
-                    try:
-                        result = await client.delete_messages(
-                            chat_id=message.chat.id,
-                            message_ids=batch
-                        )
-
-                        if isinstance(result, list):
-                            deleted += len(result)
-                        else:
-                            deleted += len(batch)
-
-                    except Exception as e:
-                        logger.warning(
-                            f"Clear junk batch failed: {e}"
-                        )
- 
-                try:
-                    await status.delete()
-                except Exception:
-                    pass
+                batch = message_ids[i:i + 100]
 
                 try:
-                    await message.reply_text(
-                        "🧹 <b>Cʟᴇᴀɴᴜᴘ Cᴏᴍᴘʟᴇᴛᴇ</b>\n\n"
-                        f"🗑 <b>Mᴇssᴀɢᴇs Dᴇʟᴇᴛᴇᴅ:</b> "
-                        f"<code>{deleted}</code>"
+                    result = await client.delete_messages(
+                        chat_id=message.chat.id,
+                        message_ids=batch
                     )
-     
+
+                    if isinstance(result, list):
+                        deleted += len(result)
+                    else:
+                        deleted += len(batch)
+
                 except Exception as e:
                     logger.warning(
-                        f"Clear junk result message failed: {e}"
+                        f"Clear junk batch failed: {e}"
                     )
+ 
+            try:
+                await status.delete()
+            except Exception:
+                pass
 
+            try:
+                await message.reply_text(
+                    "🧹 <b>Cʟᴇᴀɴᴜᴘ Cᴏᴍᴘʟᴇᴛᴇ</b>\n\n"
+                    f"🗑 <b>Mᴇssᴀɢᴇs Dᴇʟᴇᴛᴇᴅ:</b> "
+                    f"<code>{deleted}</code>"
+                )
+     
             except Exception as e:
-                logger.exception(
-                    f"Clear junk error: {e}"
+                logger.warning(
+                    f"Clear junk result message failed: {e}"
                 )
 
-                try:
-                    await status.edit_text(
-                        "❌ <b>Cʟᴇᴀɴᴜᴘ Fᴀɪʟᴇᴅ</b>\n\n"
-                        f"<code>{str(e)}</code>"
-                    )
-                except Exception:
-                    pass
+        except Exception as e:
+            logger.exception(
+                f"Clear junk error: {e}"
+            )
+
+            try:
+                await status.edit_text(
+                    "❌ <b>Cʟᴇᴀɴᴜᴘ Fᴀɪʟᴇᴅ</b>\n\n"
+                    f"<code>{str(e)}</code>"
+                )
+            except Exception:
+                pass
 
 # ------------------------ #
 # Don't Remove My Credits
@@ -1609,90 +1609,90 @@ def register_admin_handlers(app):
 # Support : @Coders_Grp 
 # ------------------------ #
 
-        # ============================================================
-        # /clearjunkgroup
-        # ============================================================
+    # ============================================================
+    # /clearjunkgroup
+    # ============================================================
 
-        @app.on_message(
-            filters.command("clearjunkgroup")
-            & admin_only
+    @app.on_message(
+        filters.command("clearjunkgroup")
+        & admin_only
+    )
+    async def clear_junk_group_handler(client, message):
+
+        if message.chat.type not in [
+            ChatType.GROUP,
+            ChatType.SUPERGROUP
+        ]:
+            await message.reply_text(
+                "❌ <b>This command can only be used in a group.</b>"
+            )
+            return
+
+        status = await message.reply_text(
+            "🧹 <b>Cʟᴇᴀɴɪɴɢ Lᴀsᴛ 500 Mᴇssᴀɢᴇs...</b>"
         )
-        async def clear_junk_group_handler(client, message):
 
-            if message.chat.type not in [
-                ChatType.GROUP,
-                ChatType.SUPERGROUP
-            ]:
-                await message.reply_text(
-                    "❌ <b>This command can only be used in a group.</b>"
-                )
-                return
+        deleted = 0
 
-            status = await message.reply_text(
-                 "🧹 <b>Cʟᴇᴀɴɪɴɢ Lᴀsᴛ 500 Mᴇssᴀɢᴇs...</b>"
+        try:
+        
+            start_id = max(1, message.id - 500)
+            end_id = message.id
+    
+            message_ids = list(
+                range(start_id, end_id + 1)
             )
 
-            deleted = 0
+            # Delete in batches of 100.
+            for i in range(0, len(message_ids), 100):
 
-            try:
-        
-                start_id = max(1, message.id - 500)
-                end_id = message.id
-    
-                message_ids = list(
-                    range(start_id, end_id + 1)
-                )
-
-                # Delete in batches of 100.
-                for i in range(0, len(message_ids), 100):
-
-                    batch = message_ids[i:i + 100]
-
-                    try:
-                        result = await client.delete_messages(
-                            chat_id=message.chat.id,
-                            message_ids=batch
-                        )
-
-                        if isinstance(result, list):
-                            deleted += len(result)
-                        else:
-                            deleted += len(batch)
-  
-                    except Exception as e:
-                        logger.warning(
-                            f"Clear group batch failed: {e}"
-                        )
+                batch = message_ids[i:i + 100]
 
                 try:
-                    await status.delete()
-                except Exception:
-                    pass
-
-                try:
-                    await message.reply_text(
-                        "🧹 <b>Gʀᴏᴜᴘ Cʟᴇᴀɴᴜᴘ Cᴏᴍᴘʟᴇᴛᴇ</b>\n\n"
-                        f"🗑 <b>Mᴇssᴀɢᴇs Dᴇʟᴇᴛᴇᴅ:</b> "
-                        f"<code>{deleted}</code>"
+                    result = await client.delete_messages(
+                        chat_id=message.chat.id,
+                        message_ids=batch
                     )
 
+                    if isinstance(result, list):
+                        deleted += len(result)
+                    else:
+                        deleted += len(batch)
+  
                 except Exception as e:
                     logger.warning(
-                        f"Clear group result message failed: {e}"
+                        f"Clear group batch failed: {e}"
+                    )
+
+            try:
+                await status.delete()
+            except Exception:
+                pass
+
+            try:
+                await message.reply_text(
+                    "🧹 <b>Gʀᴏᴜᴘ Cʟᴇᴀɴᴜᴘ Cᴏᴍᴘʟᴇᴛᴇ</b>\n\n"
+                    f"🗑 <b>Mᴇssᴀɢᴇs Dᴇʟᴇᴛᴇᴅ:</b> "
+                    f"<code>{deleted}</code>"
                 )
 
             except Exception as e:
-                logger.exception(
-                    f"Clear junk group error: {e}"
-                )
+                logger.warning(
+                    f"Clear group result message failed: {e}"
+            )
 
-                try:
-                    await status.edit_text(
-                        "❌ <b>Gʀᴏᴜᴘ Cʟᴇᴀɴᴜᴘ Fᴀɪʟᴇᴅ</b>\n\n"
-                        f"<code>{str(e)}</code>"
-                    )
-                except Exception:
-                    pass
+        except Exception as e:
+            logger.exception(
+                f"Clear junk group error: {e}"
+            )
+
+            try:
+                await status.edit_text(
+                    "❌ <b>Gʀᴏᴜᴘ Cʟᴇᴀɴᴜᴘ Fᴀɪʟᴇᴅ</b>\n\n"
+                    f"<code>{str(e)}</code>"
+                )
+            except Exception:
+                pass
 
 # ------------------------ #
 # Don't Remove My Credits
