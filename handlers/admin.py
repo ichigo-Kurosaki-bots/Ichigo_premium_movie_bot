@@ -2645,7 +2645,7 @@ def register_admin_handlers(app):
         try:
 
             reload_message = await message.reply_text(
-                "☄️"
+                "⚡️"
             )
 
             await asyncio.sleep(1)
