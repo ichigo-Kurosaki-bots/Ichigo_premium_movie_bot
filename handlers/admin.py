@@ -66,10 +66,7 @@ from database import (
     update_admin_info,
     add_warning,
     get_warnings,
-    reset_warnings,
-    mute_user,
-    unmute_user,
-    is_user_muted
+    reset_warnings
 )
 
 logger = logging.getLogger(__name__)
@@ -2454,117 +2451,6 @@ def register_admin_handlers(app):
 
         except Exception:
             pass
-
-
-    # ========================================================
-    # /mute
-    # ========================================================
-
-    @app.on_message(
-        filters.command("mute")
-        & owner_only_filter
-    )
-    async def mute_handler(
-        client,
-        message
-    ):
-
-        if len(message.command) < 2:
-
-            await message.reply_text(
-                "❌ <b>Usage:</b>\n"
-                "<code>/mute USER_ID [REASON]</code>"
-            )
-            return
-
-        try:
-
-            user_id = int(
-                message.command[1]
-            )
-
-        except ValueError:
-
-            await message.reply_text(
-                "❌ <b>Invalid User ID.</b>"
-            )
-            return
-
-        reason = " ".join(
-            message.command[2:]
-        ).strip()
-
-        success = await mute_user(
-            user_id=user_id,
-            muted_by=message.from_user.id,
-            reason=reason
-        )
-
-        if not success:
-
-            await message.reply_text(
-                "❌ <b>User not found.</b>"
-            )
-            return
-
-        await message.reply_text(
-            "🔇 <b>Uꜱᴇʀ Mᴜᴛᴇᴅ</b>\n\n"
-            f"›› 🆔 <code>{user_id}</code>\n"
-            f"›› Rᴇᴀsᴏɴ: "
-            f"<b>{escape(reason or 'No reason')}</b>"
-        )
-
-
-    # ========================================================
-    # /unmute
-    # ========================================================
-
-    @app.on_message(
-        filters.command("unmute")
-        & owner_only_filter
-    )
-    async def unmute_handler(
-        client,
-        message
-    ):
-
-        if len(message.command) < 2:
-
-            await message.reply_text(
-                "❌ <b>Usage:</b>\n"
-                "<code>/unmute USER_ID</code>"
-            )
-            return
-
-        try:
-
-            user_id = int(
-                message.command[1]
-            )
-
-        except ValueError:
-
-            await message.reply_text(
-                "❌ <b>Invalid User ID.</b>"
-            )
-            return
-
-        success = await unmute_user(
-            user_id
-        )
-
-        if not success:
-
-            await message.reply_text(
-                "❌ <b>User not found.</b>"
-            )
-            return
-
-        await message.reply_text(
-            "🔊 <b>Uꜱᴇʀ Uɴᴍᴜᴛᴇᴅ</b>\n\n"
-            f"›› 🆔 <code>{user_id}</code>"
-        )
-
 
     # ========================================================
     # /warn
