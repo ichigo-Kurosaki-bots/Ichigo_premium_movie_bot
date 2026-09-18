@@ -1124,6 +1124,270 @@ def register_admin_handlers(app):
             "<b>Your Telegram ID</b>\n\n"
             f"ID - <code>{user_id}</code>"
         )
+
+    # ========================================================
+    # /info
+    # ========================================================
+
+    @app.on_message(
+        filters.command("info")
+    )
+    async def info_handler(
+        client,
+        message
+    ):
+
+        # ----------------------------------------------------
+        # GET TARGET USER
+        # ----------------------------------------------------
+
+        target_user = None
+
+        try:
+
+            # /info by reply
+            if message.reply_to_message:
+
+                if message.reply_to_message.from_user:
+
+                    target_user = message.reply_to_message.from_user
+
+            # /info USER_ID
+            elif len(message.command) > 1:
+
+                target_user = await client.get_users(
+                    message.command[1]
+                )
+
+            # /info by sender
+            else:
+
+                target_user = message.from_user
+
+        except Exception as e:
+
+            logger.exception(
+                "Could not get info user: %s",
+                e
+            )
+
+            await message.reply_text(
+                "❌ <b>Could not fetch user information.</b>\n\n"
+                f"<code>{escape(str(e))}</code>"
+            )
+
+            return
+
+        if not target_user:
+
+            await message.reply_text(
+                "❌ <b>User not found.</b>"
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # FETCHING MESSAGE
+        # ----------------------------------------------------
+
+        fetching = await message.reply_text(
+            "⏳ <b>Fᴇᴛᴄʜɪɴɢ Uꜱᴇʀ Iɴғᴏ...</b>"
+        )
+
+        await asyncio.sleep(0.1)
+
+        try:
+            await fetching.delete()
+        except Exception:
+            pass
+
+        # ----------------------------------------------------
+        # PROCESSING MESSAGE
+        # ----------------------------------------------------
+
+        processing = await message.reply_text(
+            " <b>Pʀᴏᴄᴇꜱꜱɪɴɢ Uꜱᴇʀ Iɴғᴏ...</b>"
+        )
+
+        await asyncio.sleep(0.5)
+
+        try:
+            await processing.delete()
+        except Exception:
+            pass
+
+        # ----------------------------------------------------
+        # USER DETAILS
+        # ----------------------------------------------------
+
+        user_id = target_user.id
+
+        first_name = target_user.first_name or "None"
+        last_name = target_user.last_name or "None"
+
+        username = target_user.username
+
+        if username:
+            username_text = f"@{username}"
+            username_link = (
+                f"https://t.me/{username}"
+            )
+        else:
+            username_text = "None"
+            username_link = (
+                f"tg://user?id={user_id}"
+            )
+
+        user_link = f"tg://user?id={user_id}"
+
+        # ----------------------------------------------------
+        # CLICKABLE FIRST NAME
+        # ----------------------------------------------------
+
+        clickable_first_name = (
+            f'<a href="tg://user?id={user_id}">'
+            f'{escape(str(first_name))}'
+            f'</a>'
+        )
+
+        # ----------------------------------------------------
+        # CLICKABLE USERNAME
+        # ----------------------------------------------------
+
+        clickable_username = (
+            f'<a href="{username_link}">'
+            f'{escape(username_text)}'
+            f'</a>'
+        )
+
+        # ----------------------------------------------------
+        # CLICKABLE USER LINK
+        # ----------------------------------------------------
+
+        clickable_user_link = (
+            f'<a href="{user_link}">Cʟɪᴄᴋ Hᴇʀᴇ</a>'
+        )
+
+        # ----------------------------------------------------
+        # DATA CENTRE
+        # ----------------------------------------------------
+
+        dc_id = getattr(
+            target_user,
+            "dc_id",
+            None
+        )
+
+        if dc_id is None:
+            dc_id = "Unknown"
+
+        # ----------------------------------------------------
+        # FINAL INFO TEXT
+        # ----------------------------------------------------
+
+        text = (
+            f"›› <b>Fɪʀsᴛ Nᴀᴍᴇ:</b> "
+            f"{clickable_first_name}\n"
+
+            f"›› <b>Lᴀsᴛ Nᴀᴍᴇ:</b> "
+            f"{escape(str(last_name))}\n"
+
+            f"›› <b>Tᴇʟᴇɢʀᴀᴍ ID:</b> "
+            f"<code>{user_id}</code>\n"
+
+            f"›› <b>Dᴀᴛᴀ Cᴇɴᴛʀᴇ:</b> "
+            f"<code>{dc_id}</code>\n"
+
+            f"›› <b>Uꜱᴇʀ Nᴀᴍᴇ:</b> "
+            f"{clickable_username}\n"
+
+            f"›› <b>Uꜱᴇʀ 𝖫𝗂𝗇𝗄:</b> "
+            f"{clickable_user_link}"
+        )
+
+        # ----------------------------------------------------
+        # CLOSE BUTTON
+        # ----------------------------------------------------
+
+        buttons = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "• Cʟᴏsᴇ •",
+                        callback_data=f"close_info_{user_id}"
+                    )
+                ]
+            ]
+        )
+
+        # ----------------------------------------------------
+        # PROFILE PHOTO
+        # ----------------------------------------------------
+
+        try:
+
+            photos = []
+
+            async for photo in client.get_chat_photos(
+                user_id,
+                limit=1
+            ):
+                photos.append(photo)
+
+            if photos:
+
+                await message.reply_photo(
+                    photo=photos[0].file_id,
+                    caption=text,
+                    reply_markup=buttons
+                )
+
+            else:
+
+                await message.reply_text(
+                    text,
+                    reply_markup=buttons
+                )
+
+        except Exception as e:
+
+            logger.warning(
+                "Could not fetch profile photo: %s",
+                e
+            )
+
+            await message.reply_text(
+                text,
+                reply_markup=buttons
+            )
+
+    # ========================================================
+    # CLOSE USER INFO
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(r"^close_info_\d+$")
+    )
+    async def close_info_callback(
+        client,
+        callback
+    ):
+
+        try:
+
+            await callback.message.delete()
+
+        except Exception:
+
+            pass
+
+        try:
+
+            await callback.answer()
+
+        except Exception:
+
+            pass
         
 # ------------------------ #
 # Don't Remove My Credits
