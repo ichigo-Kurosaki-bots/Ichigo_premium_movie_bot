@@ -61,6 +61,8 @@ from database import (
     get_trending_searches,
     get_admin,
     get_admins,
+    add_admin,
+    remove_admin,
     update_admin_info,
     add_warning,
     get_warnings,
