@@ -45,7 +45,6 @@ UPDATES_URL = "https://t.me/Aero_Unity"
 from database import (
     get_user,
     create_user,
-    is_user_muted,
     search_media,
     create_search_session,
     get_search_session,
