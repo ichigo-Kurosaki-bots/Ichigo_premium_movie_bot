@@ -2236,6 +2236,7 @@ def register_search_handlers(app):
             "plans",
             "myplan",
             "id",
+            "info",
             "font",
             "trendlist",
             "generatecode",
