@@ -58,7 +58,16 @@ from database import (
     activate_premium,
     remove_premium,
     get_indexer_state,
-    get_trending_searches
+    get_trending_searches,
+    get_admin,
+    get_admins,
+    update_admin_info,
+    add_warning,
+    get_warnings,
+    reset_warnings,
+    mute_user,
+    unmute_user,
+    is_user_muted
 )
 
 logger = logging.getLogger(__name__)
@@ -85,6 +94,48 @@ admin_only = filters.create(
     )
 )
 
+# ============================================================
+# LOAD MONGODB ADMINS
+# ============================================================
+
+async def load_mongodb_admins():
+
+    try:
+
+        saved_admins = await get_admins()
+
+        ADMIN_IDS.clear()
+
+        for admin in saved_admins:
+
+            user_id = admin.get(
+                "user_id"
+            )
+
+            if user_id is not None:
+
+                try:
+                    ADMIN_IDS.append(
+                        int(user_id)
+                    )
+                except (
+                    TypeError,
+                    ValueError
+                ):
+                    pass
+
+        logger.info(
+            "Loaded %s admin(s) from MongoDB.",
+            len(ADMIN_IDS)
+        )
+
+    except Exception as e:
+
+        logger.exception(
+            "Failed to load admins from MongoDB: %s",
+            e
+        )
+
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
@@ -97,6 +148,23 @@ admin_only = filters.create(
 # ============================================================
 
 def register_admin_handlers(app):
+
+    # ========================================================
+    # LOAD SAVED ADMINS
+    # ========================================================
+
+    try:
+
+        asyncio.get_event_loop().create_task(
+            load_mongodb_admins()
+        )
+
+    except Exception as e:
+
+        logger.warning(
+            "Could not schedule admin loading: %s",
+            e
+        )
 
     # ========================================================
     # /alive
