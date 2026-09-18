@@ -2266,7 +2266,14 @@ def register_search_handlers(app):
             "video",
             "telegraph",
             "share",
-            "system"
+            "system",
+            "addadmin",
+            "removeadmin",
+            "adminlist",
+            "mute",
+            "warn",
+            "unmute",
+            "reload"
         ])
     )
     async def movie_search_handler(
