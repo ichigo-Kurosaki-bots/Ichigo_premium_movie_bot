@@ -2824,7 +2824,7 @@ def register_admin_handlers(app):
 
     @app.on_message(
         filters.command("optimize")
-        & admin_only_filter
+        & admin_only
     )
     async def optimize_handler(client, message):
 
