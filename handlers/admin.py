@@ -67,6 +67,8 @@ from database import (
     add_warning,
     get_warnings,
     reset_warnings,
+    get_all_warnings,
+    remove_warning,
     optimize_database
 )
 
@@ -115,7 +117,7 @@ async def load_mongodb_admins():
             if user_id is not None:
 
                 try:
-                    ADMIN_IDS.append(
+                    ADMIN_IDS.add(
                         int(user_id)
                     )
                 except (
@@ -2540,7 +2542,208 @@ def register_admin_handlers(app):
                 user_id,
                 e
             )
+    # ==========================
+    # /unwarn
+    # ==========================
+    @app.on_message(
+        filters.command("unwarn")
+         & owner_only_filter
+    )
+    async def unwarn_handler(
+        client,
+        message
+    ):
+        if len(message.command) < 2:
+            await message.reply_text(
+                "<code>/unwarn USER_ID</code>"
+            )
+            return
 
+        try:
+            user_id = int(message.command[1])
+        except ValueError:
+            await message.reply_text(
+                "❌ <b>Invalid User ID.</b>"
+            )
+            return
+
+        user = await get_user(user_id)
+
+        if not user:
+            await message.reply_text(
+                "❌ <b>User not found.</b>"
+            )
+            return
+
+        current_warnings = await get_warnings(user_id)
+
+        if current_warnings <= 0:
+            await message.reply_text(
+                "⚠️ <b>This user has no warnings.</b>"
+            )
+            return
+
+        success = await remove_warning(user_id)
+
+        if not success:
+            await message.reply_text(
+                "❌ <b>Failed to remove warning.</b>"
+            )
+            return
+
+        remaining = await get_warnings(user_id)
+
+        await message.reply_text(
+            "✅ <b>Wᴀʀɴɪɴɢ Rᴇᴍᴏᴠᴇᴅ</b>\n\n"
+            f"›› 🆔 <code>{user_id}</code>\n"
+            f"<b>›› Rᴇᴍᴀɪɴɪɴɢ Wᴀʀɴɪɴɢs: </b> "
+            f"<b>{remaining}</b>"
+        )
+
+        try:
+            await client.send_message(
+                user_id,
+                "✅ <b>Wᴀʀɴɪɴɢ Rᴇᴍᴏᴠᴇᴅ</b>\n\n"
+                f"<b>›› Rᴇᴍᴀɪɴɪɴɢ Wᴀʀɴɪɴɢs: </b> "
+                f"<b>{remaining}</b>"
+            )
+        except Exception as e:
+            logger.warning(
+                "Could not notify user %s about removed warning: %s",
+                user_id,
+                e
+            )
+    # ==========================
+    # /warningslist
+    # ==========================
+    @app.on_message(
+        filters.command("warningslist")
+        & owner_only_filter
+    )
+    async def warnings_list_handler(
+        client,
+        message
+    ):
+        try:
+            warnings = await get_all_warnings()
+
+            keyboard = InlineKeyboardMarkup(
+                [[
+                        InlineKeyboardButton(
+                            "• Cʟᴏsᴇ •",
+                            callback_data="warnings_close"
+                        )
+                ]]
+            )
+
+            if not warnings:
+                await message.reply_text(
+                    "⚠️ <b>Wᴀʀɴɪɴɢs Lɪsᴛ</b>\n\n"
+                    "<b>✅ Nᴏ Uꜱᴇʀs Cᴜʀʀᴇɴᴛʟʏ Hᴀᴠᴇ Wᴀʀɴɪɴɢs.</b>",
+                    reply_markup=keyboard
+                )
+                return
+
+            lines = [
+                "⚠️ <b>Wᴀʀɴɪɴɢs Lɪsᴛ</b>\n"
+            ]
+
+            for index, user in enumerate(
+                warnings,
+                start=1
+            ):
+                user_id = user.get(
+                    "user_id",
+                    "Unknown"
+                )
+
+                first_name = user.get(
+                    "first_name"
+                ) or "Unknown"
+
+                username = user.get(
+                    "username"
+                ) or ""
+
+                warning_count = int(
+                    user.get("warnings", 0) or 0
+                )
+
+                name_link = (
+                    f'<a href="tg://user?id={user_id}">'
+                    f'{escape(str(first_name))}'
+                    f'</a>'
+                )
+
+                lines.append(
+                    f"<b>{index}. {name_link}</b>\n"
+                    f"    🆔 <code>{user_id}</code>\n"
+                    f"<b>⚠️ Wᴀʀɴɪɴɢs:</b> "
+                    f"<b>{warning_count}</b>"
+                )
+
+                if username:
+                    lines.append(
+                        f"   • @{escape(str(username))}"
+                    )
+
+                lines.append("")
+
+            text = "\n".join(lines)
+
+            if len(text) > 3900:
+                text = (
+                    text[:3850]
+                    + "\n\n"
+                    "⚠️ <b>Lɪsᴛ Tʀᴜɴᴄᴀᴛᴇᴅ Dᴜᴇ Tᴏ Mᴇssᴀɢᴇ Lɪᴍɪᴛ.</b>"
+                )
+
+            await message.reply_text(
+                text,
+                reply_markup=keyboard
+            )
+
+        except Exception as e:
+            logger.exception(
+                "Warnings list error: %s",
+                e
+            )
+
+            await message.reply_text(
+                "❌ <b>Failed to load warnings list.</b>\n\n"
+                f"<code>{escape(str(e))}</code>"
+            )
+
+    # =========================
+    # callback of wraning close 
+    # ==========================
+
+    @app.on_callback_query(
+        filters.regex(r"^warnings_close$")
+    )
+    async def warnings_close_callback(
+        client,
+        callback
+    ):
+        if (
+            callback.from_user is None
+            or callback.from_user.id != OWNER_ID
+        ):
+            await callback.answer(
+                "‼️ Owner only can use the command.",
+                show_alert=True
+            )
+            return
+
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
+
+        try:
+            await callback.answer()
+        except Exception:
+            pass
 
     # ========================================================
     # /reload
