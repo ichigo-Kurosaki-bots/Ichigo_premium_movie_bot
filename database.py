@@ -3372,6 +3372,50 @@ async def reset_warnings(
         result.matched_count > 0
     )
 
+async def get_all_warnings():
+    cursor = users_collection.find(
+        {"warnings": {"$gt": 0}},
+        {
+            "_id": 0,
+            "user_id": 1,
+            "first_name": 1,
+            "username": 1,
+            "warnings": 1,
+            "last_warning_reason": 1,
+            "last_warned_by": 1,
+            "last_warned_at": 1
+        }
+    ).sort(
+        "warnings",
+        -1
+    )
+
+    return await cursor.to_list(length=None)
+
+
+async def remove_warning(user_id):
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        return False
+
+    result = await users_collection.update_one(
+        {
+            "user_id": user_id,
+            "warnings": {"$gt": 0}
+        },
+        {
+            "$inc": {
+                "warnings": -1
+            },
+            "$set": {
+                "updated_at": datetime.utcnow()
+            }
+        }
+    )
+
+    return result.modified_count > 0
+    
 # ============================================================
 # ADMIN CONFIGURATION
 # ============================================================
