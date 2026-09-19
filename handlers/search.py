@@ -2284,12 +2284,6 @@ def register_search_handlers(app):
         if not message.from_user:
             return
 
-        try:
-
-            muted = await is_user_muted(
-                message.from_user.id
-            )
-
         query = clean_query(
             message.text
         )
