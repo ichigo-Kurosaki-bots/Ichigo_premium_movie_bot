@@ -691,9 +691,6 @@ def build_search_text(
         f"<b>›› Tɪᴛʟᴇ:</b> "
         f"{html_escape(str(title))}\n"
 
-        f"<b>›› Yᴇᴀʀ:</b> "
-        f"{html_escape(str(year))}\n"
-
         f"<b>›› Lᴀɴɢᴜᴀɢᴇ:</b> "
         f"{html_escape(str(language))}\n"
 
@@ -877,7 +874,7 @@ def build_filter_text(
     if filter_type == "language":
 
         return (
-            "🌐 <b>Lᴀɴɢᴜᴀɢᴇ Fɪʟᴛᴇʀ</b>\n\n"
+            "›› <b>Lᴀɴɢᴜᴀɢᴇ Fɪʟᴛᴇʀ</b>\n\n"
             "›› Sᴇʟᴇᴄᴛ ᴀ Lᴀɴɢᴜᴀɢᴇ:"
         )
 
@@ -888,7 +885,7 @@ def build_filter_text(
     if filter_type == "season":
 
         return (
-            "📺 <b>Sᴇᴀsᴏɴ Fɪʟᴛᴇʀ</b>\n\n"
+            " <b>Sᴇᴀsᴏɴ Fɪʟᴛᴇʀ</b>\n\n"
             "›› Sᴇʟᴇᴄᴛ ᴀ Sᴇᴀsᴏɴ:"
         )
 
@@ -899,7 +896,7 @@ def build_filter_text(
     if filter_type == "episode":
 
         return (
-            "🎬 <b>Eᴘɪsᴏᴅᴇ Fɪʟᴛᴇʀ</b>\n\n"
+            " <b>Eᴘɪsᴏᴅᴇ Fɪʟᴛᴇʀ</b>\n\n"
             "›› Sᴇʟᴇᴄᴛ ᴀɴ Eᴘɪsᴏᴅᴇ:"
         )
 
@@ -929,7 +926,6 @@ def build_filter_text(
     )
 
     return text
-
 
 # ------------------------ #
 # Don't Remove My Credits
@@ -1082,13 +1078,13 @@ def build_filter_buttons(
     buttons.append(
         [
             InlineKeyboardButton(
-                "🌐 Lᴀɴɢᴜᴀɢᴜᴇ",
+                "• Lᴀɴɢᴜᴀɢᴜᴇ •",
                 callback_data=(
                     f"filtertype_{session_id}_language"
                 )
             ),
             InlineKeyboardButton(
-                "📺 Sᴇᴀsᴏɴ",
+                "• Sᴇᴀsᴏɴ •",
                 callback_data=(
                     f"filtertype_{session_id}_season"
                 )
@@ -1099,7 +1095,7 @@ def build_filter_buttons(
     buttons.append(
         [
             InlineKeyboardButton(
-                "🎬 Eᴘɪsᴏᴅᴇ",
+                "• Eᴘɪsᴏᴅᴇ •",
                 callback_data=(
                     f"filtertype_{session_id}_episode"
                 )
@@ -1895,7 +1891,7 @@ async def handle_file_deep_link(
             user_id,
             "<b>⏳️ ᴅᴜᴇ ᴛᴏ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs...</b>\n\n"
             "<b>›› ʏᴏᴜʀ ғɪʟᴇs ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴡɪᴛʜɪɴ 5 min</b>\n"
-            "<b>sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
+            "<b>›› sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
             "<b>ɴᴏᴛᴇ : ᴜsᴇ ᴠʟᴄ ᴘʟᴀʏᴇʀ ᴏʀ ᴍx ᴘʟᴀʏᴇʀ ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>",
             parse_mode=enums.ParseMode.HTML,
             reply_to_message_id=sent.id
@@ -2124,9 +2120,9 @@ async def handle_sendall_deep_link(
         warning_message = await client.send_message(
             user_id,
             "<b>⏳️ ᴅᴜᴇ ᴛᴏ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs...</b>\n\n"
-            "<b>›› ʏᴏᴜʀ ғɪʟᴇs ᴡɪʟʟ ʙ ᴅᴇʟᴇᴛᴇᴅ ᴡɪᴛʜɪɴ 5 min</b>"
-            "<b>sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
-            "<b> ɴᴏᴛᴇ : ᴜsᴇ <i>ᴠʟᴄ ᴘʟᴀʏᴇʀ</i> ᴏʀ <i>ᴍx ᴘʟᴀʏᴇʀ</i> ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>",
+            "<b>›› ʏᴏᴜʀ ғɪʟᴇs ᴡɪʟʟ ʙ ᴅᴇʟᴇᴛᴇᴅ ᴡɪᴛʜɪɴ 5 min</b>\n"
+            "<b>›› sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
+            "<b> ɴᴏᴛᴇ : ᴜsᴇ ᴠʟᴄ ᴘʟᴀʏᴇʀ ᴏʀ mx player ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>",
             parse_mode=enums.ParseMode.HTML,
             reply_to_message_id=last_sent.id if last_sent else None
         )
@@ -2270,9 +2266,7 @@ def register_search_handlers(app):
             "addadmin",
             "removeadmin",
             "adminlist",
-            "mute",
             "warn",
-            "unmute",
             "reload"
         ])
     )
@@ -2291,25 +2285,6 @@ def register_search_handlers(app):
 
             muted = await is_user_muted(
                 message.from_user.id
-            )
-
-            if muted:
-
-                await message.reply_text(
-                    "🔇 <b>Yᴏᴜ Aʀᴇ Mᴜᴛᴇᴅ</b>\n\n"
-                    "Yᴏᴜ Cᴀɴɴᴏᴛ Sᴇᴀʀᴄʜ Fᴏʀ Mᴏᴠɪᴇs, "
-                    "Sᴇʀɪᴇs, Aɴɪᴍᴇ, Dʀᴀᴍᴀs Oʀ Oᴛʜᴇʀ Mᴇᴅɪᴀ "
-                    "Wʜɪʟᴇ Yᴏᴜ Aʀᴇ Mᴜᴛᴇᴅ."
-                )
-
-                return
-
-        except Exception as e:
-
-            logger.warning(
-                "Mute check failed for user %s: %s",
-                message.from_user.id,
-                e
             )
 
         query = clean_query(
@@ -2383,8 +2358,7 @@ def register_search_handlers(app):
         if not results:
 
             await message.reply_text(
-                "<b>😴 ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ɴᴏᴛ ғᴏᴜɴᴅ ɪɴ ᴍʏ ᴅᴀᴛᴀʙᴀsᴇ.</b>\n\n"
-                "<b>» ᴍᴀʏʙᴇ ᴛᴜɴᴇ ɢᴀʟᴀᴛ ʟɪᴋʜᴀ ʜᴏ, ᴩᴀᴅʜᴀɪ - ʟɪᴋʜᴀɪ ᴛᴏʜ ᴋᴀʀᴛᴀ ɴᴀʜɪ ᴛu</b>",
+                "<b>😴 ʏᴏᴜʀ ʀᴇǫᴜᴇsᴛ ɴᴏᴛ ғᴏᴜɴᴅ ɪɴ ᴍʏ ᴅᴀᴛᴀʙᴀsᴇ.</b>\n\n",
                 reply_markup=InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
