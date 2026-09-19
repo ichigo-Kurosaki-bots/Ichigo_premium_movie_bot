@@ -2267,7 +2267,8 @@ def register_search_handlers(app):
             "removeadmin",
             "adminlist",
             "warn",
-            "reload"
+            "reload",
+            "optimize"
         ])
     )
     async def movie_search_handler(
