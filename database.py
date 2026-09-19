@@ -3471,15 +3471,22 @@ async def optimize_database():
 
     IMPORTANT:
     - Never deletes media/movie records.
-    - Cleans only expired search sessions when an expires_at field exists.
+    - Cleans only expired search sessions when expires_at exists.
     - Ensures important indexes exist.
     - Reports database statistics.
     """
 
     global db
+    global users_collection
+    global media_collection
+    global search_sessions_collection
+    global settings_collection
+    global chats_collection
 
     if db is None:
-        raise RuntimeError("Database is not initialized.")
+        raise RuntimeError(
+            "Database is not initialized."
+        )
 
     result = {
         "collections_checked": 0,
@@ -3503,141 +3510,273 @@ async def optimize_database():
         "chats",
     ]
 
-    existing_collections = await db.list_collection_names()
+    existing_collections = (
+        await db.list_collection_names()
+    )
 
     for collection_name in collections:
+
         if collection_name in existing_collections:
-            result["collections_checked"] += 1
+
+            result[
+                "collections_checked"
+            ] += 1
 
     # --------------------------------------------------------
     # CLEAN EXPIRED SEARCH SESSIONS
     # --------------------------------------------------------
 
-    if "search_sessions" in existing_collections:
+    if search_sessions_collection is not None:
 
         try:
-            cleanup_result = await search_sessions.delete_many(
-                {
-                    "expires_at": {
-                        "$exists": True,
-                        "$lte": datetime.utcnow()
+
+            cleanup_result = (
+                await search_sessions_collection.delete_many(
+                    {
+                        "expires_at": {
+                            "$exists": True,
+                            "$lte": datetime.utcnow()
+                        }
                     }
-                }
+                )
             )
 
-            result["sessions_cleaned"] = cleanup_result.deleted_count
+            result[
+                "sessions_cleaned"
+            ] = cleanup_result.deleted_count
 
-        except Exception:
-            result["sessions_cleaned"] = 0
+        except Exception as e:
+
+            logger.warning(
+                "Search session cleanup failed: %s",
+                e
+            )
+
+            result[
+                "sessions_cleaned"
+            ] = 0
 
     # --------------------------------------------------------
     # REQUIRED INDEXES
     # --------------------------------------------------------
 
     required_indexes = [
+
         (
-            users,
+            users_collection,
             "user_id",
-            {"user_id": 1},
+            [("user_id", 1)],
             {"unique": True}
         ),
 
         (
-            chats,
+            chats_collection,
             "chat_id",
-            {"chat_id": 1},
+            [("chat_id", 1)],
             {"unique": True}
         ),
 
         (
-            search_sessions,
+            search_sessions_collection,
             "session_id",
-            {"session_id": 1},
+            [("session_id", 1)],
             {"unique": True}
         ),
 
         (
-            search_sessions,
+            search_sessions_collection,
             "user_id",
-            {"user_id": 1},
+            [("user_id", 1)],
             {}
         ),
 
         (
-            media,
+            media_collection,
             "message_id",
-            {"message_id": 1},
+            [("message_id", 1)],
             {}
         ),
 
         (
-            media,
+            media_collection,
             "title_key",
-            {"title_key": 1},
+            [("title_key", 1)],
             {}
         ),
 
         (
-            media,
+            media_collection,
             "search_key",
-            {"search_key": 1},
+            [("search_key", 1)],
             {}
         ),
 
         (
-            media,
+            media_collection,
             "channel_id_message_id",
-            {
-                "channel_id": 1,
-                "message_id": 1
-            },
+            [
+                ("channel_id", 1),
+                ("message_id", 1)
+            ],
             {"unique": True}
         ),
     ]
 
-    for collection, index_name, keys, options in required_indexes:
+    # --------------------------------------------------------
+    # CREATE / CHECK INDEXES
+    # --------------------------------------------------------
+
+    for (
+        collection,
+        index_name,
+        keys,
+        options
+    ) in required_indexes:
+
+        if collection is None:
+            continue
 
         try:
+
             await collection.create_index(
-                list(keys.items()),
+                keys,
                 name=index_name,
                 **options
             )
 
-            result["indexes_checked"] += 1
+            result[
+                "indexes_checked"
+            ] += 1
 
-        except Exception:
-            pass
+        except Exception as e:
+
+            logger.warning(
+                "Index check failed for %s: %s",
+                index_name,
+                e
+            )
 
     # --------------------------------------------------------
-    # STATISTICS
+    # USER STATISTICS
     # --------------------------------------------------------
 
     try:
-        result["users"] = await users.count_documents({})
-    except Exception:
-        result["users"] = 0
+
+        if users_collection is not None:
+
+            result[
+                "users"
+            ] = await users_collection.count_documents(
+                {}
+            )
+
+    except Exception as e:
+
+        logger.warning(
+            "User count failed: %s",
+            e
+        )
+
+        result[
+            "users"
+        ] = 0
+
+    # --------------------------------------------------------
+    # CHAT STATISTICS
+    # --------------------------------------------------------
 
     try:
-        result["chats"] = await chats.count_documents({})
-    except Exception:
-        result["chats"] = 0
+
+        if chats_collection is not None:
+
+            result[
+                "chats"
+            ] = await chats_collection.count_documents(
+                {}
+            )
+
+    except Exception as e:
+
+        logger.warning(
+            "Chat count failed: %s",
+            e
+        )
+
+        result[
+            "chats"
+        ] = 0
+
+    # --------------------------------------------------------
+    # MEDIA / FILE STATISTICS
+    # --------------------------------------------------------
 
     try:
-        result["files"] = await media.count_documents({})
-    except Exception:
-        result["files"] = 0
+
+        if media_collection is not None:
+
+            result[
+                "files"
+            ] = await media_collection.count_documents(
+                {}
+            )
+
+    except Exception as e:
+
+        logger.warning(
+            "Media count failed: %s",
+            e
+        )
+
+        result[
+            "files"
+        ] = 0
+
+    # --------------------------------------------------------
+    # STORAGE STATISTICS
+    # --------------------------------------------------------
 
     try:
-        storage = await get_media_storage_stats()
 
-        if isinstance(storage, dict):
-            result["storage_mb"] = round(
-                storage.get("used_mb", 0),
+        storage = (
+            await get_media_storage_stats()
+        )
+
+        if isinstance(
+            storage,
+            dict
+        ):
+
+            total_size = storage.get(
+                "total_size",
+                0
+            ) or 0
+
+            result[
+                "storage_mb"
+            ] = round(
+                float(total_size)
+                / (1024 * 1024),
                 2
             )
 
-    except Exception:
-        result["storage_mb"] = 0
+    except Exception as e:
+
+        logger.warning(
+            "Storage calculation failed: %s",
+            e
+        )
+
+        result[
+            "storage_mb"
+        ] = 0
+
+    # --------------------------------------------------------
+    # COMPLETE
+    # --------------------------------------------------------
+
+    logger.info(
+        "Database optimization completed: %s",
+        result
+    )
 
     return result
