@@ -66,7 +66,8 @@ from database import (
     update_admin_info,
     add_warning,
     get_warnings,
-    reset_warnings
+    reset_warnings,
+    optimize_database
 )
 
 logger = logging.getLogger(__name__)
@@ -2613,3 +2614,116 @@ def register_admin_handlers(app):
 
                 except Exception:
                     pass
+  
+    # ============================================================
+    # /optimize
+    # ============================================================
+
+    @app.on_message(
+        filters.command("optimize")
+        & admin_only_filter
+    )
+    async def optimize_handler(client, message):
+
+        status_message = await message.reply_text(
+            "<b>›› Cʜᴇᴄᴋɪɴɢ MᴏɴɢᴏDB...</b>\n"
+            "<b>›› Pʟᴇᴀsᴇ Wᴀɪᴛ...</b>"
+        )
+
+        try:
+
+            result = await optimize_database()
+
+            text = (
+                " <b>Dᴀᴛᴀʙᴀsᴇ Oᴘᴛɪᴍɪᴢᴀᴛɪᴏɴ</b>\n\n"
+
+                "✅ <b>Dᴀᴛᴀʙᴀsᴇ Cᴏʟʟᴇᴄᴛɪᴏɴs Cʜᴇᴄᴋᴇᴅ</b>\n"
+                "››  Usᴇʀs\n"
+                "››  Mᴇᴅɪᴀ\n"
+                "››  Sᴇᴀʀᴄʜ Sᴇssɪᴏɴs\n"
+                "››  Sᴇᴛᴛɪɴɢs\n"
+                "››  Cʜᴀᴛs\n\n"
+  
+                "🧹 <b>Cʟᴇᴀɴᴜᴘ</b>\n"
+                f"<b>›› 🗑 Exᴘɪʀᴇᴅ Sᴇssɪᴏɴs: </b>"
+                f"<code>{result['sessions_cleaned']}</code>\n\n"
+
+                "📊 <b>Rᴇsᴜʟᴛs</b>\n\n"
+                f"<b>›› Usᴇʀs:</b> <code>{result['users']:,}</code>\n"
+                f"<b>›› Cʜᴀᴛs:</b> <code>{result['chats']:,}</code>\n"
+                f"<b>›› Fɪʟᴇs:</b> <code>{result['files']:,}</code>\n"
+                f"<b>›› Sᴛᴏʀᴀɢᴇ:</b> <code>{result['storage_mb']:.2f} MB</code>\n"
+                f"<b>›› Iɴᴅᴇxᴇᴅ Cʜᴇᴄᴋᴇᴅ: </b>"
+                f"<code>{result['indexes_checked']}</code>\n\n"
+
+                "🔒 <b>Mᴇᴅɪᴀ ʀᴇᴄᴏʀᴅs ᴡᴇʀᴇ ɴᴏᴛ ᴅᴇʟᴇᴛᴇᴅ.</b>\n\n"
+
+                "⚡ <b>Dᴀᴛᴀʙᴀsᴇ Oᴘᴛɪᴍɪᴢᴀᴛɪᴏɴ Cᴏᴍᴘʟᴇᴛᴇᴅ.</b>"
+            )
+
+            keyboard = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "• Cʟᴏsᴇ •",
+                            callback_data="optimize_close"
+                        )
+                    ]
+                ]
+            )
+
+            await status_message.edit_text(
+                text,
+                reply_markup=keyboard
+            )
+
+        except Exception as e:
+
+            logger.exception(
+                "Database optimization failed: %s",
+                e
+            )
+
+            keyboard = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "• Cʟᴏsᴇ •",
+                            callback_data="optimize_close"
+                        )
+                    ]
+                ]
+            )
+  
+            await status_message.edit_text(
+                "❌ <b>Dᴀᴛᴀʙᴀsᴇ Oᴘᴛɪᴍɪᴢᴀᴛɪᴏɴ Fᴀɪʟᴇᴅ</b>\n\n"
+                f"<code>{escape(str(e))}</code>",
+                reply_markup=keyboard
+            )
+            
+    # ============================================================
+    # OPTIMIZE CLOSE BUTTON
+    # ============================================================
+
+    @app.on_callback_query(
+        filters.regex("^optimize_close$")
+    )
+    async def optimize_close_callback(client, callback):
+
+        if not is_admin(callback.from_user.id):
+             await callback.answer(
+                 "‼️ You are not authorized.",
+                 show_alert=True
+             )
+             return
+
+        try:
+            await callback.message.delete()
+            await callback.answer()
+
+        except Exception:
+            await callback.answer(
+                "❌ Unable to close.",
+                show_alert=True
+            )
+   
