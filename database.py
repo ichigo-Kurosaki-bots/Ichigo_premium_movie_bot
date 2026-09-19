@@ -3416,3 +3416,184 @@ async def save_admin_settings(
     )
 
     return True
+
+# ============================================================
+# DATABASE OPTIMIZATION
+# ============================================================
+
+async def optimize_database():
+    """
+    Safely optimize MongoDB.
+
+    IMPORTANT:
+    - Never deletes media/movie records.
+    - Cleans only expired search sessions when an expires_at field exists.
+    - Ensures important indexes exist.
+    - Reports database statistics.
+    """
+
+    global db
+
+    if db is None:
+        raise RuntimeError("Database is not initialized.")
+
+    result = {
+        "collections_checked": 0,
+        "sessions_cleaned": 0,
+        "indexes_checked": 0,
+        "users": 0,
+        "chats": 0,
+        "files": 0,
+        "storage_mb": 0,
+    }
+
+    # --------------------------------------------------------
+    # COLLECTIONS
+    # --------------------------------------------------------
+
+    collections = [
+        "users",
+        "media",
+        "search_sessions",
+        "settings",
+        "chats",
+    ]
+
+    existing_collections = await db.list_collection_names()
+
+    for collection_name in collections:
+        if collection_name in existing_collections:
+            result["collections_checked"] += 1
+
+    # --------------------------------------------------------
+    # CLEAN EXPIRED SEARCH SESSIONS
+    # --------------------------------------------------------
+
+    if "search_sessions" in existing_collections:
+
+        try:
+            cleanup_result = await search_sessions.delete_many(
+                {
+                    "expires_at": {
+                        "$exists": True,
+                        "$lte": datetime.utcnow()
+                    }
+                }
+            )
+
+            result["sessions_cleaned"] = cleanup_result.deleted_count
+
+        except Exception:
+            result["sessions_cleaned"] = 0
+
+    # --------------------------------------------------------
+    # REQUIRED INDEXES
+    # --------------------------------------------------------
+
+    required_indexes = [
+        (
+            users,
+            "user_id",
+            {"user_id": 1},
+            {"unique": True}
+        ),
+
+        (
+            chats,
+            "chat_id",
+            {"chat_id": 1},
+            {"unique": True}
+        ),
+
+        (
+            search_sessions,
+            "session_id",
+            {"session_id": 1},
+            {"unique": True}
+        ),
+
+        (
+            search_sessions,
+            "user_id",
+            {"user_id": 1},
+            {}
+        ),
+
+        (
+            media,
+            "message_id",
+            {"message_id": 1},
+            {}
+        ),
+
+        (
+            media,
+            "title_key",
+            {"title_key": 1},
+            {}
+        ),
+
+        (
+            media,
+            "search_key",
+            {"search_key": 1},
+            {}
+        ),
+
+        (
+            media,
+            "channel_id_message_id",
+            {
+                "channel_id": 1,
+                "message_id": 1
+            },
+            {"unique": True}
+        ),
+    ]
+
+    for collection, index_name, keys, options in required_indexes:
+
+        try:
+            await collection.create_index(
+                list(keys.items()),
+                name=index_name,
+                **options
+            )
+
+            result["indexes_checked"] += 1
+
+        except Exception:
+            pass
+
+    # --------------------------------------------------------
+    # STATISTICS
+    # --------------------------------------------------------
+
+    try:
+        result["users"] = await users.count_documents({})
+    except Exception:
+        result["users"] = 0
+
+    try:
+        result["chats"] = await chats.count_documents({})
+    except Exception:
+        result["chats"] = 0
+
+    try:
+        result["files"] = await media.count_documents({})
+    except Exception:
+        result["files"] = 0
+
+    try:
+        storage = await get_media_storage_stats()
+
+        if isinstance(storage, dict):
+            result["storage_mb"] = round(
+                storage.get("used_mb", 0),
+                2
+            )
+
+    except Exception:
+        result["storage_mb"] = 0
+
+    return result
