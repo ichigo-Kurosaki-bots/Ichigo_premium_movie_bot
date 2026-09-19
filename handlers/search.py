@@ -2267,6 +2267,8 @@ def register_search_handlers(app):
             "removeadmin",
             "adminlist",
             "warn",
+            "unwarn",
+            "wraningslist",
             "reload",
             "optimize"
         ])
