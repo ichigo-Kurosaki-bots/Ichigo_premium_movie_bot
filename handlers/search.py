@@ -2033,6 +2033,76 @@ async def handle_file_deep_link(
 # Support : @Coders_Grp 
 # ------------------------ #
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
+# ============================================================
+# GET ALL SEND-ALL RESULTS
+# ============================================================
+
+async def get_all_sendall_results(
+    query,
+    filters_data=None
+):
+
+    filters_data = filters_data or {}
+
+    all_results = []
+
+    skip = 0
+
+    batch_size = 100
+
+    while True:
+
+        try:
+
+            batch = await search_media(
+                query=query,
+                skip=skip,
+                limit=batch_size,
+                filters=filters_data
+            )
+
+        except Exception as e:
+
+            logger.error(
+                "SEND ALL DATABASE SEARCH ERROR: %s",
+                e,
+                exc_info=True
+            )
+
+            break
+
+        if not batch:
+
+            break
+
+        all_results.extend(
+            batch
+        )
+
+        # If fewer than batch_size were returned,
+        # there are no more matching files.
+        if len(batch) < batch_size:
+
+            break
+
+        skip += batch_size
+
+    return all_results
+
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 # ============================================================
 # SEND ALL DEEP LINK
 # ============================================================
@@ -2051,6 +2121,10 @@ async def handle_sendall_deep_link(
             return
 
         user_id = message.from_user.id
+
+    # --------------------------------------------------------
+    # PRIVATE ONLY
+    # --------------------------------------------------------
 
     if message.chat.type != enums.ChatType.PRIVATE:
 
@@ -2099,57 +2173,59 @@ async def handle_sendall_deep_link(
     if not session:
 
         await message.reply_text(
-            "<b>Session Expired, Search Again</b>\n\n"
+            "<b>Sᴇssɪᴏɴ E xᴘɪʀᴇᴅ, Sᴇᴀʀᴄ Aɢᴀɪɴ.</b>"
         )
 
         return
+
+    # --------------------------------------------------------
+    # GET ORIGINAL SEARCH QUERY
+    # --------------------------------------------------------
 
     query = session.get(
         "query",
         ""
     )
 
+    # --------------------------------------------------------
+    # GET SELECTED FILTERS
+    # --------------------------------------------------------
+
     filters_data = session.get(
         "filters",
         {}
     ) or {}
 
-    try:
-
-        page = max(
-            0,
-            int(page)
-        )
-
-    except Exception:
-
-        page = 0
-
-    # --------------------------------------------------------
-    # RESULTS
-    # --------------------------------------------------------
-
-    results, _ = await search_movies(
+    results = await get_all_sendall_results(
         query=query,
-        page=page,
         filters_data=filters_data
     )
 
     if not results:
 
         await message.reply_text(
-            "<b>No files found on this page.😢</b>"
+            "<b>Nᴏ Fɪʟᴇs Fᴏᴜɴᴅ Fᴏʀ Tʜᴇ Sᴇʟᴇᴄᴛᴇᴅ Fɪʟᴛᴇʀ. 😢</b>"
         )
 
         return
 
     # --------------------------------------------------------
-    # SEND ALL
+    # SEND ALL RESULTS
     # --------------------------------------------------------
 
     sent_count = 0
     failed_count = 0
+    skipped_count = 0
+
     last_sent = None
+
+    total_results = len(
+        results
+    )
+
+    # --------------------------------------------------------
+    # SEND EVERY MATCHING FILE
+    # --------------------------------------------------------
 
     for result in results:
 
@@ -2159,22 +2235,65 @@ async def handle_sendall_deep_link(
 
         if media_message_id is None:
 
-            failed_count += 1
+            skipped_count += 1
+
             continue
 
-        # Check before each file.
-        if not await can_make_request(
-            user_id
-        ):
+        # ----------------------------------------------------
+        # CHECK REQUEST BALANCE
+        # ----------------------------------------------------
+
+        try:
+
+            allowed = await can_make_request(
+                user_id
+            )
+
+        except Exception as e:
+
+            logger.error(
+                "SEND ALL REQUEST CHECK ERROR | "
+                "user=%s | error=%s",
+                user_id,
+                e,
+                exc_info=True
+            )
 
             break
 
-        consumed = await consume_request(
-            user_id
-        )
+        if not allowed:
+
+            break
+
+        # ----------------------------------------------------
+        # CONSUME REQUEST
+        # ----------------------------------------------------
+
+        try:
+
+            consumed = await consume_request(
+                user_id
+            )
+
+        except Exception as e:
+
+            logger.error(
+                "SEND ALL CONSUME ERROR | "
+                "user=%s | error=%s",
+                user_id,
+                e,
+                exc_info=True
+            )
+
+            break
 
         if not consumed:
+
             break
+
+        # ----------------------------------------------------
+        # SEND FILE
+        # ----------------------------------------------------
 
         sent = await send_database_file(
             client=client,
@@ -2182,39 +2301,94 @@ async def handle_sendall_deep_link(
             message_id=media_message_id
         )
 
+        # ----------------------------------------------------
+        # SUCCESS
+        # ----------------------------------------------------
+
         if sent:
 
             sent_count += 1
+
             last_sent = sent
+
+        # ----------------------------------------------------
+        # FAILED
+        # ----------------------------------------------------
 
         else:
 
             failed_count += 1
 
-            await restore_request(
-                user_id
-            )
+            try:
 
-            return
+                await restore_request(
+                    user_id
+                )
+
+            except Exception as e:
+
+                logger.warning(
+                    "FAILED TO RESTORE REQUEST | "
+                    "user=%s | error=%s",
+                    user_id,
+                    e
+                )
+
     # --------------------------------------------------------
-    # ONE WARNING AFTER SEND ALL
+    # ONE WARNING AFTER ALL FILES
     # --------------------------------------------------------
 
     if sent_count > 0:
 
-        warning_message = await client.send_message(
-            user_id,
-            "<b>⏳️ ᴅᴜᴇ ᴛᴏ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs...</b>\n\n"
-            "<b>›› ʏᴏᴜʀ ғɪʟᴇs ᴡɪʟʟ ʙ ᴅᴇʟᴇᴛᴇᴅ ᴡɪᴛʜɪɴ 5 min</b>\n"
-            "<b>›› sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
-            "<b> ɴᴏᴛᴇ : ᴜsᴇ ᴠʟᴄ ᴘʟᴀʏᴇʀ ᴏʀ mx player ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>",
-            parse_mode=enums.ParseMode.HTML,
-            reply_to_message_id=last_sent.id if last_sent else None
-        )
-        asyncio.create_task(
-            delete_file_after_5_minutes(warning_message)
-        )
+        try:
 
+            warning_message = await client.send_message(
+                user_id,
+
+                "<b>⏳️ ᴅᴜᴇ ᴛᴏ ᴄᴏᴘʏʀɪɢʜᴛ ɪssᴜᴇs...</b>\n\n"
+
+                "<b>›› ʏᴏᴜʀ ғɪʟᴇs ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ᴡɪᴛʜɪɴ 5 min</b>\n"
+
+                "<b>›› sᴏ ᴘʟᴇᴀsᴇ ғᴏʀᴡᴀʀᴅ ᴛʜᴇᴍ ᴛᴏ ᴀɴʏ ᴏᴛʜᴇʀ ᴘʟᴀᴄᴇ ᴏʀ sᴀᴠᴇᴅ ᴍᴇssᴀɢᴇs ғᴏʀ ғᴜᴛᴜʀᴇ ᴀᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n"
+
+                "<b>ɴᴏᴛᴇ : ᴜsᴇ ᴠʟᴄ ᴘʟᴀʏᴇʀ ᴏʀ mx player ᴛᴏ ᴡᴀᴛᴄʜ ᴛʜᴇ ᴇᴘɪsᴏᴅᴇs ᴡɪᴛʜ ɢᴏᴏᴅ ᴇxᴘᴇʀɪᴇɴᴄᴇ</b>",
+
+                parse_mode=enums.ParseMode.HTML,
+
+                reply_to_message_id=(
+                    last_sent.id
+                    if last_sent
+                    else None
+                )
+            )
+
+            asyncio.create_task(
+                delete_file_after_5_minutes(
+                    warning_message
+                )
+            )
+
+        except Exception as e:
+
+            logger.warning(
+                "SEND ALL WARNING MESSAGE ERROR: %s",
+                e
+            )
+
+    # --------------------------------------------------------
+    # LOG
+    # --------------------------------------------------------
+
+    logger.info(
+        "SEND ALL COMPLETED | "
+        "user=%s | total_found=%s | sent=%s | "
+        "failed=%s | skipped=%s",
+        user_id,
+        total_results,
+        sent_count,
+        failed_count,
+        skipped_count
+    )
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
