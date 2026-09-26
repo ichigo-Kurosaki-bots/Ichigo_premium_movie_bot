@@ -559,9 +559,7 @@ def register_start_handlers(
             text,
             reply_markup=keyboard
         )
-            
-            
-
+    
     # ========================================================
     # FEATURES
     # ========================================================
@@ -577,33 +575,49 @@ def register_start_handlers(
     ):
 
         text = (
+            " <b>Fᴇᴀᴛᴜʀᴇs</b>\n\n"
 
-            "⚡️ <b>Fᴇᴀᴛᴜʀᴇs</b>\n\n"
-
-            "🎬 <b>Mᴏᴠɪᴇ Sᴇᴀʀᴄʜ</b>\n"
-            "Sᴇᴀʀᴄʜ ғᴏʀ ᴍᴏᴠɪᴇs ᴀɴᴅ sᴇʀɪᴇs "
-            "ғʀᴏᴍ ᴛʜᴇ ᴅᴀᴛᴀʙᴀsᴇ.\n\n"
-
-            "🔎 <b>Fᴀsᴛ Sᴇᴀʀᴄʜ</b>\n"
-            "Fᴀsᴛ ᴀɴᴅ ᴇᴀsʏ ᴍᴇᴅɪᴀ sᴇᴀʀᴄʜ.\n\n"
-
-            "👥 <b>Gʀᴏᴜᴘ Sᴜᴘᴘᴏʀᴛ</b>\n"
-            "Uѕᴇ ᴛʜᴇ ʙᴏᴛ ɪɴ ʏᴏᴜʀ ɢʀᴏᴜᴘ.\n\n"
-
-            "💎 <b>Pʀᴇᴍɪᴜᴍ</b>\n"
-            "Gᴇᴛ ᴀᴅᴅɪᴛɪᴏɴᴀʟ ᴍᴏᴠɪᴇ ʀᴇǫᴜᴇsᴛs.\n\n"
-
-            "🔥 <b>Tʀᴇɴᴅɪɴɢ</b>\n"
-            "Sᴇᴇ Wʜᴀᴛ Uѕᴇʀs Aʀᴇ Sᴇᴀʀᴄʜɪɴɢ Fᴏʀ.\n\n"
-
-            "<b>Mᴀɪɴᴛᴀɪɴᴇᴅ ʙʏ: @Mr_Mohammed_29</b>"
+            "<b>›› Sᴇʟᴇᴄᴛ A Fᴇᴀᴛᴜʀᴇ Bᴇʟᴏᴡ "
+            "Tᴏ Sᴇᴇ Hᴏᴡ Tᴏ Uѕᴇ Iᴛ.</b>"
         )
 
         buttons = InlineKeyboardMarkup(
             [
+
                 [
                     InlineKeyboardButton(
-                        "• ʜᴏᴍᴇ •",
+                        "• Sʏsᴛᴇᴍ •",
+                        callback_data="feature_system"
+                    ),
+
+                    InlineKeyboardButton(
+                        "• Sᴛᴀᴛs •",
+                        callback_data="feature_stats"
+                    )
+                ],
+
+                [
+                    InlineKeyboardButton(
+                        "• Sʜᴀʀᴇ •",
+                        callback_data="feature_share"
+                    ),
+
+                    InlineKeyboardButton(
+                        "• Tᴇʟᴇɢʀᴀᴘʜ •",
+                        callback_data="feature_telegraph"
+                    )
+                ],
+
+                [
+                    InlineKeyboardButton(
+                        "• Fᴏɴᴛ •",
+                        callback_data="feature_font"
+                    )
+                ],
+
+                [
+                    InlineKeyboardButton(
+                        "• Hᴏᴍᴇ •",
                         callback_data="start_back"
                     )
                 ]
@@ -626,6 +640,9 @@ def register_start_handlers(
                     reply_markup=buttons
                 )
 
+        except MessageNotModified:
+            pass
+
         except Exception as e:
 
             logger.warning(
@@ -641,6 +658,355 @@ def register_start_handlers(
 # Updates: @Aero_Unity 
 # Support : @Coders_Grp 
 # ------------------------ #
+
+    # ========================================================
+    # SYSTEM HELP
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^feature_system$"
+        )
+    )
+    async def feature_system_callback(
+        client,
+        callback
+    ):
+
+        text = (
+            "<b>Sʏsᴛᴇᴍ</b>\n\n"
+
+            "<b>Sʜᴏᴡs Tʜᴇ Bᴏᴛ's Sʏsᴛᴇᴍ "
+            "Aɴᴅ Sᴇʀᴠᴇʀ Iɴғᴏʀᴍᴀᴛɪᴏɴ.</b>\n\n"
+
+            "📌 <b>Hᴏᴡ Tᴏ Uѕᴇ:</b>\n\n"
+
+            "Sᴇɴᴅ:\n"
+            "<code>/system</code>\n\n"
+        )
+
+        buttons = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "• Fᴇᴀᴛᴜʀᴇs •",
+                        callback_data="features"
+                    ),
+
+                    InlineKeyboardButton(
+                        "• Hᴏᴍᴇ •",
+                        callback_data="start_back"
+                    )
+                ]
+            ]
+        )
+
+        try:
+
+            await callback.message.edit_text(
+                text,
+                reply_markup=buttons
+            )
+
+        except Exception:
+
+            try:
+
+                await callback.message.edit_caption(
+                    caption=text,
+                    reply_markup=buttons
+                )
+
+            except Exception as e:
+
+                logger.warning(
+                    "SYSTEM HELP ERROR: %s",
+                    e
+                )
+
+        await callback.answer()
+
+
+    # ========================================================
+    # STATS HELP
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+             r"^feature_stats$"
+        )
+    )
+    async def feature_stats_callback(
+        client,
+        callback
+    ):
+
+        text = (
+            "📊 <b>Sᴛᴀᴛs</b>\n\n"
+
+            "<b>Sʜᴏᴡs Tʜᴇ Bᴏᴛ's "
+            "Cᴜʀʀᴇɴᴛ Sᴛᴀᴛɪsᴛɪᴄs.</b>\n\n"
+
+            "📌 <b>Hᴏᴡ Tᴏ Uѕᴇ:</b>\n\n"
+
+            "Sᴇɴᴅ:\n"
+            "<code>/stats</code>\n\n"   
+        )
+
+        buttons = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "• Fᴇᴀᴛᴜʀᴇs •",
+                        callback_data="features"
+                    ),
+
+                    InlineKeyboardButton(
+                        "• Hᴏᴍᴇ •",
+                        callback_data="start_back"
+                    )
+                ]
+            ]
+        )
+
+        try:
+
+            await callback.message.edit_text(
+                text,
+                reply_markup=buttons
+            )
+
+        except Exception:
+
+            try:
+
+                await callback.message.edit_caption(
+                    caption=text,
+                    reply_markup=buttons
+                )
+
+            except Exception as e:
+
+                logger.warning(
+                    "STATS HELP ERROR: %s",
+                    e
+                )
+
+        await callback.answer()
+
+    # ========================================================
+    # SHARE HELP
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^feature_share$"
+        )
+    )
+    async def feature_share_callback(
+        client,
+        callback
+    ):
+
+        text = (
+            "<b>Sʜᴀʀᴇ</b>\n\n"
+
+            "<b>Sʜᴀʀᴇ A Tᴇxᴛ Mᴇssᴀɢᴇ "
+            "Tʜʀᴏᴜɢʜ Tʜᴇ Bᴏᴛ.</b>\n\n"
+
+            "📌 <b>Hᴏᴡ Tᴏ Uѕᴇ:</b>\n\n"
+
+            "<code>/share Your Text</code>\n\n"
+        )
+
+        buttons = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "• Fᴇᴀᴛᴜʀᴇs •",
+                        callback_data="features"
+                    ),
+
+                    InlineKeyboardButton(
+                        "• Hᴏᴍᴇ •",
+                        callback_data="start_back"
+                    )
+                ]
+            ]
+        )
+
+        try:
+
+            await callback.message.edit_text(
+                text,
+                reply_markup=buttons
+            )
+
+        except Exception:
+
+            try:
+
+                await callback.message.edit_caption(
+                    caption=text,
+                    reply_markup=buttons
+                )
+
+            except Exception as e:
+
+                logger.warning(
+                    "SHARE HELP ERROR: %s",
+                    e
+                )
+
+        await callback.answer()
+
+
+# ========================================================
+# TELEGRAPH HELP
+# ========================================================
+
+@app.on_callback_query(
+    filters.regex(
+        r"^feature_telegraph$"
+    )
+)
+async def feature_telegraph_callback(
+    client,
+    callback
+):
+
+    text = (
+
+        "🌐 <b>Tᴇʟᴇɢʀᴀᴘʜ</b>\n\n"
+
+        "Cᴏɴᴠᴇʀ Aɴ Iᴍᴀɢᴇ Iɴᴛᴏ A "
+        "Tᴇʟᴇɢʀᴀᴘʜ Lɪɴᴋ.\n\n"
+
+        "📌 <b>Hᴏᴡ Tᴏ Uѕᴇ:</b>\n\n"
+
+        "1️⃣ Sᴇɴᴅ Aɴ Iᴍᴀɢᴇ Tᴏ Tʜᴇ Bᴏᴛ.\n\n"
+
+        "2️⃣ Rᴇᴘʟʏ Tᴏ Tʜᴇ Iᴍᴀɢᴇ Wɪᴛʜ:\n"
+        "<code>/telegraph</code>\n\n"
+
+        "💡 <b>Example:</b>\n"
+        "Rᴇᴘʟʏ Tᴏ Aɴ Iᴍᴀɢᴇ:\n"
+        "<code>/telegraph</code>"
+    )
+
+    buttons = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "⬅️ Fᴇᴀᴛᴜʀᴇs",
+                    callback_data="features"
+                ),
+
+                InlineKeyboardButton(
+                    "🏠 Hᴏᴍᴇ",
+                    callback_data="start_back"
+                )
+            ]
+        ]
+    )
+
+    try:
+
+        await callback.message.edit_text(
+            text,
+            reply_markup=buttons
+        )
+
+    except Exception:
+
+        try:
+
+            await callback.message.edit_caption(
+                caption=text,
+                reply_markup=buttons
+            )
+
+        except Exception as e:
+
+            logger.warning(
+                "TELEGRAPH HELP ERROR: %s",
+                e
+            )
+
+    await callback.answer()
+
+
+# ========================================================
+# FONT HELP
+# ========================================================
+
+@app.on_callback_query(
+    filters.regex(
+        r"^feature_font$"
+    )
+)
+async def feature_font_callback(
+    client,
+    callback
+):
+
+    text = (
+
+        "🔤 <b>Fᴏɴᴛ</b>\n\n"
+
+        "Cʜᴀɴɢᴇ Yᴏᴜʀ Tᴇxᴛ Iɴᴛᴏ "
+        "Dɪғғᴇʀᴇɴᴛ Fᴏɴᴛ Sᴛʏʟᴇs.\n\n"
+
+        "📌 <b>Hᴏᴡ Tᴏ Uѕᴇ:</b>\n\n"
+
+        "<code>/font Your Text</code>\n\n"
+
+        "💡 <b>Example:</b>\n"
+        "<code>/font Hello Mohammed</code>"
+    )
+
+    buttons = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "⬅️ Fᴇᴀᴛᴜʀᴇs",
+                    callback_data="features"
+                ),
+
+                InlineKeyboardButton(
+                    "🏠 Hᴏᴍᴇ",
+                    callback_data="start_back"
+                )
+            ]
+        ]
+    )
+
+    try:
+
+        await callback.message.edit_text(
+            text,
+            reply_markup=buttons
+        )
+
+    except Exception:
+
+        try:
+
+            await callback.message.edit_caption(
+                caption=text,
+                reply_markup=buttons
+            )
+
+        except Exception as e:
+
+            logger.warning(
+                "FONT HELP ERROR: %s",
+                e
+            )
+
+    await callback.answer()
+
+
 
     # ========================================================
     # ABOUT
