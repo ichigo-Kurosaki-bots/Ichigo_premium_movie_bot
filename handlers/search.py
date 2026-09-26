@@ -3139,6 +3139,10 @@ def register_search_handlers(app):
 
         user_id = callback.from_user.id
 
+        # ----------------------------------------------------
+        # GET SESSION
+        # ----------------------------------------------------
+
         session = await get_search_session(
             session_id,
             user_id
@@ -3153,79 +3157,362 @@ def register_search_handlers(app):
 
             return
 
+        # ----------------------------------------------------
+        # CONVERT SEASON / EPISODE TO INTEGER
+        # ----------------------------------------------------
+
         if field in (
-            "year",
             "season",
             "episode"
         ):
 
             try:
                 value = int(value)
+
             except Exception:
-                pass
+
+                await callback.answer(
+                    "Invalid value.",
+                    show_alert=True
+                )
+
+                return
+
+        # ----------------------------------------------------
+        # CURRENT FILTERS
+        # ----------------------------------------------------
 
         current_filters = session.get(
             "filters",
             {}
         ) or {}
 
-        current_filters[field] = value
+        # ====================================================
+        # SEASON SELECTED
+        # ====================================================
 
-        await update_search_session_filters(
-            session_id=session_id,
-            user_id=user_id,
-            filters=current_filters
-        )
+        if field == "season":
 
-        await callback.answer(
-            f"{field.title()} filter applied."
-        )
+            # Save selected season
+            current_filters["season"] = value
 
-        # Return directly to refreshed results.
-        query = session.get(
-            "query",
-            ""
-        )
-
-        results, has_next = await search_movies(
-            query=query,
-            page=0,
-            filters_data=current_filters
-        )
-
-        text = build_search_text(
-            query=query,
-            results=results,
-            page=0,
-            has_next=has_next,
-            filters_data=current_filters
-        )
-
-        keyboard = search_result_buttons(
-            results=results,
-            session_id=session_id,
-            page=0,
-            has_next=has_next
-        )
-
-        try:
-
-            await callback.message.edit_text(
-                text,
-                reply_markup=keyboard,
-                parse_mode=enums.ParseMode.HTML
+            # Remove old episode selection
+            current_filters.pop(
+                "episode",
+                None
             )
 
-        except MessageNotModified:
+            await update_search_session_filters(
+                session_id=session_id,
+                user_id=user_id,
+                filters=current_filters
+            )
 
-            pass
+            query = session.get(
+                "query",
+                ""
+            )
 
-        except Exception as e:
+            # ------------------------------------------------
+            # GET EPISODES FOR SELECTED SEASON
+            # ------------------------------------------------
 
-            logger.error(
-                "FILTER RESULT EDIT ERROR: %s",
-                e,
-                exc_info=True
+            episode_filters = {
+                "season": value
+            }
+
+            options = await get_filter_options(
+                query=query,
+                filters=episode_filters
+            )
+
+            episodes = options.get(
+                "episodes",
+                []
+            )
+
+            # ------------------------------------------------
+            # EPISODE SCREEN
+            # ------------------------------------------------
+
+            text = (
+                f"✨ <b>Sᴇᴀsᴏɴ "
+                f"{int(value):02d} — Sᴇʟᴇᴄᴛ Eᴘɪsᴏᴅᴇ</b> ✨\n\n"
+                f"›› <b>Sᴇʟᴇᴄᴛ Aɴ Eᴘɪsᴏᴅᴇ Tᴏ Cᴏɴᴛɪɴᴜᴇ:</b>"
+            )
+
+            buttons = []
+
+            # ------------------------------------------------
+            # EPISODE BUTTONS
+            # ------------------------------------------------
+
+            episode_row = []
+
+            for episode in episodes[:50]:
+
+                try:
+                    episode_number = int(
+                        episode
+                    )
+                except Exception:
+                    continue
+
+                episode_row.append(
+                    InlineKeyboardButton(
+                        f"Eᴘ {episode_number:02d}",
+                        callback_data=(
+                            f"setfilter_{session_id}_"
+                            f"episode_{episode_number}"
+                        )
+                    )
+                )
+
+                # 3 buttons per row
+                if len(episode_row) == 3:
+
+                    buttons.append(
+                        episode_row
+                    )
+
+                    episode_row = []
+
+            if episode_row:
+
+                buttons.append(
+                    episode_row
+                )
+
+            # ------------------------------------------------
+            # SEND ALL SEASON
+            # ------------------------------------------------
+
+            buttons.append(
+                [
+                    InlineKeyboardButton(
+                        f"➜ Sᴇɴᴅ Aʟʟ Sᴇᴀsᴏɴ "
+                        f"{int(value):02d}",
+                        callback_data=(
+                            f"sendseason_{session_id}_"
+                            f"{int(value)}"
+                        )
+                    )
+                ]
+            )
+
+            # ------------------------------------------------
+            # BACK TO SEASONS
+            # ------------------------------------------------
+
+            buttons.append(
+                [
+                    InlineKeyboardButton(
+                        "• Bᴀᴄᴋ Tᴏ Sᴇᴀsᴏɴs •",
+                        callback_data=(
+                            f"filtertype_{session_id}_season"
+                        )
+                    )
+                ]
+            )
+
+            keyboard = InlineKeyboardMarkup(
+                buttons
+            )
+
+            try:
+
+                await callback.message.edit_text(
+                    text,
+                    reply_markup=keyboard,
+                    parse_mode=enums.ParseMode.HTML
+                )
+
+            except MessageNotModified:
+
+                pass
+
+            except Exception as e:
+
+                logger.error(
+                    "SEASON EPISODE MENU ERROR: %s",
+                    e,
+                    exc_info=True
+                )
+
+            await callback.answer(
+                f"Season {int(value):02d} selected."
+            )
+
+            return
+
+        # ====================================================
+        # EPISODE SELECTED
+        # ====================================================
+
+        if field == "episode":
+
+            # Keep selected season
+            season = current_filters.get(
+                "season"
+            )
+
+            # Save episode
+            current_filters["episode"] = value
+
+            await update_search_session_filters(
+                session_id=session_id,
+                user_id=user_id,
+                filters=current_filters
+            )
+
+            # ------------------------------------------------
+            # SEARCH FILES
+            # ------------------------------------------------
+
+            query = session.get(
+                "query",
+                ""
+            )
+
+            results, has_next = await search_movies(
+                query=query,
+                page=0,
+                filters_data=current_filters
+            )
+
+            # ------------------------------------------------
+            # NO FILES
+            # ------------------------------------------------
+
+            if not results:
+
+                await callback.answer(
+                    "No files found for this episode.",
+                    show_alert=True
+                )
+
+                return
+
+            # ------------------------------------------------
+            # BUILD RESULT TEXT
+            # ------------------------------------------------
+
+            text = build_search_text(
+                query=query,
+                results=results,
+                page=0,
+                has_next=has_next,
+                filters_data=current_filters
+            )
+
+            # ------------------------------------------------
+            # RESULT BUTTONS
+            # ------------------------------------------------
+
+            keyboard = search_result_buttons(
+                results=results,
+                session_id=session_id,
+                page=0,
+                has_next=has_next
+            )
+
+            try:
+
+                await callback.message.edit_text(
+                    text,
+                    reply_markup=keyboard,
+                    parse_mode=enums.ParseMode.HTML
+                )
+
+            except MessageNotModified:
+
+                pass
+
+            except Exception as e:
+
+                logger.error(
+                    "EPISODE RESULT ERROR: %s",
+                    e,
+                    exc_info=True
+                )
+
+            await callback.answer(
+                f"S{int(season or 0):02d}E{int(value):02d} files loaded."
+            )
+
+            return
+
+        # ====================================================
+        # LANGUAGE SELECTED
+        # ====================================================
+
+        if field == "language":
+
+            current_filters["language"] = value
+
+            await update_search_session_filters(
+                session_id=session_id,
+                user_id=user_id,
+                filters=current_filters
+            )
+
+            query = session.get(
+                "query",
+                ""
+            )
+
+            results, has_next = await search_movies(
+                query=query,
+                page=0,
+                filters_data=current_filters
+            )
+
+            if not results:
+
+                await callback.answer(
+                    "No files found.",
+                    show_alert=True
+                )
+
+                return
+
+            text = build_search_text(
+                query=query,
+                results=results,
+                page=0,
+                has_next=has_next,
+                filters_data=current_filters
+            )
+
+            keyboard = search_result_buttons(
+                results=results,
+                session_id=session_id,
+                page=0,
+                has_next=has_next
+            )
+
+            try:
+
+                await callback.message.edit_text(
+                    text,
+                    reply_markup=keyboard,
+                    parse_mode=enums.ParseMode.HTML
+                )
+
+            except MessageNotModified:
+
+                pass
+
+            except Exception as e:
+
+                logger.error(
+                    "LANGUAGE RESULT ERROR: %s",
+                    e,
+                    exc_info=True
+                )
+
+            await callback.answer(
+                "Language filter applied."
             )
             
 # ------------------------ #
