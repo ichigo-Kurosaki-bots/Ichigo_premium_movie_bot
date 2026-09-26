@@ -861,150 +861,140 @@ def register_start_handlers(
         await callback.answer()
 
 
-# ========================================================
-# TELEGRAPH HELP
-# ========================================================
+    # ========================================================
+    # TELEGRAPH HELP
+    # ========================================================
 
-@app.on_callback_query(
-    filters.regex(
-        r"^feature_telegraph$"
+    @app.on_callback_query(
+        filters.regex(
+            r"^feature_telegraph$"
+        )
     )
-)
-async def feature_telegraph_callback(
-    client,
-    callback
-):
+    async def feature_telegraph_callback(
+        client,
+        callback
+    ):
 
-    text = (
+        text = (
+            " <b>Tᴇʟᴇɢʀᴀᴘʜ</b>\n\n"
 
-        "🌐 <b>Tᴇʟᴇɢʀᴀᴘʜ</b>\n\n"
+            "<b>Cᴏɴᴠᴇʀ Aɴ Iᴍᴀɢᴇ Iɴᴛᴏ A "
+            "Tᴇʟᴇɢʀᴀᴘʜ Lɪɴᴋ.</b>\n\n"
 
-        "Cᴏɴᴠᴇʀ Aɴ Iᴍᴀɢᴇ Iɴᴛᴏ A "
-        "Tᴇʟᴇɢʀᴀᴘʜ Lɪɴᴋ.\n\n"
+            "📌 <b>Hᴏᴡ Tᴏ Uѕᴇ:</b>\n\n"
 
-        "📌 <b>Hᴏᴡ Tᴏ Uѕᴇ:</b>\n\n"
+            "1️⃣ Sᴇɴᴅ Aɴ Iᴍᴀɢᴇ Tᴏ Tʜᴇ Bᴏᴛ.\n\n"
 
-        "1️⃣ Sᴇɴᴅ Aɴ Iᴍᴀɢᴇ Tᴏ Tʜᴇ Bᴏᴛ.\n\n"
-
-        "2️⃣ Rᴇᴘʟʏ Tᴏ Tʜᴇ Iᴍᴀɢᴇ Wɪᴛʜ:\n"
-        "<code>/telegraph</code>\n\n"
-
-        "💡 <b>Example:</b>\n"
-        "Rᴇᴘʟʏ Tᴏ Aɴ Iᴍᴀɢᴇ:\n"
-        "<code>/telegraph</code>"
-    )
-
-    buttons = InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "⬅️ Fᴇᴀᴛᴜʀᴇs",
-                    callback_data="features"
-                ),
-
-                InlineKeyboardButton(
-                    "🏠 Hᴏᴍᴇ",
-                    callback_data="start_back"
-                )
-            ]
-        ]
-    )
-
-    try:
-
-        await callback.message.edit_text(
-            text,
-            reply_markup=buttons
+            "2️⃣ Rᴇᴘʟʏ Tᴏ Tʜᴇ Iᴍᴀɢᴇ Wɪᴛʜ:\n"
+            "<code>/telegraph</code>\n\n"
         )
 
-    except Exception:
+        buttons = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "• Fᴇᴀᴛᴜʀᴇs •",
+                        callback_data="features"
+                    ),
+
+                    InlineKeyboardButton(
+                        "• Hᴏᴍᴇ •",
+                        callback_data="start_back"
+                    )
+                ]
+            ]
+        )
 
         try:
 
-            await callback.message.edit_caption(
-                caption=text,
+            await callback.message.edit_text(
+                text,
                 reply_markup=buttons
             )
 
-        except Exception as e:
+        except Exception:
 
-            logger.warning(
-                "TELEGRAPH HELP ERROR: %s",
-                e
-            )
+            try:
 
-    await callback.answer()
-
-
-# ========================================================
-# FONT HELP
-# ========================================================
-
-@app.on_callback_query(
-    filters.regex(
-        r"^feature_font$"
-    )
-)
-async def feature_font_callback(
-    client,
-    callback
-):
-
-    text = (
-
-        "🔤 <b>Fᴏɴᴛ</b>\n\n"
-
-        "Cʜᴀɴɢᴇ Yᴏᴜʀ Tᴇxᴛ Iɴᴛᴏ "
-        "Dɪғғᴇʀᴇɴᴛ Fᴏɴᴛ Sᴛʏʟᴇs.\n\n"
-
-        "📌 <b>Hᴏᴡ Tᴏ Uѕᴇ:</b>\n\n"
-
-        "<code>/font Your Text</code>\n\n"
-
-        "💡 <b>Example:</b>\n"
-        "<code>/font Hello Mohammed</code>"
-    )
-
-    buttons = InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    "⬅️ Fᴇᴀᴛᴜʀᴇs",
-                    callback_data="features"
-                ),
-
-                InlineKeyboardButton(
-                    "🏠 Hᴏᴍᴇ",
-                    callback_data="start_back"
+                await callback.message.edit_caption(
+                    caption=text,
+                    reply_markup=buttons
                 )
-            ]
-        ]
+
+            except Exception as e:
+
+                logger.warning(
+                    "TELEGRAPH HELP ERROR: %s",
+                    e
+                )
+
+        await callback.answer()
+
+    # ========================================================
+    # FONT HELP
+    # ========================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^feature_font$"
+        )
     )
+    async def feature_font_callback(
+        client,
+        callback
+    ):
 
-    try:
+        text = (
+            " <b>Fᴏɴᴛ</b>\n\n"
 
-        await callback.message.edit_text(
-            text,
-            reply_markup=buttons
+            "<b>Cʜᴀɴɢᴇ Yᴏᴜʀ Tᴇxᴛ Iɴᴛᴏ "
+            "Dɪғғᴇʀᴇɴᴛ Fᴏɴᴛ Sᴛʏʟᴇs.</b>\n\n"
+
+            "📌 <b>Hᴏᴡ Tᴏ Uѕᴇ:</b>\n\n"
+
+            "<code>/font Your Text</code>\n\n"
         )
 
-    except Exception:
+        buttons = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "• Fᴇᴀᴛᴜʀᴇs •",
+                        callback_data="features"
+                    ),
+
+                    InlineKeyboardButton(
+                        "• Hᴏᴍᴇ •",
+                        callback_data="start_back"
+                    )
+                ]
+            ]
+        )
 
         try:
 
-            await callback.message.edit_caption(
-                caption=text,
+            await callback.message.edit_text(
+                text,
                 reply_markup=buttons
             )
 
-        except Exception as e:
+        except Exception:
 
-            logger.warning(
-                "FONT HELP ERROR: %s",
-                e
-            )
+            try:
 
-    await callback.answer()
+                await callback.message.edit_caption(
+                    caption=text,
+                    reply_markup=buttons
+                )
+
+            except Exception as e:
+
+                logger.warning(
+                    "FONT HELP ERROR: %s",
+                    e
+                )
+
+        await callback.answer()
 
 
 
