@@ -15,6 +15,73 @@ from config import (
 logger = logging.getLogger(__name__)
 
 # ============================================================
+# INDEX HELPER
+# ============================================================
+
+async def ensure_index(
+    collection,
+    keys,
+    name=None,
+    unique=False
+):
+    """
+    Create an index only if the same key pattern
+    does not already exist.
+
+    Prevents MongoDB IndexOptionsConflict errors
+    when an index already exists with another name.
+    """
+
+    try:
+
+        existing_indexes = (
+            await collection.index_information()
+        )
+
+        # ----------------------------------------------------
+        # CHECK EXISTING INDEXES
+        # ----------------------------------------------------
+
+        for index_name, index_info in existing_indexes.items():
+
+            existing_keys = list(
+                index_info.get(
+                    "key",
+                    []
+                )
+            )
+
+            if existing_keys == keys:
+
+                return index_name
+
+        # ----------------------------------------------------
+        # CREATE NEW INDEX
+        # ----------------------------------------------------
+
+        kwargs = {
+            "unique": unique
+        }
+
+        if name:
+            kwargs["name"] = name
+
+        return await collection.create_index(
+            keys,
+            **kwargs
+        )
+
+    except Exception as e:
+
+        logger.warning(
+            "Index check failed for %s: %s",
+            name or keys,
+            e
+        )
+
+        return None
+
+# ============================================================
 # MONGODB CONNECTION
 # ============================================================
 
@@ -98,104 +165,142 @@ async def init_database():
         "admins"
     ]
 
+        # ========================================================
+    # DATABASE INDEXES
+    # ========================================================
+
     # --------------------------------------------------------
-    # USER INDEX
+    # USER
     # --------------------------------------------------------
 
-    await users_collection.create_index(
-        "user_id",
+    await ensure_index(
+        users_collection,
+        [("user_id", 1)],
+        name="user_id",
         unique=True
     )
 
     # --------------------------------------------------------
-    # CHAT INDEX
+    # CHAT
     # --------------------------------------------------------
 
-    await chats_collection.create_index(
-        "chat_id",
+    await ensure_index(
+        chats_collection,
+        [("chat_id", 1)],
+        name="chat_id",
         unique=True
     )
 
     # --------------------------------------------------------
-    # MEDIA INDEXES
+    # MEDIA
     # --------------------------------------------------------
 
-    await media_collection.create_index(
-        "message_id"
+    await ensure_index(
+        media_collection,
+        [("message_id", 1)],
+        name="message_id"
     )
 
-    await media_collection.create_index(
-        "title_key"
+    await ensure_index(
+        media_collection,
+        [("title_key", 1)],
+        name="title_key"
     )
 
-    await media_collection.create_index(
-        "search_key"
+    await ensure_index(
+        media_collection,
+        [("search_key", 1)],
+        name="search_key"
     )
 
-    await media_collection.create_index(
-        "file_name"
+    await ensure_index(
+        media_collection,
+        [("file_name", 1)],
+        name="file_name"
     )
 
-    await media_collection.create_index(
-        "filename"
+    await ensure_index(
+        media_collection,
+        [("filename", 1)],
+        name="filename"
     )
 
-    await media_collection.create_index(
-        "language"
+    await ensure_index(
+        media_collection,
+        [("language", 1)],
+        name="language"
     )
 
-    await media_collection.create_index(
-        "year"
+    await ensure_index(
+        media_collection,
+        [("year", 1)],
+        name="year"
     )
 
-    await media_collection.create_index(
-        "season"
+    await ensure_index(
+        media_collection,
+        [("season", 1)],
+        name="season"
     )
 
-    await media_collection.create_index(
-        "episode"
+    await ensure_index(
+        media_collection,
+        [("episode", 1)],
+        name="episode"
     )
 
-    await media_collection.create_index(
-        "quality"
+    await ensure_index(
+        media_collection,
+        [("quality", 1)],
+        name="quality"
     )
 
-    await media_collection.create_index(
+    await ensure_index(
+        media_collection,
         [
             ("channel_id", 1),
             ("message_id", 1)
         ],
+        name="channel_id_message_id",
         unique=True
     )
 
     # --------------------------------------------------------
-    # SEARCH SESSION INDEXES
+    # SEARCH SESSIONS
     # --------------------------------------------------------
 
-    await search_sessions_collection.create_index(
-        "session_id",
+    await ensure_index(
+        search_sessions_collection,
+        [("session_id", 1)],
+        name="session_id",
         unique=True
     )
 
-    await search_sessions_collection.create_index(
-        "user_id"
+    await ensure_index(
+        search_sessions_collection,
+        [("user_id", 1)],
+        name="search_user_id"
     )
 
     # --------------------------------------------------------
     # REDEEM
     # --------------------------------------------------------
 
-    await redeem_codes_collection.create_index(
-        "code",
+    await ensure_index(
+        redeem_codes_collection,
+        [("code", 1)],
+        name="code",
         unique=True
     )
 
     # --------------------------------------------------------
-    # BANNED
+    # BANNED USERS
     # --------------------------------------------------------
 
-    await banned_users_collection.create_index(
-        "user_id",
+    await ensure_index(
+        banned_users_collection,
+        [("user_id", 1)],
+        name="banned_user_id",
         unique=True
     )
 
@@ -211,8 +316,10 @@ async def init_database():
     # ADMINS
     # --------------------------------------------------------
 
-    await admins_collection.create_index(
-        "user_id",
+    await ensure_index(
+        admins_collection,
+        [("user_id", 1)],
+        name="admin_user_id",
         unique=True
     )
 
@@ -366,7 +473,6 @@ async def update_user(
         }
     )
 
-
 # ============================================================
 # TOKEN SYSTEM
 # ============================================================
@@ -396,7 +502,6 @@ async def get_token_balance(
             0
         ) or 0
     )
-
 
 # ============================================================
 # DAILY TOKENS
@@ -506,7 +611,6 @@ async def claim_daily_tokens(
             ) or 0
         )
     }
-
 
 # ============================================================
 # TOKEN → PREMIUM
@@ -637,7 +741,6 @@ async def redeem_tokens_for_premium(
             )
     }
 
-
 # ============================================================
 # CHAT
 # ============================================================
@@ -689,7 +792,6 @@ async def count_chats():
     return await chats_collection.count_documents(
         {}
     )
-
 
 # ============================================================
 # REQUEST SYSTEM
@@ -758,7 +860,6 @@ async def activate_premium(
         result.matched_count > 0
     )
 
-
 async def remove_premium(
     user_id
 ):
@@ -793,7 +894,6 @@ async def remove_premium(
         result.matched_count > 0
     )
 
-
 async def consume_request(
     user_id
 ):
@@ -827,7 +927,6 @@ async def consume_request(
         result.matched_count > 0
     )
 
-
 async def restore_request(
     user_id
 ):
@@ -856,7 +955,6 @@ async def restore_request(
     return (
         result.matched_count > 0
     )
-
 
 # ============================================================
 # MEDIA
@@ -3636,25 +3734,21 @@ async def optimize_database():
         if collection is None:
             continue
 
-        try:
-
-            await collection.create_index(
-                keys,
-                name=index_name,
-                **options
+        index_result = await ensure_index(
+            collection,
+            keys,
+            name=index_name,
+            unique=options.get(
+                "unique",
+                False
             )
+        )
+
+        if index_result is not None:
 
             result[
                 "indexes_checked"
             ] += 1
-
-        except Exception as e:
-
-            logger.warning(
-                "Index check failed for %s: %s",
-                index_name,
-                e
-            )
 
     # --------------------------------------------------------
     # USER STATISTICS
