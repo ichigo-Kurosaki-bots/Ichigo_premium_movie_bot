@@ -2555,7 +2555,7 @@ def register_admin_handlers(app):
 
             await reload_message.edit_text(
                 "♻️ <b>Cᴏɴғɪɢᴜʀᴀᴛɪᴏɴ Rᴇʟᴏᴀᴅᴇᴅ</b>\n\n"
-                "<b>›› Bot Is Restarted.</b>\n
+                "<b>›› Bot Is Restarted.</b>\n"
                 "<b>›› Admin List Updated.</b>\n\n"
                 "<b>Powered By: @Aero_Unity</b>"
             )
