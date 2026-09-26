@@ -1011,17 +1011,13 @@ def build_filter_text(
     )
 
     return text
-
+    
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
 # Updates: @Aero_Unity 
 # Support : @Coders_Grp 
 # ------------------------ #
-
-# ============================================================
-# FILTER BUTTONS
-# ============================================================
 
 def build_filter_buttons(
     session_id,
@@ -1047,20 +1043,36 @@ def build_filter_buttons(
             []
         )
 
+        language_row = []
+
         for language in languages[:30]:
 
-            buttons.append(
-                [
-                    InlineKeyboardButton(
-                        f"›› {language}",
-                        callback_data=(
-                            f"setfilter_{session_id}_"
-                            f"language_{language}"
-                        )
+            language_row.append(
+                InlineKeyboardButton(
+                    f"{language}",
+                    callback_data=(
+                        f"setfilter_{session_id}_"
+                        f"language_{language}"
                     )
-                ]
+                )
             )
 
+            # 3 BUTTONS PER ROW
+            if len(language_row) == 3:
+
+                buttons.append(
+                    language_row
+                )
+
+                language_row = []
+
+        # Remaining buttons
+        if language_row:
+            buttons.append(
+                language_row
+            )
+
+        # BACK
         buttons.append(
             [
                 InlineKeyboardButton(
@@ -1087,20 +1099,41 @@ def build_filter_buttons(
             []
         )
 
+        season_row = []
+
         for season in seasons[:30]:
 
-            buttons.append(
-                [
-                    InlineKeyboardButton(
-                        f"›› Sᴇᴀsᴏɴ {season}",
-                        callback_data=(
-                            f"setfilter_{session_id}_"
-                            f"season_{season}"
-                        )
+            try:
+                season_number = int(season)
+            except Exception:
+                continue
+
+            season_row.append(
+                InlineKeyboardButton(
+                    f"S{season_number:02d}",
+                    callback_data=(
+                        f"setfilter_{session_id}_"
+                        f"season_{season_number}"
                     )
-                ]
+                )
             )
 
+            # 3 BUTTONS PER ROW
+            if len(season_row) == 3:
+
+                buttons.append(
+                    season_row
+                )
+
+                season_row = []
+
+        # Remaining buttons
+        if season_row:
+            buttons.append(
+                season_row
+            )
+
+        # BACK
         buttons.append(
             [
                 InlineKeyboardButton(
@@ -1127,20 +1160,41 @@ def build_filter_buttons(
             []
         )
 
+        episode_row = []
+
         for episode in episodes[:50]:
 
-            buttons.append(
-                [
-                    InlineKeyboardButton(
-                        f"›› Eᴘɪsᴏᴅᴇ {episode}",
-                        callback_data=(
-                            f"setfilter_{session_id}_"
-                            f"episode_{episode}"
-                        )
+            try:
+                episode_number = int(episode)
+            except Exception:
+                continue
+
+            episode_row.append(
+                InlineKeyboardButton(
+                    f"E{episode_number:02d}",
+                    callback_data=(
+                        f"setfilter_{session_id}_"
+                        f"episode_{episode_number}"
                     )
-                ]
+                )
             )
 
+            # 3 BUTTONS PER ROW
+            if len(episode_row) == 3:
+
+                buttons.append(
+                    episode_row
+                )
+
+                episode_row = []
+
+        # Remaining buttons
+        if episode_row:
+            buttons.append(
+                episode_row
+            )
+
+        # BACK
         buttons.append(
             [
                 InlineKeyboardButton(
@@ -1163,7 +1217,7 @@ def build_filter_buttons(
     buttons.append(
         [
             InlineKeyboardButton(
-                "• Lᴀɴɢᴜᴀɢᴜᴇ •",
+                "• Lᴀɴɢᴜᴀɢᴇ •",
                 callback_data=(
                     f"filtertype_{session_id}_language"
                 )
@@ -1216,7 +1270,7 @@ def build_filter_buttons(
                 callback_data=(
                     f"filterback_{session_id}"
                 )
-            )
+            ]
         ]
     )
 
