@@ -1561,7 +1561,8 @@ def register_admin_handlers(app):
                 await client.copy_message(
                     chat_id=user_id,
                     from_chat_id=source.chat.id,
-                    message_id=source.id
+                    message_id=source.id,
+                    reply_markup=source.reply_markup
                 )
 
                 success += 1
