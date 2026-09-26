@@ -1479,7 +1479,7 @@ def register_admin_handlers(app):
     async def broadcast_handler(
         client,
         message
-    )
+    ):
 
         if not message.reply_to_message:
 
