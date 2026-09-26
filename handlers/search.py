@@ -3379,9 +3379,16 @@ def register_search_handlers(app):
             # GET EPISODES FOR SELECTED SEASON
             # ------------------------------------------------
 
-            episode_filters = {
-                "season": value
-            }
+            episode_filters = dict(
+                current_filters
+            )
+
+            episode_filters["season"] = value
+
+            episode_filters.pop(
+                "episode",
+                None
+            )
 
             options = await get_filter_options(
                 query=query,
@@ -3774,15 +3781,6 @@ def register_search_handlers(app):
                 f"❌ Nᴏ ғɪʟᴇs ғᴏᴜɴᴅ ғᴏʀ S{season:02d}."
             )
             return
-
-        # --------------------------------------------------------
-        # SEND STATUS
-        # --------------------------------------------------------
-
-        status_message = await callback.message.reply_text(
-            f"📤 Sᴇɴᴅɪɴɢ S{season:02d}...\n"
-            f"📁 Fɪʟᴇs ғᴏᴜɴᴅ: {len(results)}"
-        )
 
         sent = 0
         failed = 0
