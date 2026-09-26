@@ -1270,7 +1270,7 @@ def build_filter_buttons(
                 callback_data=(
                     f"filterback_{session_id}"
                 )
-            ]
+            )
         ]
     )
 
