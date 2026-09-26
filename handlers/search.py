@@ -2033,34 +2033,29 @@ async def handle_file_deep_link(
 # Support : @Coders_Grp 
 # ------------------------ #
 
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
-
 # ============================================================
-# GET ALL SEND-ALL RESULTS
+# GET ALL RESULTS FOR SEND ALL
 # ============================================================
 
 async def get_all_sendall_results(
     query,
     filters_data=None
 ):
+    """
+    Fetch ALL matching files from MongoDB.
+
+    Normal search is paginated.
+    Send All must continue through every database page.
+    """
 
     filters_data = filters_data or {}
 
     all_results = []
-
     skip = 0
-
     batch_size = 100
 
     while True:
-
         try:
-
             batch = await search_media(
                 query=query,
                 skip=skip,
@@ -2069,39 +2064,32 @@ async def get_all_sendall_results(
             )
 
         except Exception as e:
-
             logger.error(
                 "SEND ALL DATABASE SEARCH ERROR: %s",
                 e,
                 exc_info=True
             )
-
             break
 
         if not batch:
-
             break
 
-        all_results.extend(
-            batch
-        )
+        all_results.extend(batch)
 
-        # If fewer than batch_size were returned,
-        # there are no more matching files.
+        # Last batch reached
         if len(batch) < batch_size:
-
             break
 
         skip += batch_size
 
-    return all_results
+    logger.info(
+        "SEND ALL: %s files found for query=%s filters=%s",
+        len(all_results),
+        query,
+        filters_data
+    )
 
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
+    return all_results
 
 # ============================================================
 # SEND ALL DEEP LINK
@@ -3688,6 +3676,202 @@ def register_search_handlers(app):
             await callback.answer(
                 "Language filter applied."
             )
+
+    # ============================================================
+    # SEND ALL SEASON
+    # ============================================================
+
+    @app.on_callback_query(
+        filters.regex(
+            r"^sendseason_[a-fA-F0-9]+_\d+$"
+        )
+    )
+    async def send_all_season_callback(
+        client,
+        callback
+    ):
+        try:
+            data = callback.data.split("_")
+ 
+            session_id = data[1]
+            season = int(data[2])
+
+        except Exception:
+            await callback.answer(
+                "❌ Invalid request.",
+                show_alert=True
+            )
+            return
+
+        # --------------------------------------------------------
+        # GET SEARCH SESSION
+        # --------------------------------------------------------
+
+        session = await get_search_session(
+            session_id
+        )
+
+        if not session:
+            await callback.answer(
+                "⚠️ Sᴇᴀʀᴄʜ sᴇssɪᴏɴ ᴇxᴘɪʀᴇᴅ.",
+                show_alert=True
+            )
+            return
+
+        query = session.get(
+            "query",
+            ""
+        )
+
+        # --------------------------------------------------------
+        # EXISTING FILTERS
+        # --------------------------------------------------------
+
+        filters_data = dict(
+            session.get(
+                "filters",
+                {}
+            ) or {}
+        )
+
+        # Force selected season
+        filters_data["season"] = season
+
+        # Season Send All means every episode
+        filters_data.pop(
+            "episode",
+            None
+        )
+
+        # --------------------------------------------------------
+        # FETCH ALL FILES
+        # --------------------------------------------------------
+
+        await callback.answer(
+            f"📤 Sᴇɴᴅɪɴɢ Aʟʟ S{season:02d} ғɪʟᴇs..."
+        )
+
+        try:
+            results = await get_all_sendall_results(
+                query=query,
+                filters_data=filters_data
+            )
+
+        except Exception as e:
+            logger.error(
+                "SEND ALL SEASON ERROR: %s",
+                e,
+                exc_info=True
+            )
+
+            await callback.message.reply_text(
+                "❌ Fᴀɪʟᴇᴅ ᴛᴏ ʟᴏᴀᴅ sᴇᴀsᴏɴ ғɪʟᴇs."
+            )
+            return
+
+        if not results:
+            await callback.message.reply_text(
+                f"❌ Nᴏ ғɪʟᴇs ғᴏᴜɴᴅ ғᴏʀ S{season:02d}."
+            )
+            return
+
+        # --------------------------------------------------------
+        # SEND STATUS
+        # --------------------------------------------------------
+
+        status_message = await callback.message.reply_text(
+            f"📤 Sᴇɴᴅɪɴɢ S{season:02d}...\n"
+            f"📁 Fɪʟᴇs ғᴏᴜɴᴅ: {len(results)}"
+        )
+
+        sent = 0
+        failed = 0
+
+        # Store all sent messages so we can delete them later
+        sent_messages = []
+
+        for item in results:
+
+            try:
+                message_id = item.get(
+                    "message_id"
+                )   
+
+                if not message_id:
+                    failed += 1
+                    continue
+
+                sent_message = await send_database_file(
+                    client=client,
+                    chat_id=callback.from_user.id,
+                    message_id=message_id
+                )
+
+                if sent_message:
+                    sent_messages.append(
+                        sent_message
+                    )
+
+                sent += 1
+
+            except Exception as e:
+
+                failed += 1
+
+                logger.warning(
+                    "Failed to send season file %s: %s",
+                    item.get("message_id"),
+                    e
+                )
+
+        # --------------------------------------------------------
+        # DELETE SENDING STATUS
+        # --------------------------------------------------------
+
+        try:
+            await status_message.delete()
+        except Exception:
+            pass
+
+        # --------------------------------------------------------
+        # WARNING MESSAGE
+        # --------------------------------------------------------
+
+        warning_message = await callback.message.reply_text(
+            "⚠️ Wᴀʀɴɪɴɢ\n\n"
+            "📥 Pʟᴇᴀsᴇ sᴀᴠᴇ ᴛʜᴇ ғɪʟᴇs ᴀʙᴏᴠᴇ ᴛᴏ ʏᴏᴜʀ "
+            "Sᴀᴠᴇᴅ Mᴇssᴀɢᴇs ғᴏʀ ʟᴀᴛᴇʀ ᴜsᴇ.\n\n"
+            "⚠️ Tʜᴇ ғɪʟᴇs ᴡɪʟʟ ʙᴇ ᴅᴇʟᴇᴛᴇᴅ ɪɴ 5 ᴍɪɴᴜᴛᴇs.\n\n"
+            "💾 Sᴀᴠᴇ ᴛʜᴇᴍ ɴᴏᴡ."
+        )
+
+        # --------------------------------------------------------
+        # WAIT 5 MINUTES
+        # --------------------------------------------------------
+
+        await asyncio.sleep(300)
+
+        # --------------------------------------------------------
+        # DELETE ALL SENT FILES
+        # --------------------------------------------------------
+
+        for sent_message in sent_messages:
+ 
+            try:
+                await sent_message.delete()
+
+            except Exception:
+                pass
+
+        # --------------------------------------------------------
+        # DELETE WARNING
+        # --------------------------------------------------------
+
+        try:
+            await warning_message.delete()
+
+        except Exception:
+            pass
             
 # ------------------------ #
 # Don't Remove My Credits
