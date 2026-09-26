@@ -73,10 +73,6 @@ logger = logging.getLogger(__name__)
 # Support : @Coders_Grp 
 # ------------------------ #
 
-# ============================================================
-# CONSTANTS
-# ============================================================
-
 SEARCH_PAGE_SIZE = int(
     RESULTS_PER_PAGE or 10
 )
@@ -170,55 +166,44 @@ def create_search_patterns(query):
 
     return patterns
     
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
-
-# ============================================================
-# RESULT HELPERS
-# ============================================================
-
 def get_result_title(result):
-    """
-    Build search result button title.
-
-    Example:
-    [450 MB] [720p] Reacher 2026 S04E01 TRUE
-    """
-
+    
     if not result:
         return "Unknown File"
-
-    file_size = result.get("file_size")
-
+        
+    file_size = (
+        result.get("file_size")
+        or result.get("filesize")
+        or result.get("size")
+        or 0
+    )
+    
     size_text = ""
 
-    if file_size is not None:
-        try:
-            size_bytes = int(file_size)
+    try:
+        size_bytes = int(file_size)
 
-            if size_bytes >= 1024 * 1024 * 1024:
-                size_text = (
-                    f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
-                )
+        if size_bytes >= 1024 * 1024 * 1024:
+            size_text = (
+                f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
+            )
 
-            elif size_bytes >= 1024 * 1024:
-                size_text = (
-                    f"{size_bytes / (1024 * 1024):.0f} MB"
-                )
+        elif size_bytes >= 1024 * 1024:
+            size_text = (
+                f"{size_bytes / (1024 * 1024):.2f} MB"
+            )
 
-            elif size_bytes >= 1024:
-                size_text = (
-                    f"{size_bytes / 1024:.0f} KB"
-                )
+        elif size_bytes >= 1024:
+            size_text = (
+                f"{size_bytes / 1024:.2f} KB"
+            )
 
-        except (TypeError, ValueError):
-            pass
+    except (TypeError, ValueError):
+        pass
 
-    quality_text = get_result_quality(result)
+    # ========================================================
+    # TITLE
+    # ========================================================
 
     title = (
         result.get("title")
@@ -231,6 +216,95 @@ def get_result_title(result):
 
     title = str(title).strip()
 
+    # ========================================================
+    # SEASON
+    # ========================================================
+
+    season = (
+        result.get("season")
+        or result.get("Season")
+        or result.get("season_number")
+    )
+
+    episode = (
+        result.get("episode")
+        or result.get("Episode")
+        or result.get("episode_number")
+    )
+    
+    data = result.get("data")
+
+    if isinstance(data, dict):
+
+        if not season:
+            season = (
+                data.get("season")
+                or data.get("Season")
+                or data.get("season_number")
+            )
+
+        if not episode:
+            episode = (
+                data.get("episode")
+                or data.get("Episode")
+                or data.get("episode_number")
+            )
+
+    season_episode = ""
+
+    if season is not None and episode is not None:
+
+        try:
+            season_number = int(
+                re.sub(
+                    r"[^0-9]",
+                    "",
+                    str(season)
+                )
+            )
+
+            episode_number = int(
+                re.sub(
+                    r"[^0-9]",
+                    "",
+                    str(episode)
+                )
+            )
+
+            season_episode = (
+                f"S{season_number:02d}"
+                f"E{episode_number:02d}"
+            )
+
+        except (TypeError, ValueError):
+            season_episode = ""
+
+    if not season_episode:
+
+        match = re.search(
+            r"\bS(\d{1,2})[\s._-]*E(\d{1,3})\b",
+            title,
+            re.IGNORECASE
+        )
+
+        if match:
+
+            season_episode = (
+                f"S{int(match.group(1)):02d}"
+                f"E{int(match.group(2)):02d}"
+            )
+
+    # ========================================================
+    # CLEAN TITLE
+    # ========================================================
+
+    title = re.sub(
+        r"\s*\|\s*\d+(?:\.\d+)?\s*(?:MB|GB|KB)\s*",
+        " ",
+        title,
+        flags=re.IGNORECASE
+    )
+    
     title = re.sub(
         r"\s*\|\s*\d{3,4}p\s*",
         " ",
@@ -238,13 +312,15 @@ def get_result_title(result):
         flags=re.IGNORECASE
     )
 
-    title = re.sub(
-        r"\s*\|\s*\d+(?:\.\d+)?\s*(?:MB|GB|KB)\s*$",
-        "",
-        title,
-        flags=re.IGNORECASE
-    )
+    if season_episode:
 
+        title = re.sub(
+            r"\bS\d{1,2}[\s._-]*E\d{1,3}\b",
+            " ",
+            title,
+            flags=re.IGNORECASE
+        )
+        
     title = re.sub(
         r"\s+",
         " ",
@@ -252,21 +328,30 @@ def get_result_title(result):
     ).strip()
 
     title = re.sub(
-        r"\bS(\d{1,2})\s+E(\d{1,3})\b",
-        lambda m: f"S{int(m.group(1)):02d}E{int(m.group(2)):02d}",
-        title,
-        flags=re.IGNORECASE
-    )
+        r"^[\s|._-]+|[\s|._-]+$",
+        "",
+        title
+    ).strip()
+
+    # ========================================================
+    # BUILD BUTTON TEXT
+    # ========================================================
 
     parts = []
 
     if size_text:
-        parts.append(f"[{size_text}]")
+        parts.append(
+            f"[{size_text}]"
+        )
 
-    if quality_text:
-        parts.append(f"[{quality_text}]")
+    if season_episode:
+        parts.append(
+            f"[{season_episode}]"
+        )
 
-    parts.append(title)
+    parts.append(
+        title
+    )
 
     return " | ".join(parts)
 
