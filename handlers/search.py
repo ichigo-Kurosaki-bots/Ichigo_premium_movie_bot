@@ -3769,7 +3769,8 @@ def register_search_handlers(app):
         # --------------------------------------------------------
 
         session = await get_search_session(
-            session_id
+            session_id,
+            callback.from_user.id
         )
 
         if not session:
