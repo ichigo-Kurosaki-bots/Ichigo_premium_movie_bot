@@ -2535,10 +2535,15 @@ def register_admin_handlers(app):
                 "⚡️"
             )
 
-            await asyncio.sleep(1)
+            await asyncio.sleep(1.2)
+
+            reload_message = await message.reply_text(
+                "🛰"
+            )
+            
+            await asyncio.sleep(1.2)
 
             await reload_message.edit_text(
-                "<b>Rᴇʟᴏᴀᴅɪɴɢ Cᴏɴғɪɢᴜʀᴀᴛɪᴏɴ...</b>\n\n"
                 "⏳ <b>Pʟᴇᴀsᴇ Wᴀɪᴛ...</b>"
             )
 
@@ -2550,7 +2555,8 @@ def register_admin_handlers(app):
 
             await reload_message.edit_text(
                 "♻️ <b>Cᴏɴғɪɢᴜʀᴀᴛɪᴏɴ Rᴇʟᴏᴀᴅᴇᴅ</b>\n\n"
-                "<b>Configuration modules has been reloaded.</b>\n\n"
+                "<b>›› Bot Is Restarted.</b>\n
+                "<b>›› Admin List Updated.</b>\n\n"
                 "<b>Powered By: @Aero_Unity</b>"
             )
 
@@ -2598,7 +2604,6 @@ def register_admin_handlers(app):
     async def optimize_handler(client, message):
 
         status_message = await message.reply_text(
-            "<b>›› Cʜᴇᴄᴋɪɴɢ MᴏɴɢᴏDB...</b>\n"
             "<b>›› Pʟᴇᴀsᴇ Wᴀɪᴛ...</b>"
         )
 
@@ -2607,32 +2612,14 @@ def register_admin_handlers(app):
             result = await optimize_database()
 
             text = (
-                " <b>Dᴀᴛᴀʙᴀsᴇ Oᴘᴛɪᴍɪᴢᴀᴛɪᴏɴ</b>\n\n"
-
-                "✅ <b>Dᴀᴛᴀʙᴀsᴇ Cᴏʟʟᴇᴄᴛɪᴏɴs Cʜᴇᴄᴋᴇᴅ</b>\n"
-                "››  Usᴇʀs\n"
-                "››  Mᴇᴅɪᴀ\n"
-                "››  Sᴇᴀʀᴄʜ Sᴇssɪᴏɴs\n"
-                "››  Sᴇᴛᴛɪɴɢs\n"
-                "››  Cʜᴀᴛs\n\n"
-  
-                "🧹 <b>Cʟᴇᴀɴᴜᴘ</b>\n"
-                f"<b>›› 🗑 Exᴘɪʀᴇᴅ Sᴇssɪᴏɴs: </b>"
-                f"<code>{result['sessions_cleaned']}</code>\n\n"
-
-                "📊 <b>Rᴇsᴜʟᴛs</b>\n\n"
-                f"<b>›› Usᴇʀs:</b> <code>{result['users']:,}</code>\n"
-                f"<b>›› Cʜᴀᴛs:</b> <code>{result['chats']:,}</code>\n"
-                f"<b>›› Fɪʟᴇs:</b> <code>{result['files']:,}</code>\n"
-                f"<b>›› Sᴛᴏʀᴀɢᴇ:</b> <code>{result['storage_mb']:.2f} MB</code>\n"
-                f"<b>›› Iɴᴅᴇxᴇᴅ Cʜᴇᴄᴋᴇᴅ: </b>"
-                f"<code>{result['indexes_checked']}</code>\n\n"
-
-                "🔒 <b>Mᴇᴅɪᴀ ʀᴇᴄᴏʀᴅs ᴡᴇʀᴇ ɴᴏᴛ ᴅᴇʟᴇᴛᴇᴅ.</b>\n\n"
-
-                "⚡ <b>Dᴀᴛᴀʙᴀsᴇ Oᴘᴛɪᴍɪᴢᴀᴛɪᴏɴ Cᴏᴍᴘʟᴇᴛᴇᴅ.</b>"
+                "⚡ <b>Dᴀᴛᴀʙᴀsᴇ Oᴘᴛɪᴍɪᴢᴇᴅ</b>\n\n"
+                f"👤 Usᴇʀs: <code>{result['users']:,}</code>\n"
+                f"💬 Cʜᴀᴛs: <code>{result['chats']:,}</code>\n"
+                f"📁 Fɪʟᴇs: <code>{result['files']:,}</code>\n"
+                f"🧹 Sᴇssɪᴏɴs Cʟᴇᴀɴᴇᴅ: <code>{result['sessions_cleaned']}</code>\n\n"
+                "✅ <b>Cᴏᴍᴘʟᴇᴛᴇᴅ</b>"
             )
-
+            
             keyboard = InlineKeyboardMarkup(
                 [
                     [
