@@ -2537,12 +2537,6 @@ def register_admin_handlers(app):
 
             await asyncio.sleep(1.2)
 
-            reload_message = await message.reply_text(
-                "🛰"
-            )
-            
-            await asyncio.sleep(1.2)
-
             await reload_message.edit_text(
                 "⏳ <b>Pʟᴇᴀsᴇ Wᴀɪᴛ...</b>"
             )
