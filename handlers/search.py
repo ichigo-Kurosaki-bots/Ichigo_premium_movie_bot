@@ -730,9 +730,22 @@ def search_result_buttons(
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
 # ------------------------ #
+
+def get_requester_details(user):
+    """Return the actual Telegram user's display name and ID."""
+
+    if not user:
+        return None, "User"
+
+    if user.username:
+        name = f"@{user.username}"
+    else:
+        name = user.first_name or "User"
+
+    return user.id, name
 
 # ============================================================
 # SEARCH TEXT
@@ -3699,12 +3712,20 @@ def register_search_handlers(app):
 
                 return
 
+            
+            requested_by_id, requested_by_name = get_requester_details(
+                callback.from_user
+            )
+            
             text = build_search_text(
                 query=query,
                 results=results,
                 page=0,
                 has_next=has_next,
-                filters_data=current_filters
+                filters_data=current_filters,
+                search_time=0,
+                requested_by_id=requested_by_id,
+                requested_by_name=requested_by_name
             )
 
             keyboard = search_result_buttons(
