@@ -1,29 +1,19 @@
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
 # ------------------------ #
 
 import asyncio
 import logging
 import re
 
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
-
 from html import escape
 from pyrogram import filters, enums
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from config import (
-    DATABASE_CHANNEL_ID,
-    OWNER_ID
-)
+from config import DATABASE_CHANNEL_ID, OWNER_ID
 
 from handlers.fsub import (
     check_all_fsubs,
@@ -33,34 +23,15 @@ from handlers.fsub import (
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
 # ------------------------ #
 
 logger = logging.getLogger(__name__)
 
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
-
-# ============================================================
-# CONFIG
-# ============================================================
-
 MAX_BATCH_FILES = 50
 DELETE_AFTER = 300
-
 UPDATES_URL = "https://t.me/Aero_Unity"
-
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
 
 # ============================================================
 # OWNER CHECK
@@ -75,12 +46,6 @@ def is_owner(message):
     except Exception:
         return False
 
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
 
 async def owner_required(message):
     if not is_owner(message):
@@ -89,78 +54,44 @@ async def owner_required(message):
             parse_mode=enums.ParseMode.HTML
         )
         return False
-
     return True
-
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
 
 # ============================================================
 # DELETE MESSAGE AFTER 5 MINUTES
 # ============================================================
 
-async def delete_after_5_minutes(
-    client,
-    chat_id,
-    message_id
-):
-
+async def delete_after_5_minutes(client, chat_id, message_id):
     try:
-
         await asyncio.sleep(DELETE_AFTER)
 
         try:
-
-            await client.delete_messages(
-                chat_id,
-                message_id
-            )
+            await client.delete_messages(chat_id, message_id)
 
             logger.info(
-                "PERMANENT FILE/WARNING DELETED | "
-                "chat=%s | message=%s",
+                "PERMANENT FILE DELETED | chat=%s | message=%s",
                 chat_id,
                 message_id
             )
 
         except Exception as e:
-
             logger.warning(
-                "Failed to delete message | "
-                "chat=%s | message=%s | error=%s",
+                "Failed to delete message | chat=%s | message=%s | error=%s",
                 chat_id,
                 message_id,
                 e
             )
 
     except asyncio.CancelledError:
-
         pass
 
     except Exception as e:
-
-        logger.warning(
-            "Delete timer error | %s",
-            e
-        )
-
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
+        logger.warning("Delete timer error | %s", e)
 
 # ============================================================
 # MESSAGE / LINK HELPERS
 # ============================================================
 
 def get_message_id_from_link(text):
-
     if not text:
         return None
 
@@ -172,14 +103,9 @@ def get_message_id_from_link(text):
     )
 
     if match:
-
         channel_number = match.group(1)
         message_id = int(match.group(2))
-
-        channel_id = int(
-            "-100" + channel_number
-        )
-
+        channel_id = int("-100" + channel_number)
         return channel_id, message_id
 
     match = re.search(
@@ -188,164 +114,74 @@ def get_message_id_from_link(text):
     )
 
     if match:
-
         username = match.group(1)
         message_id = int(match.group(2))
-
         return username, message_id
 
     return None
-    
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
+
 
 def parse_message_reference(value):
-
     if not value:
         return None
 
     value = value.strip()
 
     if value.isdigit():
-
-        return (
-            DATABASE_CHANNEL_ID,
-            int(value)
-        )
+        return DATABASE_CHANNEL_ID, int(value)
 
     return get_message_id_from_link(value)
 
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
 
 def make_single_token(message_id):
-
     return f"pl_{message_id}"
-    
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
 
-def make_batch_token(
-    first_id,
-    last_id,
-    protected=False
-):
 
-    prefix = (
-        "pb_"
-        if protected
-        else "ba_"
-    )
+def make_batch_token(first_id, last_id, protected=False):
+    prefix = "pb_" if protected else "ba_"
+    return f"{prefix}{first_id}_{last_id}"
 
-    return (
-        f"{prefix}"
-        f"{first_id}_"
-        f"{last_id}"
-    )
 
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
-
-async def make_start_link(
-    client,
-    token
-):
-
+async def make_start_link(client, token):
     try:
-
         me = await client.get_me()
 
         if not me.username:
             return None
 
-        return (
-            f"https://t.me/"
-            f"{me.username}"
-            f"?start={token}"
-        )
+        return f"https://t.me/{me.username}?start={token}"
 
     except Exception as e:
-
-        logger.error(
-            "Failed to create start link: %s",
-            e
-        )
-
+        logger.error("Failed to create start link: %s", e)
         return None
-
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
 
 # ============================================================
 # FORWARDED MESSAGE ORIGINAL SOURCE
 # ============================================================
 
-def get_original_message_reference(
-    message
-):
-
+def get_original_message_reference(message):
     original_chat_id = None
     original_message_id = None
 
     try:
-
-        forward_origin = getattr(
-            message,
-            "forward_origin",
-            None
-        )
+        forward_origin = getattr(message, "forward_origin", None)
 
         if forward_origin:
-
             original_message_id = getattr(
                 forward_origin,
                 "message_id",
                 None
             )
 
-            origin_chat = getattr(
-                forward_origin,
-                "chat",
-                None
-            )
+            origin_chat = getattr(forward_origin, "chat", None)
 
             if origin_chat:
-
-                original_chat_id = getattr(
-                    origin_chat,
-                    "id",
-                    None
-                )
+                original_chat_id = getattr(origin_chat, "id", None)
 
     except Exception as e:
-
-        logger.warning(
-            "forward_origin read failed: %s",
-            e
-        )
+        logger.warning("forward_origin read failed: %s", e)
 
     if not original_message_id:
-
         original_message_id = getattr(
             message,
             "forward_from_message_id",
@@ -353,210 +189,182 @@ def get_original_message_reference(
         )
 
     if not original_chat_id:
-
-        forward_chat = getattr(
-            message,
-            "forward_from_chat",
-            None
-        )
+        forward_chat = getattr(message, "forward_from_chat", None)
 
         if forward_chat:
-
-            original_chat_id = getattr(
-                forward_chat,
-                "id",
-                None
-            )
+            original_chat_id = getattr(forward_chat, "id", None)
 
     if not original_message_id:
-
         return None
 
-    return (
-        original_chat_id,
-        int(original_message_id)
-    )
-
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
+    return original_chat_id, int(original_message_id)
 
 # ============================================================
 # DATABASE MESSAGE
 # ============================================================
 
-async def get_database_message(
-    client,
-    message_id
-):
-
+async def get_database_message(client, message_id):
     try:
-
         message = await client.get_messages(
             DATABASE_CHANNEL_ID,
             int(message_id)
         )
 
-        if not message:
-            return None
-
-        if getattr(
-            message,
-            "empty",
-            False
-        ):
-
+        if not message or getattr(message, "empty", False):
             return None
 
         return message
 
     except Exception as e:
-
         logger.error(
-            "Failed to get database message "
-            "%s: %s",
+            "Failed to get database message %s: %s",
             message_id,
             e
         )
-
         return None
-
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
 
 # ============================================================
 # MEDIA CHECK
 # ============================================================
 
 def has_supported_media(message):
-
     if not message:
         return False
 
-    return any(
-        [
-            message.document,
-            message.video,
-            message.audio,
-            message.animation,
-            message.voice,
-            message.photo
-        ]
-    )
+    return any([
+        message.document,
+        message.video,
+        message.audio,
+        message.animation,
+        message.voice,
+        message.photo
+    ])
 
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
+# ============================================================
+# WARNING TEXT
+# ============================================================
+
+def build_delete_warning_text(batch=False):
+    if batch:
+        file_text = "Fɪʟᴇs"
+        forward_text = "Tʜᴇᴍ"
+        episode_text = "Eᴘɪѕᴏᴅᴇs"
+    else:
+        file_text = "Fɪʟᴇ"
+        forward_text = "Iᴛ"
+        episode_text = "Eᴘɪѕᴏᴅᴇ"
+
+    return (
+        "\n\n"
+        "<b>⌛ Dᴜᴇ Tᴏ Cᴏᴘʏʀɪɢʜᴛ Iѕѕᴜᴇѕ...</b>\n\n"
+        f"» Yᴏᴜʀ {file_text} Wɪʟʟ Bᴇ Dᴇʟᴇᴛᴇᴅ Wɪᴛʜɪɴ 5 Mɪɴ.\n"
+        f"» Pʟᴇᴀѕᴇ Fᴏʀᴡᴀʀᴅ {forward_text} Tᴏ Aɴᴏᴛʜᴇʀ "
+        "Cʜᴀᴛ Oʀ Sᴀᴠᴇ Iᴛ Tᴏ Sᴀᴠᴇᴅ Mᴇѕѕᴀɢᴇѕ "
+        "Fᴏʀ Fᴜᴛᴜʀᴇ Aᴠᴀɪʟᴀʙɪʟɪᴛʏ.\n\n"
+        f"» Nᴏᴛᴇ: Uѕᴇ VLC Pʟᴀʏᴇʀ Oʀ MX Pʟᴀʏᴇʀ "
+        f"Tᴏ Wᴀᴛᴄʜ Tʜᴇ {episode_text} Wɪᴛʜ A Gᴏᴏᴅ "
+        "Exᴘᴇʀɪᴇɴᴄᴇ."
+    )
 
 # ============================================================
 # FILE CAPTION
 # ============================================================
 
-def build_file_caption(
-    database_message
-):
-
+def build_file_caption(database_message, batch=False):
     original_caption = (
-        getattr(
-            database_message,
-            "caption",
-            None
-        )
-        or ""
+        getattr(database_message, "caption", None) or ""
     ).strip()
 
+    warning_text = build_delete_warning_text(batch=batch)
+
+    # Keep enough space for the warning within Telegram's
+    # 1024-character media-caption limit.
+    warning_length = len(warning_text)
+    max_title_length = max(80, 950 - warning_length)
+
     if original_caption:
+        # Avoid overflowing the caption limit.
+        title = original_caption[:max_title_length]
+        safe_caption = escape(title)
 
-        safe_caption = escape(
-            original_caption
-        )
-
-        # The actual file caption/title itself
-        # is clickable and opens the Updates channel.
-        return (
+        file_caption = (
             f'<b><a href="{UPDATES_URL}">'
             f'{safe_caption}'
             f'</a></b>'
         )
+    else:
+        file_caption = (
+            f'<b><a href="{UPDATES_URL}">'
+            f'📁 Yᴏᴜʀ Rᴇǫᴜᴇsᴛᴇᴅ Fɪʟᴇ'
+            f'</a></b>'
+        )
 
-    return (
-        f'<b><a href="{UPDATES_URL}">'
-        f'📁 Yᴏᴜʀ Rᴇǫᴜᴇsᴛᴇᴅ Fɪʟᴇ'
-        f'</a></b>'
-    )
+    combined_caption = file_caption + warning_text
 
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
+    # Final safety limit for Telegram captions.
+    if len(combined_caption) > 1024:
+        short_warning = (
+            "\n\n"
+            "<b>⌛ Dᴜᴇ Tᴏ Cᴏᴘʏʀɪɢʜᴛ Iѕѕᴜᴇѕ...</b>\n"
+            "» Fɪʟᴇ Wɪʟʟ Bᴇ Dᴇʟᴇᴛᴇᴅ Wɪᴛʜɪɴ 5 Mɪɴ.\n"
+            "» Sᴀᴠᴇ Oʀ Fᴏʀᴡᴀʀᴅ Fᴏʀ Fᴜᴛᴜʀᴇ Uѕᴇ.\n"
+            "» Uѕᴇ VLC Oʀ MX Pʟᴀʏᴇʀ."
+        )
+
+        available = max(0, 1024 - len(short_warning) - 30)
+
+        if original_caption:
+            title = escape(original_caption[:available])
+            file_caption = (
+                f'<b><a href="{UPDATES_URL}">'
+                f'{title}'
+                f'</a></b>'
+            )
+
+        combined_caption = file_caption + short_warning
+
+    return combined_caption
 
 # ============================================================
 # FILE KEYBOARD
 # ============================================================
 
 def build_file_keyboard():
-
-    return InlineKeyboardMarkup(
+    return InlineKeyboardMarkup([
         [
-            [
-                InlineKeyboardButton(
-                    "• Uᴘᴅᴀᴛᴇs •",
-                    url=UPDATES_URL
-                )
-            ]
+            InlineKeyboardButton(
+                "• Uᴘᴅᴀᴛᴇs •",
+                url=UPDATES_URL
+            )
         ]
-    )
-
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
+    ])
 
 # ============================================================
-# SEND ONE PERMANENT FILE
+# SEND ONE PERMANENT FILE WITH WARNING IN SAME CAPTION
 # ============================================================
 
 async def send_permanent_file(
     client,
     user_id,
     message_id,
-    protected=False
+    protected=False,
+    batch=False
 ):
-
-    database_message = (
-        await get_database_message(
-            client,
-            message_id
-        )
+    database_message = await get_database_message(
+        client,
+        message_id
     )
 
     if not database_message:
         return False
 
-    if not has_supported_media(
-        database_message
-    ):
-
+    if not has_supported_media(database_message):
         return False
 
     try:
-
         caption = build_file_caption(
-            database_message
+            database_message,
+            batch=batch
         )
 
         sent_message = await client.copy_message(
@@ -569,12 +377,8 @@ async def send_permanent_file(
             protect_content=protected
         )
 
-        # ----------------------------------------------------
-        # DELETE FILE AFTER 5 MINUTES
-        # ----------------------------------------------------
-
         if sent_message:
-
+            # Delete the file and its warning together.
             asyncio.create_task(
                 delete_after_5_minutes(
                     client,
@@ -584,7 +388,7 @@ async def send_permanent_file(
             )
 
         logger.info(
-            "PERMANENT FILE SENT | "
+            "PERMANENT FILE SENT WITH WARNING | "
             "user=%s | message_id=%s | protected=%s",
             user_id,
             message_id,
@@ -594,7 +398,6 @@ async def send_permanent_file(
         return True
 
     except Exception as e:
-
         logger.error(
             "PERMANENT FILE SEND ERROR | "
             "user=%s | message_id=%s | error=%s",
@@ -602,66 +405,17 @@ async def send_permanent_file(
             message_id,
             e
         )
-
         return False
 
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
-
-# ============================================================
-# SEND WARNING
-# ============================================================
-
-async def send_delete_warning(
-    client,
-    user_id,
-    batch=False
-):
-
-    if batch:
-
-        text = (
-            "<b>⌛ Dᴜᴇ Tᴏ Cᴏᴘʏʀɪɢʜᴛ Iѕѕᴜᴇѕ...</b>\n\n"
-            "<b>» Yᴏᴜʀ Fɪʟᴇѕ Wɪʟʟ Bᴇ Dᴇʟᴇᴛᴇᴅ Wɪᴛʜɪɴ 5 Mɪɴ\n"
-            "Sᴏ Pʟᴇᴀѕᴇ Fᴏʀᴡᴀʀᴅ Tʜᴇᴍ Tᴏ Aɴʏ Oᴛʜᴇʀ\n"
-            "Pʟᴀᴄᴇ Oʀ Sᴀᴠᴇᴅ Mᴇѕѕᴀɢᴇѕ Fᴏʀ Fᴜᴛᴜʀᴇ\n"
-            "Aᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n\n"
-            "<b>Nᴏᴛᴇ : Uѕᴇ VLC Pʟᴀʏᴇʀ Oʀ MX Pʟᴀʏᴇʀ\n"
-            "Tᴏ Wᴀᴛᴄʜ Tʜᴇ Eᴘɪѕᴏᴅᴇѕ Wɪᴛʜ Gᴏᴏᴅ\n"
-            "Exᴘᴇʀɪᴇɴᴄᴇ</b>"
-        )
-
-    else:
-
-        text = (
-            "<b>⌛ Dᴜᴇ Tᴏ Cᴏᴘʏʀɪɢʜᴛ Iѕѕᴜᴇѕ...</b>\n\n"
-            "<b>» Yᴏᴜʀ Fɪʟᴇ Wɪʟʟ Bᴇ Dᴇʟᴇᴛᴇᴅ Wɪᴛʜɪɴ 5 Mɪɴ\n"
-            "Sᴏ Pʟᴇᴀѕᴇ Fᴏʀᴡᴀʀᴅ Iᴛ Tᴏ Aɴʏ Oᴛʜᴇʀ\n"
-            "Pʟᴀᴄᴇ Oʀ Sᴀᴠᴇᴅ Mᴇѕѕᴀɢᴇѕ Fᴏʀ Fᴜᴛᴜʀᴇ\n"
-            "Aᴠᴀɪʟᴀʙɪʟɪᴛʏ</b>\n\n\n"
-            "<b>Nᴏᴛᴇ : Uѕᴇ VLC Pʟᴀʏᴇʀ Oʀ MX Pʟᴀʏᴇʀ\n"
-            "Tᴏ Wᴀᴛᴄʜ Tʜᴇ Eᴘɪѕᴏᴅᴇ Wɪᴛʜ Gᴏᴏᴅ\n"
-            "Exᴘᴇʀɪᴇɴᴄᴇ</b>"
-        )
-
+async def send_delete_warning(client, user_id, batch=False):
     try:
-
         warning = await client.send_message(
             user_id,
-            text,
+            build_delete_warning_text(batch=batch),
             parse_mode=enums.ParseMode.HTML
         )
 
-        # ----------------------------------------------------
-        # DELETE WARNING AFTER 5 MINUTES
-        # ----------------------------------------------------
-
         if warning:
-
             asyncio.create_task(
                 delete_after_5_minutes(
                     client,
@@ -673,22 +427,12 @@ async def send_delete_warning(
         return warning
 
     except Exception as e:
-
         logger.warning(
-            "Failed to send delete warning | "
-            "user=%s | error=%s",
+            "Failed to send delete warning | user=%s | error=%s",
             user_id,
             e
         )
-
         return None
-
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
 
 # ============================================================
 # SEND BATCH
@@ -701,52 +445,29 @@ async def send_permanent_batch(
     last_id,
     protected=False
 ):
-
     if first_id > last_id:
+        first_id, last_id = last_id, first_id
 
-        first_id, last_id = (
-            last_id,
-            first_id
-        )
-
-    total = (
-        last_id
-        - first_id
-        + 1
-    )
+    total = last_id - first_id + 1
 
     if total > MAX_BATCH_FILES:
-
         return 0, True
 
     sent = 0
 
-    for message_id in range(
-        first_id,
-        last_id + 1
-    ):
-
-        success = (
-            await send_permanent_file(
-                client=client,
-                user_id=user_id,
-                message_id=message_id,
-                protected=protected
-            )
+    for message_id in range(first_id, last_id + 1):
+        success = await send_permanent_file(
+            client=client,
+            user_id=user_id,
+            message_id=message_id,
+            protected=protected,
+            batch=True
         )
 
         if success:
-
             sent += 1
 
     return sent, False
-
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
 
 # ============================================================
 # HANDLE PERMANENT LINK
@@ -758,12 +479,9 @@ async def handle_permanent_link(
     token,
     user_id=None
 ):
-
     if not user_id:
-
         if not message.from_user:
             return
-
         user_id = message.from_user.id
 
     if not token:
@@ -771,358 +489,211 @@ async def handle_permanent_link(
 
     token = token.strip()
 
-    # ========================================================
     # FORCE SUB CHECK
-    # ========================================================
-
-    not_joined = await check_all_fsubs(
-        client,
-        user_id
-    )
+    not_joined = await check_all_fsubs(client, user_id)
 
     if not_joined:
-
         await send_fsub_message(
             client,
             message,
             not_joined,
             deep_link=token
         )
-
         return
 
-    # ========================================================
     # SINGLE PROTECTED LINK
-    # ========================================================
-
     if token.startswith("pl_"):
-
         raw_id = token[3:]
 
         if not raw_id.isdigit():
-
             await client.send_message(
                 user_id,
                 "❌ <b>Invalid permanent link.</b>",
                 parse_mode=enums.ParseMode.HTML
             )
-
             return
 
         message_id = int(raw_id)
 
-        success = (
-            await send_permanent_file(
-                client=client,
-                user_id=user_id,
-                message_id=message_id,
-                protected=True
-            )
+        success = await send_permanent_file(
+            client=client,
+            user_id=user_id,
+            message_id=message_id,
+            protected=True,
+            batch=False
         )
 
         if not success:
-
             await client.send_message(
                 user_id,
                 "❌ <b>File not found or unavailable.</b>",
                 parse_mode=enums.ParseMode.HTML
             )
 
-            return
-
-        # Warning comes AFTER the file
-        await send_delete_warning(
-            client,
-            user_id,
-            batch=False
-        )
-
+        # Warning is already attached to the file caption.
         return
 
-    # ========================================================
     # NORMAL BATCH
-    # ========================================================
-
     if token.startswith("ba_"):
-
         parts = token[3:].split("_")
 
-        if (
-            len(parts) != 2
-            or not all(
-                part.isdigit()
-                for part in parts
-            )
+        if len(parts) != 2 or not all(
+            part.isdigit() for part in parts
         ):
-
             await client.send_message(
                 user_id,
                 "❌ <b>Invalid batch link.</b>",
                 parse_mode=enums.ParseMode.HTML
             )
-
             return
 
         first_id = int(parts[0])
         last_id = int(parts[1])
 
-        sent, too_many = (
-            await send_permanent_batch(
-                client=client,
-                user_id=user_id,
-                first_id=first_id,
-                last_id=last_id,
-                protected=False
-            )
+        sent, too_many = await send_permanent_batch(
+            client=client,
+            user_id=user_id,
+            first_id=first_id,
+            last_id=last_id,
+            protected=False
         )
 
         if too_many:
-
             await client.send_message(
                 user_id,
                 (
                     "❌ <b>Batch too large.</b>\n\n"
-                    f"Maximum allowed: "
-                    f"<b>{MAX_BATCH_FILES}</b> files."
+                    f"Maximum allowed: <b>{MAX_BATCH_FILES}</b> files."
                 ),
                 parse_mode=enums.ParseMode.HTML
             )
-
             return
 
         if sent == 0:
-
             await client.send_message(
                 user_id,
                 "❌ <b>No files were found in this batch.</b>",
                 parse_mode=enums.ParseMode.HTML
             )
 
-            return
-
-        # Warning comes AFTER all batch files
-        await send_delete_warning(
-            client,
-            user_id,
-            batch=True
-        )
-
+        # Each file already has its own warning caption.
         return
 
-    # ========================================================
     # PROTECTED BATCH
-    # ========================================================
-
     if token.startswith("pb_"):
-
         parts = token[3:].split("_")
 
-        if (
-            len(parts) != 2
-            or not all(
-                part.isdigit()
-                for part in parts
-            )
+        if len(parts) != 2 or not all(
+            part.isdigit() for part in parts
         ):
-
             await client.send_message(
                 user_id,
                 "❌ <b>Invalid protected batch link.</b>",
                 parse_mode=enums.ParseMode.HTML
             )
-
             return
 
         first_id = int(parts[0])
         last_id = int(parts[1])
 
-        sent, too_many = (
-            await send_permanent_batch(
-                client=client,
-                user_id=user_id,
-                first_id=first_id,
-                last_id=last_id,
-                protected=True
-            )
+        sent, too_many = await send_permanent_batch(
+            client=client,
+            user_id=user_id,
+            first_id=first_id,
+            last_id=last_id,
+            protected=True
         )
 
         if too_many:
-
             await client.send_message(
                 user_id,
                 (
                     "❌ <b>Batch too large.</b>\n\n"
-                    f"Maximum allowed: "
-                    f"<b>{MAX_BATCH_FILES}</b> files."
+                    f"Maximum allowed: <b>{MAX_BATCH_FILES}</b> files."
                 ),
                 parse_mode=enums.ParseMode.HTML
             )
-
             return
 
         if sent == 0:
-
             await client.send_message(
                 user_id,
                 "❌ <b>No files were found in this batch.</b>",
                 parse_mode=enums.ParseMode.HTML
             )
 
-            return
-
-        # Warning comes AFTER all protected batch files
-        await send_delete_warning(
-            client,
-            user_id,
-            batch=True
-        )
-
+        # Each protected file already has its own warning caption.
         return
 
-    # ========================================================
     # UNKNOWN TOKEN
-    # ========================================================
-
     await client.send_message(
         user_id,
         "❌ <b>Invalid or expired permanent link.</b>",
         parse_mode=enums.ParseMode.HTML
     )
 
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
-
 # ============================================================
-# /PLINK
-# OWNER ONLY
+# /PLINK - OWNER ONLY
 # ============================================================
 
-async def plink_handler(
-    client,
-    message
-):
-
+async def plink_handler(client, message):
     if not await owner_required(message):
         return
 
     if not message.reply_to_message:
-
         await message.reply_text(
-            (
-                "❌ <b>Reply to a media message "
-                "with /plink.</b>"
-            ),
+            "❌ <b>Reply to a media message with /plink.</b>",
             parse_mode=enums.ParseMode.HTML
         )
-
         return
 
     replied = message.reply_to_message
-
     original_chat_id = None
     original_message_id = None
 
-    # ========================================================
     # DIRECT DATABASE CHANNEL
-    # ========================================================
-
-    if str(message.chat.id) == str(
-        DATABASE_CHANNEL_ID
-    ):
-
+    if str(message.chat.id) == str(DATABASE_CHANNEL_ID):
         original_chat_id = DATABASE_CHANNEL_ID
         original_message_id = replied.id
 
-    # ========================================================
     # FORWARDED DATABASE MESSAGE IN BOT PM
-    # ========================================================
-
     else:
-
-        reference = (
-            get_original_message_reference(
-                replied
-            )
-        )
+        reference = get_original_message_reference(replied)
 
         if reference:
-
-            (
-                original_chat_id,
-                original_message_id
-            ) = reference
-
-    # ========================================================
-    # CHECK ORIGINAL MESSAGE
-    # ========================================================
+            original_chat_id, original_message_id = reference
 
     if not original_message_id:
-
         await message.reply_text(
             (
-                "❌ <b>Could not find the original "
-                "Database message.</b>\n\n"
-                "Forward a file from the Database channel "
-                "and reply to it with <code>/plink</code>."
+                "❌ <b>Could not find the original Database message.</b>\n\n"
+                "Forward a file from the Database channel and reply to it "
+                "with <code>/plink</code>."
             ),
             parse_mode=enums.ParseMode.HTML
         )
-
         return
 
-    # ========================================================
-    # DATABASE CHANNEL CHECK
-    # ========================================================
-
-    if str(original_chat_id) != str(
-        DATABASE_CHANNEL_ID
-    ):
-
+    if str(original_chat_id) != str(DATABASE_CHANNEL_ID):
         await message.reply_text(
-            (
-                "❌ <b>This file is not from "
-                "the Database channel.</b>"
-            ),
+            "❌ <b>This file is not from the Database channel.</b>",
             parse_mode=enums.ParseMode.HTML
         )
-
         return
 
-    # ========================================================
-    # GET ORIGINAL MESSAGE
-    # ========================================================
-
-    database_message = (
-        await get_database_message(
-            client,
-            original_message_id
-        )
+    database_message = await get_database_message(
+        client,
+        original_message_id
     )
 
     if not database_message:
-
         await message.reply_text(
-            (
-                "❌ <b>Original Database message "
-                "was not found.</b>"
-            ),
+            "❌ <b>Original Database message was not found.</b>",
             parse_mode=enums.ParseMode.HTML
         )
-
         return
 
-    # ========================================================
-    # MEDIA CHECK
-    # ========================================================
-
-    if not has_supported_media(
-        database_message
-    ):
-
+    if not has_supported_media(database_message):
         await message.reply_text(
             (
                 "❌ <b>Reply to a supported media file.</b>\n\n"
@@ -1130,216 +701,116 @@ async def plink_handler(
             ),
             parse_mode=enums.ParseMode.HTML
         )
-
         return
 
-    # ========================================================
-    # CREATE LINK
-    # ========================================================
-
-    token = make_single_token(
-        original_message_id
-    )
-
-    link = await make_start_link(
-        client,
-        token
-    )
+    token = make_single_token(original_message_id)
+    link = await make_start_link(client, token)
 
     if not link:
-
         await message.reply_text(
             "❌ <b>Bot username is not available.</b>",
             parse_mode=enums.ParseMode.HTML
         )
-
         return
-
-    # ========================================================
-    # SEND RESULT
-    # ========================================================
 
     await message.reply_text(
         (
             "🔗 <b>Pᴇʀᴍᴀɴᴇɴᴛ Lɪɴᴋ Gᴇɴᴇʀᴀᴛᴇᴅ</b>\n\n"
-            f"🔗 <b><a href=\"{link}\">Oᴘᴇɴ Pᴇʀᴍᴀɴᴇɴᴛ Lɪɴᴋ</a></b>\n\n"
-            f"<b>Powered By: "
-            f"<a href=\"{UPDATES_URL}\">Aᴇʀᴏ Uɴɪᴛʏ</a></b>"
+            f'🔗 <b><a href="{link}">Oᴘᴇɴ Pᴇʀᴍᴀɴᴇɴᴛ Lɪɴᴋ</a></b>\n\n'
+            f'<b>Powered By: <a href="{UPDATES_URL}">Aᴇʀᴏ Uɴɪᴛʏ</a></b>'
         ),
         parse_mode=enums.ParseMode.HTML,
         disable_web_page_preview=False,
-        reply_markup=InlineKeyboardMarkup(
+        reply_markup=InlineKeyboardMarkup([
             [
-                [
-                    InlineKeyboardButton(
-                        "• Uᴘᴅᴀᴛᴇs •",
-                        url=UPDATES_URL
-                    )
-                ]
+                InlineKeyboardButton(
+                    "• Uᴘᴅᴀᴛᴇs •",
+                    url=UPDATES_URL
+                )
             ]
-        )
+        ])
     )
-
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
 
 # ============================================================
 # GET BATCH REFERENCE
 # ============================================================
 
-def get_batch_reply_reference(
-    replied
-):
-
+def get_batch_reply_reference(replied):
     if not replied:
         return None
 
-    reference = (
-        get_original_message_reference(
-            replied
-        )
-    )
+    reference = get_original_message_reference(replied)
 
     if not reference:
         return None
 
-    original_chat_id, original_message_id = (
-        reference
-    )
+    original_chat_id, original_message_id = reference
 
-    if str(original_chat_id) != str(
-        DATABASE_CHANNEL_ID
-    ):
-
+    if str(original_chat_id) != str(DATABASE_CHANNEL_ID):
         return None
 
     return int(original_message_id)
-
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
 
 # ============================================================
 # GENERATE BATCH LINK
 # ============================================================
 
-async def generate_batch_link(
-    client,
-    message,
-    protected=False
-):
-
+async def generate_batch_link(client, message, protected=False):
     if not await owner_required(message):
         return
 
-    text = (
-        message.text
-        or message.caption
-        or ""
-    )
-
+    text = message.text or message.caption or ""
     command_parts = text.split()
+    command_name = "pbatch" if protected else "batch"
 
-    command_name = (
-        "pbatch"
-        if protected
-        else "batch"
-    )
-
-    # ========================================================
     # REPLY TO FORWARDED FILE METHOD
-    # ========================================================
-
     replied = message.reply_to_message
 
     if replied:
-
-        first_id = (
-            get_batch_reply_reference(
-                replied
-            )
-        )
+        first_id = get_batch_reply_reference(replied)
 
         if first_id:
-
             if len(command_parts) == 2:
-
-                last_ref = (
-                    parse_message_reference(
-                        command_parts[1]
-                    )
-                )
+                last_ref = parse_message_reference(command_parts[1])
 
                 if not last_ref:
-
                     await message.reply_text(
                         "❌ <b>Invalid last message.</b>",
                         parse_mode=enums.ParseMode.HTML
                     )
-
                     return
 
                 last_chat, last_id = last_ref
 
-                if str(last_chat) != str(
-                    DATABASE_CHANNEL_ID
-                ):
-
+                if str(last_chat) != str(DATABASE_CHANNEL_ID):
                     await message.reply_text(
-                        (
-                            "❌ <b>The last message "
-                            "must be from the Database channel.</b>"
-                        ),
+                        "❌ <b>The last message must be from the Database channel.</b>",
                         parse_mode=enums.ParseMode.HTML
                     )
-
                     return
-
             else:
-
                 await message.reply_text(
                     (
-                        f"❌ <b>Reply to the first Database "
-                        f"file and use:</b>\n\n"
+                        f"❌ <b>Reply to the first Database file and use:</b>\n\n"
                         f"<code>/{command_name} LAST_ID</code>\n\n"
-                        f"<b>Example:</b>\n"
-                        f"<code>/{command_name} 120</code>"
+                        f"<b>Example:</b>\n<code>/{command_name} 120</code>"
                     ),
                     parse_mode=enums.ParseMode.HTML
                 )
-
                 return
-
         else:
-
             first_id = None
-
     else:
-
         first_id = None
 
-    # ========================================================
     # NORMAL TWO-REFERENCE METHOD
-    # ========================================================
-
     if first_id is None:
-
         if len(command_parts) != 3:
-
             await message.reply_text(
                 (
                     "❌ <b>Invalid format.</b>\n\n"
-                    f"Use:\n"
-                    f"<code>/{command_name} FIRST LAST</code>\n\n"
-                    "Example:\n"
-                    f"<code>/{command_name} 100 120</code>\n\n"
+                    f"Use:\n<code>/{command_name} FIRST LAST</code>\n\n"
+                    f"Example:\n<code>/{command_name} 100 120</code>\n\n"
                     "Or use Telegram links:\n"
                     f"<code>/{command_name} "
                     "https://t.me/c/1234567890/100 "
@@ -1347,165 +818,82 @@ async def generate_batch_link(
                 ),
                 parse_mode=enums.ParseMode.HTML
             )
-
             return
 
-        first_ref = (
-            parse_message_reference(
-                command_parts[1]
-            )
-        )
-
-        last_ref = (
-            parse_message_reference(
-                command_parts[2]
-            )
-        )
+        first_ref = parse_message_reference(command_parts[1])
+        last_ref = parse_message_reference(command_parts[2])
 
         if not first_ref or not last_ref:
-
             await message.reply_text(
                 "❌ <b>Invalid message references.</b>",
                 parse_mode=enums.ParseMode.HTML
             )
-
             return
 
         first_chat, first_id = first_ref
         last_chat, last_id = last_ref
 
-        if str(first_chat) != str(
-            DATABASE_CHANNEL_ID
-        ):
-
+        if str(first_chat) != str(DATABASE_CHANNEL_ID):
             await message.reply_text(
-                (
-                    "❌ <b>First message is not "
-                    "from the Database channel.</b>"
-                ),
+                "❌ <b>First message is not from the Database channel.</b>",
                 parse_mode=enums.ParseMode.HTML
             )
-
             return
 
-        if str(last_chat) != str(
-            DATABASE_CHANNEL_ID
-        ):
-
+        if str(last_chat) != str(DATABASE_CHANNEL_ID):
             await message.reply_text(
-                (
-                    "❌ <b>Last message is not "
-                    "from the Database channel.</b>"
-                ),
+                "❌ <b>Last message is not from the Database channel.</b>",
                 parse_mode=enums.ParseMode.HTML
             )
-
             return
 
-    # ========================================================
     # VERIFY IDS
-    # ========================================================
-
     if first_id > last_id:
+        first_id, last_id = last_id, first_id
 
-        first_id, last_id = (
-            last_id,
-            first_id
-        )
-
-    total = (
-        last_id
-        - first_id
-        + 1
-    )
+    total = last_id - first_id + 1
 
     if total > MAX_BATCH_FILES:
-
         await message.reply_text(
             (
                 "❌ <b>Batch too large.</b>\n\n"
-                f"Maximum allowed: "
-                f"<b>{MAX_BATCH_FILES}</b> files.\n"
+                f"Maximum allowed: <b>{MAX_BATCH_FILES}</b> files.\n"
                 f"Requested: <b>{total}</b>"
             ),
             parse_mode=enums.ParseMode.HTML
         )
-
         return
 
-    # ========================================================
     # VERIFY FIRST MESSAGE
-    # ========================================================
-
-    first_message = (
-        await get_database_message(
-            client,
-            first_id
-        )
-    )
+    first_message = await get_database_message(client, first_id)
 
     if not first_message:
-
         await message.reply_text(
-            (
-                "❌ <b>First Database message "
-                "was not found.</b>"
-            ),
+            "❌ <b>First Database message was not found.</b>",
             parse_mode=enums.ParseMode.HTML
         )
-
         return
 
-    # ========================================================
     # VERIFY LAST MESSAGE
-    # ========================================================
-
-    last_message = (
-        await get_database_message(
-            client,
-            last_id
-        )
-    )
+    last_message = await get_database_message(client, last_id)
 
     if not last_message:
-
         await message.reply_text(
-            (
-                "❌ <b>Last Database message "
-                "was not found.</b>"
-            ),
+            "❌ <b>Last Database message was not found.</b>",
             parse_mode=enums.ParseMode.HTML
         )
-
         return
 
-    # ========================================================
     # CREATE TOKEN
-    # ========================================================
-
-    token = make_batch_token(
-        first_id,
-        last_id,
-        protected=protected
-    )
-
-    link = await make_start_link(
-        client,
-        token
-    )
+    token = make_batch_token(first_id, last_id, protected=protected)
+    link = await make_start_link(client, token)
 
     if not link:
-
         await message.reply_text(
             "❌ <b>Bot username is not available.</b>",
             parse_mode=enums.ParseMode.HTML
         )
-
         return
-
-    # ========================================================
-    # SEND RESULT
-    # ========================================================
 
     batch_type = (
         "Pʀᴏᴛᴇᴄᴛᴇᴅ Bᴀᴛᴄʜ"
@@ -1518,110 +906,59 @@ async def generate_batch_link(
             "🔗 <b>Pᴇʀᴍᴀɴᴇɴᴛ Bᴀᴛᴄʜ Lɪɴᴋ Gᴇɴᴇʀᴀᴛᴇᴅ</b>\n\n"
             f"📦 <b>Tʏᴘᴇ:</b> {batch_type}\n"
             f"📁 <b>Fɪʟᴇs:</b> {total}\n"
-            f"🔢 <b>Rᴀɴɢᴇ:</b> "
-            f"{first_id} - {last_id}\n\n"
-            f"🔗 <b><a href=\"{link}\">Oᴘᴇɴ Bᴀᴛᴄʜ Lɪɴᴋ</a></b>\n\n"
-            f"<b>Powered By: "
-            f"<a href=\"{UPDATES_URL}\">Aᴇʀᴏ Uɴɪᴛʏ</a></b>"
+            f"🔢 <b>Rᴀɴɢᴇ:</b> {first_id} - {last_id}\n\n"
+            f'🔗 <b><a href="{link}">Oᴘᴇɴ Bᴀᴛᴄʜ Lɪɴᴋ</a></b>\n\n'
+            f'<b>Powered By: <a href="{UPDATES_URL}">Aᴇʀᴏ Uɴɪᴛʏ</a></b>'
         ),
         parse_mode=enums.ParseMode.HTML,
         disable_web_page_preview=False,
-        reply_markup=InlineKeyboardMarkup(
+        reply_markup=InlineKeyboardMarkup([
             [
-                [
-                    InlineKeyboardButton(
-                        "• Uᴘᴅᴀᴛᴇs •",
-                        url=UPDATES_URL
-                    )
-                ]
+                InlineKeyboardButton(
+                    "• Uᴘᴅᴀᴛᴇs •",
+                    url=UPDATES_URL
+                )
             ]
-        )
+        ])
     )
-    
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
 
 # ============================================================
-# /BATCH
-# OWNER ONLY
+# /BATCH - OWNER ONLY
 # ============================================================
 
-async def batch_handler(
-    client,
-    message
-):
-
+async def batch_handler(client, message):
     await generate_batch_link(
         client=client,
         message=message,
         protected=False
     )
-    
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
 
 # ============================================================
-# /PBATCH
-# OWNER ONLY
+# /PBATCH - OWNER ONLY
 # ============================================================
 
-async def pbatch_handler(
-    client,
-    message
-):
-
+async def pbatch_handler(client, message):
     await generate_batch_link(
         client=client,
         message=message,
         protected=True
     )
 
-# ------------------------ #
-# Don't Remove My Credits
-# Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
-# ------------------------ #
-
 # ============================================================
 # REGISTER HANDLERS
 # ============================================================
 
 def register_permanent_link_handlers(app):
-
-    # --------------------------------------------------------
-    # /plink - OWNER ONLY - PRIVATE PM
-    # --------------------------------------------------------
-
     app.on_message(
-        filters.command("plink")
-        & filters.private
+        filters.command("plink") & filters.private
     )(plink_handler)
 
-    # --------------------------------------------------------
-    # /batch - OWNER ONLY - PRIVATE PM
-    # --------------------------------------------------------
-
     app.on_message(
-        filters.command("batch")
-        & filters.private
+        filters.command("batch") & filters.private
     )(batch_handler)
 
-    # --------------------------------------------------------
-    # /pbatch - OWNER ONLY - PRIVATE PM
-    # --------------------------------------------------------
-
     app.on_message(
-        filters.command("pbatch")
-        & filters.private
+        filters.command("pbatch") & filters.private
     )(pbatch_handler)
 
     logger.info(
@@ -1631,6 +968,6 @@ def register_permanent_link_handlers(app):
 # ------------------------ #
 # Don't Remove My Credits
 # Owner: @Mr_Mohammed_29
-# Updates: @Aero_Unity 
-# Support : @Coders_Grp 
+# Updates: @Aero_Unity
+# Support : @Coders_Grp
 # ------------------------ #
