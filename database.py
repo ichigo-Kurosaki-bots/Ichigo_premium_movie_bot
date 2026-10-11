@@ -165,7 +165,7 @@ async def init_database():
         "admins"
     ]
 
-        # ========================================================
+    # ========================================================
     # DATABASE INDEXES
     # ========================================================
 
@@ -2487,112 +2487,125 @@ async def remove_fsub_channel(
 # TRENDING
 # ============================================================
 
-async def record_search(
-    query
-):
+def _normalize_trend_query(query):
+    """Normalize search names for trending statistics."""
 
     if not query:
-        return False
+        return ""
 
-    query = str(
+    query = str(query).strip().lower()
+
+    if not query or query.startswith("/"):
+        return ""
+
+    # Convert underscores, hyphens, dots and separators to spaces.
+    query = re.sub(r"[_\-.]+", " ", query)
+
+    # Keep letters, numbers and supported Indic scripts.
+    query = re.sub(
+        r"[^a-z0-9\u0900-\u097f\u0b80-\u0bff\u0c00-\u0c7f\u0d00-\u0d7f\s]",
+        " ",
         query
-    ).strip()
-
-    if not query:
-        return False
-
-    if query.startswith("/"):
-        return False
-
-    await settings_collection.update_one(
-
-        {
-            "_id":
-                "search_trends"
-        },
-
-        {
-            "$inc": {
-
-                f"queries.{query}":
-                    1
-            },
-
-            "$set": {
-
-                "updated_at":
-                    datetime.utcnow()
-            }
-        },
-
-        upsert=True
     )
 
-    return True
+    query = re.sub(r"\s+", " ", query).strip()
+
+    # Remove generic suffixes.
+    removable_suffixes = {
+        "movie",
+        "movies",
+        "film",
+        "films"
+    }
+
+    words = query.split()
+
+    while words and words[-1] in removable_suffixes:
+        words.pop()
+
+    return " ".join(words).strip()
 
 
-async def get_trending_searches(
-    limit=29
-):
+async def record_search(query):
+    """Record a normalized search in MongoDB."""
+
+    normalized_query = _normalize_trend_query(query)
+
+    if not normalized_query:
+        return False
+
+    try:
+        await settings_collection.update_one(
+            {"_id": "search_trends"},
+            {
+                "$inc": {
+                    f"queries.{normalized_query}": 1
+                },
+                "$set": {
+                    "updated_at": datetime.utcnow()
+                }
+            },
+            upsert=True
+        )
+
+        return True
+
+    except Exception as e:
+        logger.warning(
+            "Could not record trending search %r: %s",
+            query,
+            e
+        )
+        return False
+
+
+async def get_trending_searches(limit=29):
+    """Return trending searches as (query, count) tuples."""
+
+    try:
+        limit = max(1, min(int(limit), 100))
+    except (TypeError, ValueError):
+        limit = 29
 
     document = await settings_collection.find_one(
-
-        {
-            "_id":
-                "search_trends"
-        }
+        {"_id": "search_trends"}
     )
 
     if not document:
         return []
 
-    queries = document.get(
-        "queries",
-        {}
-    )
+    queries = document.get("queries", {})
 
-    if not queries:
+    if not isinstance(queries, dict):
         return []
 
-    valid_queries = {}
+    aggregated = {}
 
     for query, count in queries.items():
+        normalized_query = _normalize_trend_query(query)
 
-        query = str(
-            query
-        ).strip()
-
-        if not query:
+        if not normalized_query:
             continue
 
-        if query.startswith("/"):
+        if isinstance(count, bool):
             continue
 
-        if isinstance(
-            count,
-            (int, float)
-        ):
+        if not isinstance(count, (int, float)):
+            continue
 
-            valid_queries[
-                query
-            ] = int(
-                count
-            )
+        count = int(count)
 
-    sorted_queries = sorted(
+        if count <= 0:
+            continue
 
-        valid_queries.items(),
+        aggregated[normalized_query] = (
+            aggregated.get(normalized_query, 0) + count
+        )
 
-        key=lambda item:
-            item[1],
-
-        reverse=True
-    )
-
-    return sorted_queries[
-        :int(limit)
-    ]
-
+    return sorted(
+        aggregated.items(),
+        key=lambda item: (-item[1], item[0])
+    )[:limit]
 
 # ============================================================
 # REDEEM CODES
