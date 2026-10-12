@@ -9,12 +9,18 @@ import asyncio
 import logging
 import re
 
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
+
 from html import escape
 from pyrogram import filters, enums
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from config import DATABASE_CHANNEL_ID, OWNER_ID
-
 from handlers.fsub import (
     check_all_fsubs,
     send_fsub_message
@@ -56,9 +62,12 @@ async def owner_required(message):
         return False
     return True
 
-# ============================================================
-# DELETE MESSAGE AFTER 5 MINUTES
-# ============================================================
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 async def delete_after_5_minutes(client, chat_id, message_id):
     try:
@@ -119,7 +128,13 @@ def get_message_id_from_link(text):
         return username, message_id
 
     return None
-
+    
+# ------------------------ #
+# Don't Remove My Credits
+# Owner: @Mr_Mohammed_29
+# Updates: @Aero_Unity 
+# Support : @Coders_Grp 
+# ------------------------ #
 
 def parse_message_reference(value):
     if not value:
@@ -266,7 +281,6 @@ def build_delete_warning_text(batch=False):
         "Exᴘᴇʀɪᴇɴᴄᴇ."
     )
 
-
 # ============================================================
 # FILE CAPTION
 # ============================================================
@@ -306,9 +320,8 @@ def build_file_keyboard():
         ]
     ])
 
-
 # ============================================================
-# SEND ONE PERMANENT FILE WITH SEPARATE REPLY WARNING
+# SEND ONE PERMANENT FILE
 # ============================================================
 
 async def send_permanent_file(
@@ -316,7 +329,8 @@ async def send_permanent_file(
     user_id,
     message_id,
     protected=False,
-    batch=False
+    batch=False,
+    send_warning=True
 ):
     database_message = await get_database_message(
         client,
@@ -335,7 +349,6 @@ async def send_permanent_file(
             batch=batch
         )
 
-        # 1. Send the file with ONLY its normal caption.
         sent_message = await client.copy_message(
             chat_id=user_id,
             from_chat_id=DATABASE_CHANNEL_ID,
@@ -349,15 +362,7 @@ async def send_permanent_file(
         if not sent_message:
             return False
 
-        # 2. Send the warning as a SEPARATE reply to the file.
-        warning_message = await client.send_message(
-            chat_id=user_id,
-            text=build_delete_warning_text(batch=batch),
-            parse_mode=enums.ParseMode.HTML,
-            reply_to_message_id=sent_message.id
-        )
-
-        # 3. Delete BOTH messages after five minutes.
+        # Delete the file after five minutes.
         asyncio.create_task(
             delete_after_5_minutes(
                 client,
@@ -365,39 +370,47 @@ async def send_permanent_file(
                 sent_message.id
             )
         )
-
-        if warning_message:
-            asyncio.create_task(
-                delete_after_5_minutes(
-                    client,
-                    user_id,
-                    warning_message.id
-                )
+        
+        if send_warning:
+            warning_message = await client.send_message(
+                chat_id=user_id,
+                text=build_delete_warning_text(batch=batch),
+                parse_mode=enums.ParseMode.HTML,
+                reply_to_message_id=sent_message.id
             )
 
+            if warning_message:
+                asyncio.create_task(
+                    delete_after_5_minutes(
+                        client,
+                        user_id,
+                        warning_message.id
+                    )
+                )
+
         logger.info(
-            "PERMANENT FILE SENT WITH SEPARATE WARNING REPLY | "
-            "user=%s | message_id=%s | protected=%s",
+            "PERMANENT FILE SENT | user=%s | message_id=%s | "
+            "protected=%s | warning=%s",
             user_id,
             message_id,
-            protected
+            protected,
+            send_warning
         )
 
         return True
 
     except Exception as e:
         logger.error(
-            "PERMANENT FILE SEND ERROR | "
-            "user=%s | message_id=%s | error=%s",
+            "PERMANENT FILE SEND ERROR | user=%s | "
+            "message_id=%s | error=%s",
             user_id,
             message_id,
             e
         )
         return False
 
-
 # ============================================================
-# SEND BATCH
+# SEND BATCH 
 # ============================================================
 
 async def send_permanent_batch(
@@ -415,15 +428,60 @@ async def send_permanent_batch(
     if total > MAX_BATCH_FILES:
         return 0, True
 
-    sent = 0
+    # Check which messages actually contain supported media.
+    valid_ids = []
 
     for message_id in range(first_id, last_id + 1):
+        database_message = await get_database_message(
+            client,
+            message_id
+        )
+
+        if database_message and has_supported_media(
+            database_message
+        ):
+            valid_ids.append(message_id)
+
+    if not valid_ids:
+        return 0, False
+
+    # Send ONE warning before the batch files.
+    warning_message = None
+
+    try:
+        warning_message = await client.send_message(
+            chat_id=user_id,
+            text=build_delete_warning_text(batch=True),
+            parse_mode=enums.ParseMode.HTML
+        )
+
+        if warning_message:
+            asyncio.create_task(
+                delete_after_5_minutes(
+                    client,
+                    user_id,
+                    warning_message.id
+                )
+            )
+
+    except Exception as e:
+        logger.warning(
+            "Failed to send batch warning | user=%s | error=%s",
+            user_id,
+            e
+        )
+
+    sent = 0
+
+    # Send every file without another warning.
+    for message_id in valid_ids:
         success = await send_permanent_file(
             client=client,
             user_id=user_id,
             message_id=message_id,
             protected=protected,
-            batch=True
+            batch=True,
+            send_warning=False
         )
 
         if success:
