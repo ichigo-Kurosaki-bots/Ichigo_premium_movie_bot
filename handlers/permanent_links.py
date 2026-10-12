@@ -266,6 +266,7 @@ def build_delete_warning_text(batch=False):
         "Exᴘᴇʀɪᴇɴᴄᴇ."
     )
 
+
 # ============================================================
 # FILE CAPTION
 # ============================================================
@@ -275,55 +276,21 @@ def build_file_caption(database_message, batch=False):
         getattr(database_message, "caption", None) or ""
     ).strip()
 
-    warning_text = build_delete_warning_text(batch=batch)
-
-    # Keep enough space for the warning within Telegram's
-    # 1024-character media-caption limit.
-    warning_length = len(warning_text)
-    max_title_length = max(80, 950 - warning_length)
-
     if original_caption:
-        # Avoid overflowing the caption limit.
-        title = original_caption[:max_title_length]
-        safe_caption = escape(title)
+        # Keep the original file caption separate from the warning.
+        title = escape(original_caption[:900])
 
-        file_caption = (
+        return (
             f'<b><a href="{UPDATES_URL}">'
-            f'{safe_caption}'
-            f'</a></b>'
-        )
-    else:
-        file_caption = (
-            f'<b><a href="{UPDATES_URL}">'
-            f'📁 Yᴏᴜʀ Rᴇǫᴜᴇsᴛᴇᴅ Fɪʟᴇ'
+            f'{title}'
             f'</a></b>'
         )
 
-    combined_caption = file_caption + warning_text
-
-    # Final safety limit for Telegram captions.
-    if len(combined_caption) > 1024:
-        short_warning = (
-            "\n\n"
-            "<b>⌛ Dᴜᴇ Tᴏ Cᴏᴘʏʀɪɢʜᴛ Iѕѕᴜᴇѕ...</b>\n"
-            "» Fɪʟᴇ Wɪʟʟ Bᴇ Dᴇʟᴇᴛᴇᴅ Wɪᴛʜɪɴ 5 Mɪɴ.\n"
-            "» Sᴀᴠᴇ Oʀ Fᴏʀᴡᴀʀᴅ Fᴏʀ Fᴜᴛᴜʀᴇ Uѕᴇ.\n"
-            "» Uѕᴇ VLC Oʀ MX Pʟᴀʏᴇʀ."
-        )
-
-        available = max(0, 1024 - len(short_warning) - 30)
-
-        if original_caption:
-            title = escape(original_caption[:available])
-            file_caption = (
-                f'<b><a href="{UPDATES_URL}">'
-                f'{title}'
-                f'</a></b>'
-            )
-
-        combined_caption = file_caption + short_warning
-
-    return combined_caption
+    return (
+        f'<b><a href="{UPDATES_URL}">'
+        f'📁 Yᴏᴜʀ Rᴇǫᴜᴇsᴛᴇᴅ Fɪʟᴇ'
+        f'</a></b>'
+    )
 
 # ============================================================
 # FILE KEYBOARD
@@ -339,8 +306,9 @@ def build_file_keyboard():
         ]
     ])
 
+
 # ============================================================
-# SEND ONE PERMANENT FILE WITH WARNING IN SAME CAPTION
+# SEND ONE PERMANENT FILE WITH SEPARATE REPLY WARNING
 # ============================================================
 
 async def send_permanent_file(
@@ -367,6 +335,7 @@ async def send_permanent_file(
             batch=batch
         )
 
+        # 1. Send the file with ONLY its normal caption.
         sent_message = await client.copy_message(
             chat_id=user_id,
             from_chat_id=DATABASE_CHANNEL_ID,
@@ -377,18 +346,37 @@ async def send_permanent_file(
             protect_content=protected
         )
 
-        if sent_message:
-            # Delete the file and its warning together.
+        if not sent_message:
+            return False
+
+        # 2. Send the warning as a SEPARATE reply to the file.
+        warning_message = await client.send_message(
+            chat_id=user_id,
+            text=build_delete_warning_text(batch=batch),
+            parse_mode=enums.ParseMode.HTML,
+            reply_to_message_id=sent_message.id
+        )
+
+        # 3. Delete BOTH messages after five minutes.
+        asyncio.create_task(
+            delete_after_5_minutes(
+                client,
+                user_id,
+                sent_message.id
+            )
+        )
+
+        if warning_message:
             asyncio.create_task(
                 delete_after_5_minutes(
                     client,
                     user_id,
-                    sent_message.id
+                    warning_message.id
                 )
             )
 
         logger.info(
-            "PERMANENT FILE SENT WITH WARNING | "
+            "PERMANENT FILE SENT WITH SEPARATE WARNING REPLY | "
             "user=%s | message_id=%s | protected=%s",
             user_id,
             message_id,
@@ -407,32 +395,6 @@ async def send_permanent_file(
         )
         return False
 
-async def send_delete_warning(client, user_id, batch=False):
-    try:
-        warning = await client.send_message(
-            user_id,
-            build_delete_warning_text(batch=batch),
-            parse_mode=enums.ParseMode.HTML
-        )
-
-        if warning:
-            asyncio.create_task(
-                delete_after_5_minutes(
-                    client,
-                    user_id,
-                    warning.id
-                )
-            )
-
-        return warning
-
-    except Exception as e:
-        logger.warning(
-            "Failed to send delete warning | user=%s | error=%s",
-            user_id,
-            e
-        )
-        return None
 
 # ============================================================
 # SEND BATCH
